@@ -1,0 +1,51 @@
+@baseUrl = http://localhost:5000
+@companyCode = PNX000001
+@tenantUser = admin
+@tenantPassword = Admin@123
+@superAdmin = superadmin
+@superAdminPassword = ChangeThis#2026
+
+### Health
+GET {{baseUrl}}/api/health
+
+### Super Admin Login
+# @name superLogin
+POST {{baseUrl}}/api/admin/auth/login
+Content-Type: application/json
+
+{
+  "userName": "{{superAdmin}}",
+  "password": "{{superAdminPassword}}"
+}
+
+### List Tenants
+GET {{baseUrl}}/api/admin/tenants
+Authorization: Bearer {{superLogin.response.body.$.token}}
+
+### Tenant Login
+# @name tenantLogin
+POST {{baseUrl}}/api/auth/login
+Content-Type: application/json
+
+{
+  "companyCode": "{{companyCode}}",
+  "userName": "{{tenantUser}}",
+  "password": "{{tenantPassword}}"
+}
+
+### Permission Matrix
+GET {{baseUrl}}/api/security/permission-matrix
+Authorization: Bearer {{tenantLogin.response.body.$.token}}
+
+### Trial Balance
+GET {{baseUrl}}/api/accounting/report/trial-balance
+Authorization: Bearer {{tenantLogin.response.body.$.token}}
+
+### Backup Tenant Database
+POST {{baseUrl}}/api/settings/backup
+Authorization: Bearer {{tenantLogin.response.body.$.token}}
+Content-Type: application/json
+
+{
+  "remarks": "Smoke test backup"
+}

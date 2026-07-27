@@ -1,0 +1,118 @@
+<!doctype html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>PayNex Secure Login</title>
+  <link rel="stylesheet" href="/css/app.css?v=final-fixes-20260715">
+  <style>
+    .login-step[hidden]{display:none!important}.otp-code{font-size:28px;letter-spacing:10px;text-align:center;font-weight:700}.login-security-note{margin-top:16px;padding:12px;border:1px solid #d8e2ee;border-radius:8px;background:#f7fafc}.login-actions{display:flex;gap:10px;align-items:center;flex-wrap:wrap}.login-actions button{flex:1}.dev-otp{margin-top:12px;padding:10px;border:1px dashed #bb7a00;background:#fff9e8;border-radius:6px;font-family:monospace}.verification-email{font-weight:700;color:#1b4d7a}.login-card button[disabled]{opacity:.65;cursor:wait}
+  </style>
+</head>
+<body class="login-page">
+  <div class="login-shell">
+    <section class="login-brand">
+      <div>
+        <div class="brand-logo" style="margin-bottom:18px;width:46px;height:46px">PN</div>
+        <h1>PayNex Cloud</h1>
+        <p>Secure company-based ERP access with first-login OTP, role permissions, isolated company data and trusted-device protection.</p>
+      </div>
+      <div class="login-demo">
+        <b>Enterprise sign-in</b><br>
+        Enter your registered email and password.<br>
+        First login, a new browser/device, or an expired 30-day trust period requires a one-time email code.<br>
+        After verification, this browser remains trusted for the next 30 days.
+      </div>
+    </section>
+
+    <section class="login-card">
+      <div id="credentialStep" class="login-step">
+        <h2>Sign in</h2>
+        <p class="muted">Your company, database, role and branch are selected automatically from your registered account.</p>
+        <label>Email Address</label>
+        <input id="email" type="email" placeholder="user@example.com" autocomplete="username" maxlength="180">
+        <label>Password</label>
+        <input id="pass" type="password" placeholder="Password" autocomplete="current-password">
+        <label>Environment</label>
+        <select id="environment" data-no-lookup="1">
+          <option value="Production">Production</option>
+          <option value="Sandbox">Sandbox</option>
+        </select>
+        <button id="loginBtn" class="success" type="button">Sign in securely</button>
+        <div class="login-security-note muted">Protected pages and APIs require a valid authenticated session. Signing out invalidates the active access and refresh tokens.</div>
+      </div>
+
+      <div id="verificationStep" class="login-step" hidden>
+        <h2>Verify your identity</h2>
+        <p>A one-time verification code was sent to <span id="maskedEmail" class="verification-email">your registered email</span>.</p>
+        <label>Verification Code</label>
+        <input id="otpCode" class="otp-code" type="text" inputmode="numeric" autocomplete="one-time-code" maxlength="6" placeholder="000000">
+        <div class="login-security-note">After successful verification, this browser will automatically remain trusted for 30 days.</div>
+        <div class="login-actions">
+          <button id="verifyBtn" class="success" type="button">Verify and open ERP</button>
+          <button id="resendBtn" class="secondary" type="button">Resend code</button>
+        </div>
+        <button id="backBtn" class="secondary" type="button" style="width:100%;margin-top:10px">Use another account</button>
+        <div id="devOtp" class="dev-otp" hidden></div>
+      </div>
+
+      <p id="status" aria-live="polite"></p>
+      <div class="amber-note">Sandbox access is available only when the PayNex owner has enabled and created a sandbox for the company.</div>
+    </section>
+  </div>
+
+  <script src="/js/api.js?v=first-login-otp-20260714"></script>
+  <script>
+    const params=new URLSearchParams(location.search);
+    let challengeId='';
+    const envFromUrl=params.get('environment')||localStorage.getItem('paynex_environment')||'Production';
+    environment.value=/^sandbox$/i.test(envFromUrl)?'Sandbox':'Production';
+    email.value=localStorage.getItem('paynex_last_email')||'';
+
+    function busy(button,on,text){button.disabled=on;if(text)button.textContent=on?text:button.dataset.label;}
+    [loginBtn,verifyBtn,resendBtn].forEach(b=>b.dataset.label=b.textContent);
+    function showCredential(){credentialStep.hidden=false;verificationStep.hidden=true;challengeId='';otpCode.value='';devOtp.hidden=true;status.textContent='';email.focus();}
+    function showVerification(result){
+      challengeId=result.challengeId||'';
+      maskedEmail.textContent=result.maskedEmail||'your registered email';
+      credentialStep.hidden=true;verificationStep.hidden=false;otpCode.value='';otpCode.focus();
+      if(result.devOtp){devOtp.hidden=false;devOtp.textContent='Local development OTP: '+result.devOtp;}else devOtp.hidden=true;
+      msg('status',result.deliveryStatus||'Verification code sent.',true);
+    }
+    function safeReturnUrl(){const value=params.get('returnUrl')||'/workspace.html';return value.startsWith('/')&&!value.startsWith('//')?value:'/workspace.html';}
+    function complete(result){
+      api.setToken(result.token||'');
+      localStorage.setItem('paynex_last_user',JSON.stringify(result.user||{}));
+      const isOwner=!!(result.user?.isPlatformOwner||result.user?.IsPlatformOwner);
+      msg('status',isOwner?'Secure login completed. Opening PayNex Owner Portal.':'Secure login completed. Opening Home Dashboard.',true);
+      location.href=isOwner?'/platform-portal.html':safeReturnUrl();
+    }
+    async function login(){
+      const userEmail=email.value.trim();const password=pass.value;const selectedEnvironment=environment.value||'Production';
+      if(!userEmail||!password){msg('status','Email and password are required.',false);return;}
+      localStorage.setItem('paynex_environment',selectedEnvironment);localStorage.setItem('paynex_last_email',userEmail);
+      busy(loginBtn,true,'Checking account...');
+      try{
+        const result=await api.post('/api/auth/login',{email:userEmail,password,environment:selectedEnvironment});
+        if(result.requiresVerification) showVerification(result); else complete(result);
+      }catch(error){msg('status',error.message,false)}finally{busy(loginBtn,false)}
+    }
+    async function verify(){
+      const code=otpCode.value.replace(/\D/g,'');
+      if(code.length!==6){msg('status','Enter the 6-digit verification code.',false);return;}
+      busy(verifyBtn,true,'Verifying...');
+      try{complete(await api.post('/api/auth/verify-otp',{challengeId,code}));}
+      catch(error){msg('status',error.message,false);otpCode.select()}
+      finally{busy(verifyBtn,false)}
+    }
+    async function resend(){
+      busy(resendBtn,true,'Sending...');
+      try{showVerification(await api.post('/api/auth/resend-otp',{challengeId}));}
+      catch(error){msg('status',error.message,false)}finally{busy(resendBtn,false)}
+    }
+    loginBtn.addEventListener('click',login);verifyBtn.addEventListener('click',verify);resendBtn.addEventListener('click',resend);backBtn.addEventListener('click',showCredential);
+    pass.addEventListener('keydown',event=>{if(event.key==='Enter')login()});otpCode.addEventListener('input',()=>otpCode.value=otpCode.value.replace(/\D/g,'').slice(0,6));otpCode.addEventListener('keydown',event=>{if(event.key==='Enter')verify()});
+    email.focus();
+  </script>
+</body>
+</html>

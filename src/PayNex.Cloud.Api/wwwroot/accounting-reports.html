@@ -1,0 +1,56 @@
+<!doctype html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>PayNex Accounting Reports</title>
+  <link rel="stylesheet" href="/css/app.css?v=final-fixes-20260715">
+</head>
+<body>
+  <div class="shell accounting-reports-page">
+    <div class="top">
+      <div>
+        <h1>Accounting Reports</h1>
+        <p id="who" class="muted">Trial balance, ledger, profit and loss, balance sheet, cash/bank, aging, stock, tax and daily profit reports.</p>
+      </div>
+      <div class="nav">
+        <a href="/workspace.html">Workspace</a>
+        <a href="/finance.html">Chart of Accounts</a>
+        <a href="/gl-entries.html">G/L Entries</a>
+        <a href="/reports.html">Print Center</a>
+      </div>
+    </div>
+
+    <div class="panel accounting-report-panel" id="reports">
+      <h2>Report Filters</h2>
+      <p class="muted">Select date range and report. This page is intentionally separate from Chart of Accounts.</p>
+      <div class="row report-filter-row">
+        <label>From Date<input id="fromDate" type="date"></label>
+        <label>To Date<input id="toDate" type="date"></label>
+        <label>Account Filter<input id="accountTerm" placeholder="Account no/name"></label>
+      </div>
+      <div class="actions report-button-row">
+        <button onclick="runReport('trial')">Trial Balance</button>
+        <button onclick="runReport('ledger')">G/L by Account</button>
+        <button onclick="runReport('pl')">P&amp;L</button>
+        <button onclick="runReport('bs')">Balance Sheet</button>
+        <button onclick="runReport('cash')">Cash / Bank</button>
+        <button onclick="runReport('custaging')">Customer Aging</button>
+        <button onclick="runReport('vendaging')">Vendor Aging</button>
+        <button onclick="runReport('stock')">Stock Valuation</button>
+        <button onclick="runReport('tax')">Tax</button>
+        <button onclick="runReport('profit')">Daily Profit</button>
+        <button class="secondary" onclick="printCurrentReport()">Print Preview</button>
+      </div>
+      <h3 id="reportTitle">Select a report</h3>
+      <div class="invoice-lines-wrap accounting-report-table-wrap">
+        <table class="table striped-table"><thead id="reportHead"></thead><tbody id="reportBody"></tbody></table>
+      </div>
+      <p id="reportStatus"></p>
+    </div>
+  </div>
+  <script src="/js/api.js?v=acct-reports-20260708"></script>
+  <script src="/js/accounting-reports.js?v=acct-reports-20260708"></script>
+  <script src="/js/app-shell.js?v=final-fixes-20260715"></script>
+</body>
+</html>

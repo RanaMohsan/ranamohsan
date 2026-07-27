@@ -1,0 +1,32 @@
+<!doctype html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>Users</title>
+  <link rel="stylesheet" href="/css/app.css?v=final-fixes-20260715">
+</head>
+<body class="erp-list-page">
+  <main class="shell">
+    <div class="top">
+      <div>
+        <h1>Users</h1>
+        <p id="who" class="muted">Standard user list for the current company.</p>
+      </div>
+      <div class="nav"><a href="/workspace.html">Workspace</a><button class="success" onclick="newUser()">New User</button></div>
+    </div>
+
+    <section class="panel">
+      <div class="setup-section-title"><h2>Users List</h2><span class="lookup-chip">Company user directory</span></div>
+      <div class="row list-toolbar"><input id="userSearch" placeholder="Search full name, email, phone or role"><button onclick="loadUsers()">Search</button></div>
+      <table class="table striped-table list-table">
+        <thead><tr><th>Full Name</th><th>Email</th><th>Phone</th><th>Role</th><th>Branch</th><th>First Login OTP</th><th>Status</th><th>Action</th></tr></thead>
+        <tbody id="usersBody"></tbody>
+      </table>
+    </section>
+  </main>
+  <script src="/js/api.js"></script>
+  <script src="/js/users.js?v=first-login-otp-20260714"></script>
+  <script src="/js/app-shell.js?v=final-fixes-20260715"></script>
+</body>
+</html>

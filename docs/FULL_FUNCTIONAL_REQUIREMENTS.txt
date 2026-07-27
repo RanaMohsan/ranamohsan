@@ -1,0 +1,294 @@
+Create a cloud-based POS + mini ERP business application similar to PayNex ERP Workspace. Do not explain technology, framework, programming language, hosting, database, or infrastructure. Focus only on business functionality, screens, workflows, modules, validations, reports, and user experience.
+
+The application should have a clean ERP-style interface with a left sidebar menu, top page title area, logged-in user/role display, shift status, date/time display, and a Home workspace. The Home page should show action tiles with icon, title, group, and short hint. Users should be able to open all major modules from both the sidebar and Home workspace.
+
+Required modules:
+
+1. Login and User Roles
+
+* Roles: Admin, Manager, Cashier.
+* Cashier can perform sales and basic payment actions.
+* Manager can approve returns, stock adjustments, reversals, and finance review.
+* Admin can manage posting setup, tax setup, accounting periods, backup/restore, and system configuration.
+
+2. Home Workspace
+
+* Show quick action tiles for Sales / Billing, Picture Sales, Sales Invoice, Posted Sales, Customer Payments, Customers, Customer Ledger, Sales Returns, Products, Purchase Invoice, Posted Purchase, Vendor Payments, Vendors, Vendor Ledger, Chart of Accounts, G/L Entries, Dashboard, Reports, Company Information, Shift / Cash Drawer, and Settings.
+* Each tile should have an icon, title, module group, and short description.
+* Clicking a tile should open the related page.
+
+3. Shift and Cash Drawer
+
+* User opens shift with opening cash.
+* Cash In and Cash Out entries should be available.
+* System should calculate expected cash.
+* User enters actual drawer cash at closing.
+* Difference amount should be calculated.
+* Shift close / Z report concept should be available.
+
+4. Product Master
+
+* Manage product code, barcode, product name, unit, purchase price, sale price, retail price, stock on hand, minimum stock level, reorder level, discount allowed, product image, and active/inactive status.
+* Search, new product, save product, browse picture, remove picture actions are required.
+
+5. Customer Master
+
+* Manage customer code, customer name, mobile, email, address, credit limit, opening balance, loyalty points, current balance, and active/inactive status.
+* Search, new customer, save customer actions are required.
+
+6. Vendor Master
+
+* Manage vendor code, vendor name, contact person, mobile, email, address, payment terms, opening balance, current balance, and active/inactive status.
+* Search, new vendor, save vendor actions are required.
+
+7. POS Sales / Billing
+
+* Allow barcode/product code entry.
+* Product search popup should be available.
+* Customer selection should be available.
+* Cart should show barcode, product, quantity, price, discount %, tax, and line total.
+* Totals area should show subtotal, discount, tax, and grand total.
+* Support payment posting through cash, card, wallet, bank, and credit.
+* Support split payments.
+* Support hold sale, recall hold, remove selected line, and new sale.
+* Posting sale should reduce stock, create payment lines, create inventory ledger entries, and create balanced G/L entries.
+* Receipt preview and print should be available.
+
+8. Picture Sales
+
+* Show products as visual cards/tiles with image or item cube.
+* User can search items, select product, enter quantity/price, add to cart, clear cart, remove line, and post payment.
+* This screen should be optimized for cashier counter usage.
+
+9. Sales Invoice
+
+* Formal customer sales invoice screen with invoice header and multiple item lines.
+* Header should include customer and invoice date.
+* Lines should include product, code, stock, quantity, unit price, discount %, tax %, and total.
+* Product selection should auto-fill price, stock, and tax.
+* Invoice summary should show subtotal, discount, tax, and total.
+* Actions: New Invoice, Add Line, Remove Selected Line, Save as Quotation, Save as Sales Order, Post Sales Invoice.
+* Posting sales invoice should reduce stock, create inventory ledger entries, create customer ledger entry, increase customer balance, and create balanced G/L entries:
+
+  * Debit Accounts Receivable
+  * Credit Sales Revenue
+  * Credit Output Tax if applicable
+  * Debit Cost of Goods Sold
+  * Credit Inventory
+
+10. Posted Sales Invoices
+
+* Show posted sales invoice list with invoice no, customer, date, subtotal, discount, tax, total, paid, balance, and action.
+* Show invoice lines for selected invoice.
+* Print selected invoice action should be available.
+
+11. Customer Payment / Receipt
+
+* User selects customer, payment date, method, amount, reference no, and remarks.
+* Posting customer payment should reduce customer balance, apply payment to oldest unpaid invoices first, create customer ledger entry, and create balanced G/L entries:
+
+  * Debit Cash/Bank
+  * Credit Accounts Receivable
+* Printable customer payment receipt should open after posting.
+* Payment receipt list and print selected receipt action should be available.
+
+12. Customer Ledger Entries
+
+* Filter by customer, from date, and to date.
+* Show date, customer, document type, document no, debit/invoice, credit/payment, balance, and description.
+* Print customer ledger report action should be available.
+
+13. Purchase Invoice
+
+* Vendor purchase invoice screen with vendor, vendor invoice no, invoice date, and item lines.
+* Lines should include product, code, quantity, unit cost, tax %, and total.
+* Summary should show subtotal, tax, and total.
+* Actions: New Invoice, Add Line, Remove Selected Line, Post Purchase Invoice.
+* Posting purchase invoice should increase stock, update product cost, create inventory ledger entries, increase vendor balance, create vendor ledger entry, and create balanced G/L entries:
+
+  * Debit Inventory
+  * Debit Input Tax if applicable
+  * Credit Accounts Payable
+
+14. Posted Purchase Invoices
+
+* Show posted purchase invoice list with invoice no, vendor, vendor invoice no, date, subtotal, tax, total, balance, and action.
+* Show invoice lines for selected invoice.
+* Print selected invoice action should be available.
+
+15. Vendor Payment / Receipt
+
+* User selects vendor, payment date, method, amount, reference no, and remarks.
+* Posting vendor payment should reduce vendor balance, apply payment to oldest unpaid purchase invoices first, create vendor ledger entry, and create balanced G/L entries:
+
+  * Debit Accounts Payable
+  * Credit Cash/Bank
+* Printable vendor payment receipt should open after posting.
+* Vendor payment receipt list and print selected receipt action should be available.
+
+16. Vendor Ledger Entries
+
+* Filter by vendor, from date, and to date.
+* Show date, vendor, document type, document no, debit/payment, credit/invoice, balance, and description.
+* Print vendor ledger report action should be available.
+
+17. Sales Returns / Refunds
+
+* User enters original invoice no and finds invoice lines.
+* Show sold quantity, already returned quantity, available quantity, return quantity, and refund amount.
+* User enters return reason.
+* Posting return should require manager approval.
+* Return posting should increase stock, create inventory ledger entry, create cash refund, and create balanced G/L reversal entries:
+
+  * Debit Sales Return
+  * Debit Output Tax reversal if applicable
+  * Credit Cash
+  * Debit Inventory
+  * Credit Cost of Goods Sold
+
+18. Inventory Operations
+
+* Store Stock Transfer:
+
+  * From store, to store, product, quantity.
+  * Transfer should move stock between stores without changing total company inventory.
+* Physical Count / Adjustment:
+
+  * Store, product, counted quantity, disposition, batch no, serial no, expiry date, and reason.
+  * Manager approval required.
+  * If counted quantity differs from system quantity, create inventory adjustment and G/L entries.
+  * Positive adjustment should debit Inventory and credit Stock Adjustment.
+  * Negative adjustment should debit Stock Adjustment and credit Inventory.
+
+19. Chart of Accounts
+
+* Manage G/L accounts.
+* Fields: Account No, Account Name, Account Type, Normal Balance, System Account, Active/Inactive.
+* System accounts should be locked.
+* Custom accounts can be created.
+* Required default accounts:
+
+  * 1000 Cash in Hand
+  * 1010 Bank Account
+  * 1100 Accounts Receivable
+  * 1200 Inventory
+  * 1300 Input GST
+  * 2000 Accounts Payable
+  * 2100 Output GST Payable
+  * 3000 Opening Balance Equity
+  * 4000 Sales Revenue
+  * 4010 Sales Returns
+  * 5000 Cost of Goods Sold
+  * 5100 Stock Adjustment
+
+20. Posting Setup
+
+* Admin-only screen.
+* Map all transaction posting accounts:
+
+  * Cash Account
+  * Bank Account
+  * Receivable Account
+  * Payable Account
+  * Inventory Account
+  * Sales Account
+  * COGS Account
+  * Sales Return Account
+  * Input Tax Account
+  * Output Tax Account
+  * Opening Equity Account
+  * Stock Adjustment Account
+* Include cashier discount limit %, costing method, and block negative stock option.
+* Actions: Save Posting Setup, Post Opening Balances, Close Accounting Period.
+
+21. G/L Entries
+
+* Show all general ledger entries.
+* Columns: posting date, account no, account name, document type, document no, debit, credit, description.
+* Search by account no, account name, document no, or document type.
+* Refresh action.
+* Reverse Selected Document action with reversal reason and manager approval.
+* Reversal should create opposite debit/credit entries.
+
+22. Tax Setup
+
+* Manage tax groups.
+* Fields: tax name, tax %, price includes tax.
+* Tax setup should be used on sales and purchase lines.
+
+23. Company Information
+
+* Maintain company name, address, phone no, email, website, tax/NTN/VAT no, and logo.
+* This information should print on invoices, receipts, and ledger reports.
+
+24. Settings
+
+* Show current configuration summary.
+* Admin actions for backup and restore should be available.
+* Keep this module simple and business-user friendly.
+
+25. Dashboard / Business Analytics
+
+* Show KPI cards:
+
+  * Monthly Sales
+  * Monthly Purchase
+  * Monthly Profit
+  * Sales Invoices
+  * Purchase Invoices
+  * Gross Margin
+  * Average Sales per Day
+* Period filter: Last 6 months, Last 12 months, Last 24 months.
+* Charts:
+
+  * Monthly Sales & Profit Margin
+  * Sales, Purchase & Profit
+  * Monthly Trend
+  * Sales Share by Product
+* Tables:
+
+  * Monthly Analysis Matrix
+  * Top Selling Products
+* Dashboard should use only posted sales, posted sales invoices, and posted purchase invoices.
+
+26. Accounting Reports
+
+* Date filters: From and To / As of date.
+* Reports required:
+
+  * Trial Balance
+  * General Ledger by Account
+  * Profit and Loss
+  * Balance Sheet
+  * Cash / Bank Book
+  * Customer Aging
+  * Vendor Aging
+  * Stock Valuation and Reorder
+  * Purchase / Sales Tax
+  * Daily Sales and Profit
+
+27. Print Reports
+
+* Printable reports required:
+
+  * Posted Sales Invoice
+  * Posted Purchase Invoice
+  * Customer Payment Receipt
+  * Vendor Payment Receipt
+  * Customer Ledger Entries
+  * Vendor Ledger Entries
+* Reports should have clean ERP-style black/white format with company header, logo, party details, document information, line table, totals, remarks, signature area where needed, and footer.
+
+28. Business Rules
+
+* Only posted documents should affect ledger, stock, dashboard, and accounting reports.
+* Every financial posting must create balanced debit and credit entries.
+* Closed accounting periods should block posting.
+* Credit limit should be checked for customer credit sales.
+* Negative stock should be blocked if enabled in posting setup.
+* Payments should apply to oldest open invoices first.
+* Stock adjustment and returns require manager approval.
+* Tax should be calculated based on tax setup.
+* All important actions should create audit trail.
+
+Create complete functional specification, screen list, user flows, validation rules, reporting requirements, and sample demo data for this cloud application. Do not include any technology explanation.

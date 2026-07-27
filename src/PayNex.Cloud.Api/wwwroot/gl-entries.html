@@ -1,0 +1,49 @@
+<!doctype html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>G/L Entries</title>
+  <link rel="stylesheet" href="/css/app.css?v=final-fixes-20260715">
+</head>
+<body>
+  <div class="shell">
+    <div class="top">
+      <div>
+        <h1>G/L Entries</h1>
+        <p id="who" class="muted">Read-only posted general ledger entries with controlled reversal.</p>
+      </div>
+      <div class="nav">
+        <a href="/workspace.html">Workspace</a>
+        <a href="/finance.html#coa">Chart of Accounts</a>
+        <a href="/accounting-reports.html">Accounting Reports</a>
+        <a href="/gl-setup.html">G/L Setup</a>
+      </div>
+    </div>
+
+    <div class="panel">
+      <h2>Posted G/L Entry List</h2>
+      <p class="muted">This page is separate from invoice/payment entry pages. Manual entry is not allowed here.</p>
+      <div class="row">
+        <input id="glFrom" type="date">
+        <input id="glTo" type="date">
+        <input id="glTerm" placeholder="Search account / document / type">
+        <button onclick="loadGl()">Load Entries</button>
+      </div>
+      <div class="row" style="margin-top:10px">
+        <input id="reverseReason" placeholder="Reversal reason">
+        <button class="secondary" onclick="reverseSelected()">Reverse Selected Document</button>
+        <button class="secondary" onclick="printGlEntries()">Print List</button>
+      </div>
+      <table class="table">
+        <thead><tr><th></th><th>Date</th><th>Account</th><th>Document Type</th><th>Document No</th><th>Debit</th><th>Credit</th><th>Description</th></tr></thead>
+        <tbody id="glBody"></tbody>
+      </table>
+      <p id="glStatus"></p>
+    </div>
+  </div>
+  <script src="/js/api.js"></script>
+  <script src="/js/gl-entries.js"></script>
+  <script src="/js/app-shell.js?v=final-fixes-20260715"></script>
+</body>
+</html>

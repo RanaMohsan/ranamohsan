@@ -1,0 +1,101 @@
+<!doctype html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>PayNex Document Print Center</title>
+  <link rel="stylesheet" href="/css/app.css?v=final-fixes-20260715">
+</head>
+<body>
+  <div class="shell print-center-page">
+    <div class="top">
+      <div>
+        <h1>Document Print Center</h1>
+        <p id="who" class="muted">Professional ERP print hub with selectable layouts, company logo, and clean A4/receipt output.</p>
+      </div>
+      <div class="nav">
+        <a href="/workspace.html">Workspace</a>
+        <a href="/posted-sales-invoices.html">Posted Sales</a>
+        <a href="/posted-purchase-invoices.html">Posted Purchases</a>
+        <a href="/accounting-reports.html">Accounting Reports</a>
+      </div>
+    </div>
+
+    <div class="panel print-center-intro">
+      <div>
+        <h2>Print Layout Selection</h2>
+        <p class="muted">Use Professional A4, Standard A4, or Compact A4 layout. Reports open in authenticated preview and can be printed from the browser.</p>
+      </div>
+      <label class="layout-global">Default Layout
+        <select id="defaultLayout" data-no-lookup="1">
+          <option value="bc">Professional A4</option>
+          <option value="standard">Standard A4</option>
+          <option value="compact">Compact A4</option>
+        </select>
+      </label>
+    </div>
+
+    <div class="report-hub print-report-grid">
+      <div class="report-card print-report-card">
+        <h2><span class="report-icon">SAL</span> Sales Invoice</h2>
+        <p class="muted">Posted customer sales invoice.</p>
+        <div class="report-actions"><select id="formalSalesId" data-lookup-title="Posted Sales Invoice Lookup"></select><button onclick="printFormalSales()">Print</button></div>
+      </div>
+
+      <div class="report-card print-report-card">
+        <h2><span class="report-icon">PUR</span> Purchase Invoice</h2>
+        <p class="muted">Posted vendor purchase invoice.</p>
+        <div class="report-actions"><select id="purchaseId" data-lookup-title="Posted Purchase Invoice Lookup"></select><button onclick="printPurchase()">Print</button></div>
+      </div>
+
+      <div class="report-card print-report-card">
+        <h2><span class="report-icon">PAY</span> Payment Receipts</h2>
+        <p class="muted">Customer receipt and vendor payment voucher.</p>
+        <div class="report-actions"><select id="custPayId" data-lookup-title="Customer Payment Lookup"></select><button onclick="printCustomerPayment()">Customer Receipt</button></div>
+        <div class="report-actions"><select id="vendPayId" data-lookup-title="Vendor Payment Lookup"></select><button class="secondary" onclick="printVendorPayment()">Vendor Voucher</button></div>
+      </div>
+
+      <div class="report-card print-report-card">
+        <h2><span class="report-icon">LED</span> Ledger Reports</h2>
+        <p class="muted">Runs even when there is no ledger data and shows a clean empty report.</p>
+        <div class="report-actions"><select id="customerId" data-lookup-title="Customer Lookup"></select><button onclick="printCustomerLedger()">Customer Ledger</button></div>
+        <div class="report-actions"><select id="vendorId" data-lookup-title="Vendor Lookup"></select><button class="secondary" onclick="printVendorLedger()">Vendor Ledger</button></div>
+      </div>
+
+      <div class="report-card print-report-card">
+        <h2><span class="report-icon">POS</span> POS / Counter Receipt</h2>
+        <p class="muted">Print A4 POS invoice or thermal receipt by sale ID.</p>
+        <div class="report-actions"><input id="saleId" placeholder="POS Sale ID"><button onclick="printPosA4()">A4 Invoice</button></div>
+        <div class="report-actions"><input id="receiptSaleId" placeholder="POS Sale ID"><button class="secondary" onclick="printPosReceipt()">Small Receipt</button></div>
+      </div>
+
+      <div class="report-card print-report-card">
+        <h2><span class="report-icon">FIN</span> Accounting Reports</h2>
+        <p class="muted">Trial Balance, Profit & Loss, Balance Sheet, Tax, Cash/Bank and Aging.</p>
+        <div class="actions"><button onclick="location.href='/accounting-reports.html'">Open Accounting Reports</button><button class="secondary" onclick="location.href='/gl-entries.html'">G/L Entries</button></div>
+      </div>
+
+      <div class="report-card print-report-card">
+        <h2><span class="report-icon">EXP</span> Expense Management Report</h2>
+        <p class="muted">Filter expenses by date range, month, year, branch and category, then print or save as PDF.</p>
+        <div class="actions"><button onclick="location.href='/expense-report.html'">Open Expense Report</button><button class="secondary" onclick="location.href='/expenses.html'">Expense Entries</button></div>
+      </div>
+
+      <div class="report-card print-report-card">
+        <h2><span class="report-icon">LYT</span> Layout Templates</h2>
+        <p class="muted">Included RDLC template files for future report-designer work.</p>
+        <button onclick="loadTemplates()">Load Templates</button>
+        <div id="templates" class="template-list"></div>
+      </div>
+    </div>
+
+    <div class="panel" style="margin-top:12px">
+      <h2>Print Standard</h2>
+      <div class="report-note">All document reports now use a professional A4 print shell, company information, optional company logo, totals section, tax summary and signature footer.</div>
+    </div>
+  </div>
+  <script src="/js/api.js?v=print-center-20260708"></script>
+  <script src="/js/reports.js?v=print-center-20260708"></script>
+  <script src="/js/app-shell.js?v=final-fixes-20260715"></script>
+</body>
+</html>

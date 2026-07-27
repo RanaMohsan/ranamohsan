@@ -1,0 +1,174 @@
+<!doctype html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <link rel="stylesheet" href="/css/app.css?v=final-fixes-20260715">
+  <title>PayNex Mobile App Detail</title>
+</head>
+<body>
+  <main class="shell bc-card-page owner-company-card-page" data-page-role="owner-mobile-app">
+    <section class="bc-page-heading bc-document-heading">
+      <div>
+        <div class="bc-breadcrumb"><a href="/platform-portal.html">Client Companies</a> / <a id="companyCardLink" href="/platform-company-card.html">Company Card</a> / Mobile App Detail</div>
+        <div class="bc-title-line">
+          <h1 id="documentTitle">Mobile App Detail</h1>
+          <span id="documentStatus" class="bc-status-pill draft">Not Registered</span>
+        </div>
+        <p id="who" class="muted">Loading PayNex owner profile...</p>
+      </div>
+      <div class="bc-document-number">
+        <span>Company Code</span>
+        <strong id="documentNo">—</strong>
+      </div>
+    </section>
+
+    <section class="bc-command-bar" aria-label="Mobile app actions">
+      <button id="backBtn" class="secondary" type="button"><span>←</span> Company Card</button>
+      <button id="registerBtn" class="bc-command-primary" type="button"><span>＋</span> Register Mobile App</button>
+      <button id="saveBtn" class="bc-command-primary" type="button" hidden><span>✓</span> Save App Details</button>
+      <button id="blockCompanyBtn" class="danger" type="button" hidden><span>■</span> Block Company App</button>
+      <button id="unblockCompanyBtn" class="success" type="button" hidden><span>□</span> Unblock Company App</button>
+      <button id="refreshBtn" class="secondary" type="button"><span>↻</span> Refresh</button>
+    </section>
+
+    <div class="bc-card-layout owner-company-card-layout">
+      <div class="bc-card-main">
+        <section class="bc-fasttab open">
+          <div class="bc-fasttab-title"><span>Company</span><span>⌃</span></div>
+          <div class="bc-fasttab-body bc-form-grid">
+            <label>Company Code
+              <input id="fCompanyCode" readonly>
+            </label>
+            <label class="span-2">Company Name
+              <input id="fCompanyName" readonly>
+            </label>
+            <label>Owner Name
+              <input id="fOwnerName" readonly>
+            </label>
+            <label class="span-2">Owner Email
+              <input id="fOwnerEmail" readonly>
+            </label>
+          </div>
+        </section>
+
+        <section class="bc-fasttab open">
+          <div class="bc-fasttab-title"><span>Mobile App Registration</span><span>⌃</span></div>
+          <div class="bc-fasttab-body">
+            <div id="registerNote" class="amber-note">This company has no mobile app registration yet. Fill the details below and select Register Mobile App.</div>
+            <div class="bc-form-grid">
+              <label class="span-2">App Name
+                <input id="fAppName" maxlength="150" placeholder="PayNex Mobile">
+              </label>
+              <label>Platform
+                <select id="fPlatform" data-no-lookup="1">
+                  <option value="Both">Both (Android + iOS)</option>
+                  <option value="Android">Android</option>
+                  <option value="iOS">iOS</option>
+                </select>
+              </label>
+              <label>App Version
+                <input id="fAppVersion" maxlength="40" placeholder="1.0.0">
+              </label>
+              <label class="span-2">Android Package Name
+                <input id="fPackageName" maxlength="180" placeholder="com.paynex.company">
+              </label>
+              <label class="span-2">iOS Bundle ID
+                <input id="fBundleId" maxlength="180" placeholder="com.paynex.company">
+              </label>
+              <label class="span-2">API Key
+                <input id="fApiKey" readonly placeholder="Generated on registration">
+              </label>
+              <label class="span-2">Notes
+                <input id="fNotes" maxlength="500" placeholder="Optional notes">
+              </label>
+              <label>Status
+                <input id="fStatus" readonly>
+              </label>
+              <label>Block Reason
+                <input id="fBlockReason" readonly placeholder="—">
+              </label>
+            </div>
+          </div>
+        </section>
+
+        <section id="usersSection" class="bc-fasttab open owner-related-section" hidden>
+          <div class="bc-fasttab-title"><span>Mobile App Users</span><span id="userCountLabel">0 records</span></div>
+          <div class="bc-fasttab-body">
+            <div class="amber-note">Add users that can sign in to this company's mobile app. Block a user to stop mobile access for that account only.</div>
+            <div class="bc-form-grid" style="margin-bottom:14px">
+              <label>User Name
+                <input id="fUserName" maxlength="80" autocomplete="off">
+              </label>
+              <label>Display Name
+                <input id="fDisplayName" maxlength="150" autocomplete="off">
+              </label>
+              <label>Email
+                <input id="fUserEmail" type="email" maxlength="180" autocomplete="off">
+              </label>
+              <label>Mobile
+                <input id="fUserMobile" maxlength="40" autocomplete="tel">
+              </label>
+              <label>Role
+                <input id="fUserRole" maxlength="80" value="Mobile User">
+              </label>
+              <label>Password
+                <span class="password-input-row">
+                  <input id="fUserPassword" type="password" maxlength="128" autocomplete="new-password" spellcheck="false" placeholder="Min 8 chars, upper, lower, number">
+                  <button id="toggleUserPasswordBtn" class="secondary compact-button" type="button">Show</button>
+                </span>
+              </label>
+              <div class="span-2">
+                <button id="addUserBtn" class="success" type="button">Add Mobile User</button>
+              </div>
+            </div>
+            <div class="bc-table-wrap owner-related-table-wrap">
+              <table class="bc-data-table owner-related-table">
+                <thead>
+                  <tr>
+                    <th>ID</th>
+                    <th>User Name</th>
+                    <th>Display Name</th>
+                    <th>Email</th>
+                    <th>Mobile</th>
+                    <th>Role</th>
+                    <th>Status</th>
+                    <th>Action</th>
+                  </tr>
+                </thead>
+                <tbody id="userRows">
+                  <tr><td colspan="8" class="bc-empty-row">No mobile users yet.</td></tr>
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </section>
+      </div>
+
+      <aside class="bc-factbox-column">
+        <section class="bc-factbox">
+          <h2>App Summary</h2>
+          <dl>
+            <dt>Registration</dt><dd id="factRegistered">No</dd>
+            <dt>Platform</dt><dd id="factPlatform">—</dd>
+            <dt>Status</dt><dd id="factStatus">Not Registered</dd>
+            <dt>Company Blocked</dt><dd id="factCompanyBlocked">No</dd>
+            <dt>Users</dt><dd id="factUsers">0</dd>
+            <dt>Blocked Users</dt><dd id="factBlockedUsers">0</dd>
+          </dl>
+        </section>
+        <section class="bc-factbox">
+          <h2>Controls</h2>
+          <p class="muted small-text">Block Company App stops mobile access for the whole company. Block User stops only that mobile user.</p>
+        </section>
+      </aside>
+    </div>
+
+    <p id="status" class="bc-status-line" aria-live="polite"></p>
+  </main>
+
+  <script src="/js/api.js?v=bc-owner-company-pages-20260710"></script>
+  <script src="/js/platform-mobile-app.js?v=mobile-app-detail-20260727"></script>
+  <script src="/js/app-shell.js?v=final-fixes-20260715"></script>
+</body>
+</html>

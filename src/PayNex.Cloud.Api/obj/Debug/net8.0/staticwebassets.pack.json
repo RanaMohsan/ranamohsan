@@ -1,0 +1,457 @@
+{
+  "Files": [
+    {
+      "Id": "C:\\Users\\Hamid\\Documents\\POS\\owner_portal_work_BC_list___After__filters\\owner_portal_work\\src\\PayNex.Cloud.Api\\wwwroot\\account-card.html",
+      "PackagePath": "staticwebassets\\account-card.html"
+    },
+    {
+      "Id": "C:\\Users\\Hamid\\Documents\\POS\\owner_portal_work_BC_list___After__filters\\owner_portal_work\\src\\PayNex.Cloud.Api\\wwwroot\\accounting-reports.html",
+      "PackagePath": "staticwebassets\\accounting-reports.html"
+    },
+    {
+      "Id": "C:\\Users\\Hamid\\Documents\\POS\\owner_portal_work_BC_list___After__filters\\owner_portal_work\\src\\PayNex.Cloud.Api\\wwwroot\\admin.html",
+      "PackagePath": "staticwebassets\\admin.html"
+    },
+    {
+      "Id": "C:\\Users\\Hamid\\Documents\\POS\\owner_portal_work_BC_list___After__filters\\owner_portal_work\\src\\PayNex.Cloud.Api\\wwwroot\\branches.html",
+      "PackagePath": "staticwebassets\\branches.html"
+    },
+    {
+      "Id": "C:\\Users\\Hamid\\Documents\\POS\\owner_portal_work_BC_list___After__filters\\owner_portal_work\\src\\PayNex.Cloud.Api\\wwwroot\\company.html",
+      "PackagePath": "staticwebassets\\company.html"
+    },
+    {
+      "Id": "C:\\Users\\Hamid\\Documents\\POS\\owner_portal_work_BC_list___After__filters\\owner_portal_work\\src\\PayNex.Cloud.Api\\wwwroot\\configuration-package-card.html",
+      "PackagePath": "staticwebassets\\configuration-package-card.html"
+    },
+    {
+      "Id": "C:\\Users\\Hamid\\Documents\\POS\\owner_portal_work_BC_list___After__filters\\owner_portal_work\\src\\PayNex.Cloud.Api\\wwwroot\\configuration-packages.html",
+      "PackagePath": "staticwebassets\\configuration-packages.html"
+    },
+    {
+      "Id": "C:\\Users\\Hamid\\Documents\\POS\\owner_portal_work_BC_list___After__filters\\owner_portal_work\\src\\PayNex.Cloud.Api\\wwwroot\\css\\app.css",
+      "PackagePath": "staticwebassets\\css\\app.css"
+    },
+    {
+      "Id": "C:\\Users\\Hamid\\Documents\\POS\\owner_portal_work_BC_list___After__filters\\owner_portal_work\\src\\PayNex.Cloud.Api\\wwwroot\\currency-setup.html",
+      "PackagePath": "staticwebassets\\currency-setup.html"
+    },
+    {
+      "Id": "C:\\Users\\Hamid\\Documents\\POS\\owner_portal_work_BC_list___After__filters\\owner_portal_work\\src\\PayNex.Cloud.Api\\wwwroot\\customer-card.html",
+      "PackagePath": "staticwebassets\\customer-card.html"
+    },
+    {
+      "Id": "C:\\Users\\Hamid\\Documents\\POS\\owner_portal_work_BC_list___After__filters\\owner_portal_work\\src\\PayNex.Cloud.Api\\wwwroot\\customer-ledger.html",
+      "PackagePath": "staticwebassets\\customer-ledger.html"
+    },
+    {
+      "Id": "C:\\Users\\Hamid\\Documents\\POS\\owner_portal_work_BC_list___After__filters\\owner_portal_work\\src\\PayNex.Cloud.Api\\wwwroot\\customer-payment.html",
+      "PackagePath": "staticwebassets\\customer-payment.html"
+    },
+    {
+      "Id": "C:\\Users\\Hamid\\Documents\\POS\\owner_portal_work_BC_list___After__filters\\owner_portal_work\\src\\PayNex.Cloud.Api\\wwwroot\\customers.html",
+      "PackagePath": "staticwebassets\\customers.html"
+    },
+    {
+      "Id": "C:\\Users\\Hamid\\Documents\\POS\\owner_portal_work_BC_list___After__filters\\owner_portal_work\\src\\PayNex.Cloud.Api\\wwwroot\\dashboard.html",
+      "PackagePath": "staticwebassets\\dashboard.html"
+    },
+    {
+      "Id": "C:\\Users\\Hamid\\Documents\\POS\\owner_portal_work_BC_list___After__filters\\owner_portal_work\\src\\PayNex.Cloud.Api\\wwwroot\\draft-purchase-invoices.html",
+      "PackagePath": "staticwebassets\\draft-purchase-invoices.html"
+    },
+    {
+      "Id": "C:\\Users\\Hamid\\Documents\\POS\\owner_portal_work_BC_list___After__filters\\owner_portal_work\\src\\PayNex.Cloud.Api\\wwwroot\\draft-sales-invoices.html",
+      "PackagePath": "staticwebassets\\draft-sales-invoices.html"
+    },
+    {
+      "Id": "C:\\Users\\Hamid\\Documents\\POS\\owner_portal_work_BC_list___After__filters\\owner_portal_work\\src\\PayNex.Cloud.Api\\wwwroot\\expense-card.html",
+      "PackagePath": "staticwebassets\\expense-card.html"
+    },
+    {
+      "Id": "C:\\Users\\Hamid\\Documents\\POS\\owner_portal_work_BC_list___After__filters\\owner_portal_work\\src\\PayNex.Cloud.Api\\wwwroot\\expense-report.html",
+      "PackagePath": "staticwebassets\\expense-report.html"
+    },
+    {
+      "Id": "C:\\Users\\Hamid\\Documents\\POS\\owner_portal_work_BC_list___After__filters\\owner_portal_work\\src\\PayNex.Cloud.Api\\wwwroot\\expenses.html",
+      "PackagePath": "staticwebassets\\expenses.html"
+    },
+    {
+      "Id": "C:\\Users\\Hamid\\Documents\\POS\\owner_portal_work_BC_list___After__filters\\owner_portal_work\\src\\PayNex.Cloud.Api\\wwwroot\\finance.html",
+      "PackagePath": "staticwebassets\\finance.html"
+    },
+    {
+      "Id": "C:\\Users\\Hamid\\Documents\\POS\\owner_portal_work_BC_list___After__filters\\owner_portal_work\\src\\PayNex.Cloud.Api\\wwwroot\\gl-entries.html",
+      "PackagePath": "staticwebassets\\gl-entries.html"
+    },
+    {
+      "Id": "C:\\Users\\Hamid\\Documents\\POS\\owner_portal_work_BC_list___After__filters\\owner_portal_work\\src\\PayNex.Cloud.Api\\wwwroot\\gl-setup.html",
+      "PackagePath": "staticwebassets\\gl-setup.html"
+    },
+    {
+      "Id": "C:\\Users\\Hamid\\Documents\\POS\\owner_portal_work_BC_list___After__filters\\owner_portal_work\\src\\PayNex.Cloud.Api\\wwwroot\\index.html",
+      "PackagePath": "staticwebassets\\index.html"
+    },
+    {
+      "Id": "C:\\Users\\Hamid\\Documents\\POS\\owner_portal_work_BC_list___After__filters\\owner_portal_work\\src\\PayNex.Cloud.Api\\wwwroot\\inventory.html",
+      "PackagePath": "staticwebassets\\inventory.html"
+    },
+    {
+      "Id": "C:\\Users\\Hamid\\Documents\\POS\\owner_portal_work_BC_list___After__filters\\owner_portal_work\\src\\PayNex.Cloud.Api\\wwwroot\\item-card.html",
+      "PackagePath": "staticwebassets\\item-card.html"
+    },
+    {
+      "Id": "C:\\Users\\Hamid\\Documents\\POS\\owner_portal_work_BC_list___After__filters\\owner_portal_work\\src\\PayNex.Cloud.Api\\wwwroot\\items.html",
+      "PackagePath": "staticwebassets\\items.html"
+    },
+    {
+      "Id": "C:\\Users\\Hamid\\Documents\\POS\\owner_portal_work_BC_list___After__filters\\owner_portal_work\\src\\PayNex.Cloud.Api\\wwwroot\\js\\account-card.js",
+      "PackagePath": "staticwebassets\\js\\account-card.js"
+    },
+    {
+      "Id": "C:\\Users\\Hamid\\Documents\\POS\\owner_portal_work_BC_list___After__filters\\owner_portal_work\\src\\PayNex.Cloud.Api\\wwwroot\\js\\accounting-reports.js",
+      "PackagePath": "staticwebassets\\js\\accounting-reports.js"
+    },
+    {
+      "Id": "C:\\Users\\Hamid\\Documents\\POS\\owner_portal_work_BC_list___After__filters\\owner_portal_work\\src\\PayNex.Cloud.Api\\wwwroot\\js\\admin.js",
+      "PackagePath": "staticwebassets\\js\\admin.js"
+    },
+    {
+      "Id": "C:\\Users\\Hamid\\Documents\\POS\\owner_portal_work_BC_list___After__filters\\owner_portal_work\\src\\PayNex.Cloud.Api\\wwwroot\\js\\api.js",
+      "PackagePath": "staticwebassets\\js\\api.js"
+    },
+    {
+      "Id": "C:\\Users\\Hamid\\Documents\\POS\\owner_portal_work_BC_list___After__filters\\owner_portal_work\\src\\PayNex.Cloud.Api\\wwwroot\\js\\app-shell.js",
+      "PackagePath": "staticwebassets\\js\\app-shell.js"
+    },
+    {
+      "Id": "C:\\Users\\Hamid\\Documents\\POS\\owner_portal_work_BC_list___After__filters\\owner_portal_work\\src\\PayNex.Cloud.Api\\wwwroot\\js\\bc-list-filter.js",
+      "PackagePath": "staticwebassets\\js\\bc-list-filter.js"
+    },
+    {
+      "Id": "C:\\Users\\Hamid\\Documents\\POS\\owner_portal_work_BC_list___After__filters\\owner_portal_work\\src\\PayNex.Cloud.Api\\wwwroot\\js\\branches.js",
+      "PackagePath": "staticwebassets\\js\\branches.js"
+    },
+    {
+      "Id": "C:\\Users\\Hamid\\Documents\\POS\\owner_portal_work_BC_list___After__filters\\owner_portal_work\\src\\PayNex.Cloud.Api\\wwwroot\\js\\company.js",
+      "PackagePath": "staticwebassets\\js\\company.js"
+    },
+    {
+      "Id": "C:\\Users\\Hamid\\Documents\\POS\\owner_portal_work_BC_list___After__filters\\owner_portal_work\\src\\PayNex.Cloud.Api\\wwwroot\\js\\configuration-package-card.js",
+      "PackagePath": "staticwebassets\\js\\configuration-package-card.js"
+    },
+    {
+      "Id": "C:\\Users\\Hamid\\Documents\\POS\\owner_portal_work_BC_list___After__filters\\owner_portal_work\\src\\PayNex.Cloud.Api\\wwwroot\\js\\configuration-packages.js",
+      "PackagePath": "staticwebassets\\js\\configuration-packages.js"
+    },
+    {
+      "Id": "C:\\Users\\Hamid\\Documents\\POS\\owner_portal_work_BC_list___After__filters\\owner_portal_work\\src\\PayNex.Cloud.Api\\wwwroot\\js\\currency-setup.js",
+      "PackagePath": "staticwebassets\\js\\currency-setup.js"
+    },
+    {
+      "Id": "C:\\Users\\Hamid\\Documents\\POS\\owner_portal_work_BC_list___After__filters\\owner_portal_work\\src\\PayNex.Cloud.Api\\wwwroot\\js\\customer-card.js",
+      "PackagePath": "staticwebassets\\js\\customer-card.js"
+    },
+    {
+      "Id": "C:\\Users\\Hamid\\Documents\\POS\\owner_portal_work_BC_list___After__filters\\owner_portal_work\\src\\PayNex.Cloud.Api\\wwwroot\\js\\customer-ledger.js",
+      "PackagePath": "staticwebassets\\js\\customer-ledger.js"
+    },
+    {
+      "Id": "C:\\Users\\Hamid\\Documents\\POS\\owner_portal_work_BC_list___After__filters\\owner_portal_work\\src\\PayNex.Cloud.Api\\wwwroot\\js\\customer-payment.js",
+      "PackagePath": "staticwebassets\\js\\customer-payment.js"
+    },
+    {
+      "Id": "C:\\Users\\Hamid\\Documents\\POS\\owner_portal_work_BC_list___After__filters\\owner_portal_work\\src\\PayNex.Cloud.Api\\wwwroot\\js\\customers.js",
+      "PackagePath": "staticwebassets\\js\\customers.js"
+    },
+    {
+      "Id": "C:\\Users\\Hamid\\Documents\\POS\\owner_portal_work_BC_list___After__filters\\owner_portal_work\\src\\PayNex.Cloud.Api\\wwwroot\\js\\dashboard.js",
+      "PackagePath": "staticwebassets\\js\\dashboard.js"
+    },
+    {
+      "Id": "C:\\Users\\Hamid\\Documents\\POS\\owner_portal_work_BC_list___After__filters\\owner_portal_work\\src\\PayNex.Cloud.Api\\wwwroot\\js\\expense-card.js",
+      "PackagePath": "staticwebassets\\js\\expense-card.js"
+    },
+    {
+      "Id": "C:\\Users\\Hamid\\Documents\\POS\\owner_portal_work_BC_list___After__filters\\owner_portal_work\\src\\PayNex.Cloud.Api\\wwwroot\\js\\expense-report.js",
+      "PackagePath": "staticwebassets\\js\\expense-report.js"
+    },
+    {
+      "Id": "C:\\Users\\Hamid\\Documents\\POS\\owner_portal_work_BC_list___After__filters\\owner_portal_work\\src\\PayNex.Cloud.Api\\wwwroot\\js\\expenses.js",
+      "PackagePath": "staticwebassets\\js\\expenses.js"
+    },
+    {
+      "Id": "C:\\Users\\Hamid\\Documents\\POS\\owner_portal_work_BC_list___After__filters\\owner_portal_work\\src\\PayNex.Cloud.Api\\wwwroot\\js\\finance.js",
+      "PackagePath": "staticwebassets\\js\\finance.js"
+    },
+    {
+      "Id": "C:\\Users\\Hamid\\Documents\\POS\\owner_portal_work_BC_list___After__filters\\owner_portal_work\\src\\PayNex.Cloud.Api\\wwwroot\\js\\gl-entries.js",
+      "PackagePath": "staticwebassets\\js\\gl-entries.js"
+    },
+    {
+      "Id": "C:\\Users\\Hamid\\Documents\\POS\\owner_portal_work_BC_list___After__filters\\owner_portal_work\\src\\PayNex.Cloud.Api\\wwwroot\\js\\gl-setup.js",
+      "PackagePath": "staticwebassets\\js\\gl-setup.js"
+    },
+    {
+      "Id": "C:\\Users\\Hamid\\Documents\\POS\\owner_portal_work_BC_list___After__filters\\owner_portal_work\\src\\PayNex.Cloud.Api\\wwwroot\\js\\inventory.js",
+      "PackagePath": "staticwebassets\\js\\inventory.js"
+    },
+    {
+      "Id": "C:\\Users\\Hamid\\Documents\\POS\\owner_portal_work_BC_list___After__filters\\owner_portal_work\\src\\PayNex.Cloud.Api\\wwwroot\\js\\item-card.js",
+      "PackagePath": "staticwebassets\\js\\item-card.js"
+    },
+    {
+      "Id": "C:\\Users\\Hamid\\Documents\\POS\\owner_portal_work_BC_list___After__filters\\owner_portal_work\\src\\PayNex.Cloud.Api\\wwwroot\\js\\items.js",
+      "PackagePath": "staticwebassets\\js\\items.js"
+    },
+    {
+      "Id": "C:\\Users\\Hamid\\Documents\\POS\\owner_portal_work_BC_list___After__filters\\owner_portal_work\\src\\PayNex.Cloud.Api\\wwwroot\\js\\modules.js",
+      "PackagePath": "staticwebassets\\js\\modules.js"
+    },
+    {
+      "Id": "C:\\Users\\Hamid\\Documents\\POS\\owner_portal_work_BC_list___After__filters\\owner_portal_work\\src\\PayNex.Cloud.Api\\wwwroot\\js\\owner-email-security.js",
+      "PackagePath": "staticwebassets\\js\\owner-email-security.js"
+    },
+    {
+      "Id": "C:\\Users\\Hamid\\Documents\\POS\\owner_portal_work_BC_list___After__filters\\owner_portal_work\\src\\PayNex.Cloud.Api\\wwwroot\\js\\picture-sales.js",
+      "PackagePath": "staticwebassets\\js\\picture-sales.js"
+    },
+    {
+      "Id": "C:\\Users\\Hamid\\Documents\\POS\\owner_portal_work_BC_list___After__filters\\owner_portal_work\\src\\PayNex.Cloud.Api\\wwwroot\\js\\platform-company-card.js",
+      "PackagePath": "staticwebassets\\js\\platform-company-card.js"
+    },
+    {
+      "Id": "C:\\Users\\Hamid\\Documents\\POS\\owner_portal_work_BC_list___After__filters\\owner_portal_work\\src\\PayNex.Cloud.Api\\wwwroot\\js\\platform-mobile-app.js",
+      "PackagePath": "staticwebassets\\js\\platform-mobile-app.js"
+    },
+    {
+      "Id": "C:\\Users\\Hamid\\Documents\\POS\\owner_portal_work_BC_list___After__filters\\owner_portal_work\\src\\PayNex.Cloud.Api\\wwwroot\\js\\platform-portal.js",
+      "PackagePath": "staticwebassets\\js\\platform-portal.js"
+    },
+    {
+      "Id": "C:\\Users\\Hamid\\Documents\\POS\\owner_portal_work_BC_list___After__filters\\owner_portal_work\\src\\PayNex.Cloud.Api\\wwwroot\\js\\portal.js",
+      "PackagePath": "staticwebassets\\js\\portal.js"
+    },
+    {
+      "Id": "C:\\Users\\Hamid\\Documents\\POS\\owner_portal_work_BC_list___After__filters\\owner_portal_work\\src\\PayNex.Cloud.Api\\wwwroot\\js\\pos.js",
+      "PackagePath": "staticwebassets\\js\\pos.js"
+    },
+    {
+      "Id": "C:\\Users\\Hamid\\Documents\\POS\\owner_portal_work_BC_list___After__filters\\owner_portal_work\\src\\PayNex.Cloud.Api\\wwwroot\\js\\posted-purchases.js",
+      "PackagePath": "staticwebassets\\js\\posted-purchases.js"
+    },
+    {
+      "Id": "C:\\Users\\Hamid\\Documents\\POS\\owner_portal_work_BC_list___After__filters\\owner_portal_work\\src\\PayNex.Cloud.Api\\wwwroot\\js\\posted-sales.js",
+      "PackagePath": "staticwebassets\\js\\posted-sales.js"
+    },
+    {
+      "Id": "C:\\Users\\Hamid\\Documents\\POS\\owner_portal_work_BC_list___After__filters\\owner_portal_work\\src\\PayNex.Cloud.Api\\wwwroot\\js\\product-actions.js",
+      "PackagePath": "staticwebassets\\js\\product-actions.js"
+    },
+    {
+      "Id": "C:\\Users\\Hamid\\Documents\\POS\\owner_portal_work_BC_list___After__filters\\owner_portal_work\\src\\PayNex.Cloud.Api\\wwwroot\\js\\purchase-invoice-card.js",
+      "PackagePath": "staticwebassets\\js\\purchase-invoice-card.js"
+    },
+    {
+      "Id": "C:\\Users\\Hamid\\Documents\\POS\\owner_portal_work_BC_list___After__filters\\owner_portal_work\\src\\PayNex.Cloud.Api\\wwwroot\\js\\purchases.js",
+      "PackagePath": "staticwebassets\\js\\purchases.js"
+    },
+    {
+      "Id": "C:\\Users\\Hamid\\Documents\\POS\\owner_portal_work_BC_list___After__filters\\owner_portal_work\\src\\PayNex.Cloud.Api\\wwwroot\\js\\reports.js",
+      "PackagePath": "staticwebassets\\js\\reports.js"
+    },
+    {
+      "Id": "C:\\Users\\Hamid\\Documents\\POS\\owner_portal_work_BC_list___After__filters\\owner_portal_work\\src\\PayNex.Cloud.Api\\wwwroot\\js\\sales-invoice-card.js",
+      "PackagePath": "staticwebassets\\js\\sales-invoice-card.js"
+    },
+    {
+      "Id": "C:\\Users\\Hamid\\Documents\\POS\\owner_portal_work_BC_list___After__filters\\owner_portal_work\\src\\PayNex.Cloud.Api\\wwwroot\\js\\sales.js",
+      "PackagePath": "staticwebassets\\js\\sales.js"
+    },
+    {
+      "Id": "C:\\Users\\Hamid\\Documents\\POS\\owner_portal_work_BC_list___After__filters\\owner_portal_work\\src\\PayNex.Cloud.Api\\wwwroot\\js\\settings.js",
+      "PackagePath": "staticwebassets\\js\\settings.js"
+    },
+    {
+      "Id": "C:\\Users\\Hamid\\Documents\\POS\\owner_portal_work_BC_list___After__filters\\owner_portal_work\\src\\PayNex.Cloud.Api\\wwwroot\\js\\shift.js",
+      "PackagePath": "staticwebassets\\js\\shift.js"
+    },
+    {
+      "Id": "C:\\Users\\Hamid\\Documents\\POS\\owner_portal_work_BC_list___After__filters\\owner_portal_work\\src\\PayNex.Cloud.Api\\wwwroot\\js\\tax-discount.js",
+      "PackagePath": "staticwebassets\\js\\tax-discount.js"
+    },
+    {
+      "Id": "C:\\Users\\Hamid\\Documents\\POS\\owner_portal_work_BC_list___After__filters\\owner_portal_work\\src\\PayNex.Cloud.Api\\wwwroot\\js\\tax-setup.js",
+      "PackagePath": "staticwebassets\\js\\tax-setup.js"
+    },
+    {
+      "Id": "C:\\Users\\Hamid\\Documents\\POS\\owner_portal_work_BC_list___After__filters\\owner_portal_work\\src\\PayNex.Cloud.Api\\wwwroot\\js\\user-card.js",
+      "PackagePath": "staticwebassets\\js\\user-card.js"
+    },
+    {
+      "Id": "C:\\Users\\Hamid\\Documents\\POS\\owner_portal_work_BC_list___After__filters\\owner_portal_work\\src\\PayNex.Cloud.Api\\wwwroot\\js\\users.js",
+      "PackagePath": "staticwebassets\\js\\users.js"
+    },
+    {
+      "Id": "C:\\Users\\Hamid\\Documents\\POS\\owner_portal_work_BC_list___After__filters\\owner_portal_work\\src\\PayNex.Cloud.Api\\wwwroot\\js\\vendor-card.js",
+      "PackagePath": "staticwebassets\\js\\vendor-card.js"
+    },
+    {
+      "Id": "C:\\Users\\Hamid\\Documents\\POS\\owner_portal_work_BC_list___After__filters\\owner_portal_work\\src\\PayNex.Cloud.Api\\wwwroot\\js\\vendor-ledger.js",
+      "PackagePath": "staticwebassets\\js\\vendor-ledger.js"
+    },
+    {
+      "Id": "C:\\Users\\Hamid\\Documents\\POS\\owner_portal_work_BC_list___After__filters\\owner_portal_work\\src\\PayNex.Cloud.Api\\wwwroot\\js\\vendor-payment.js",
+      "PackagePath": "staticwebassets\\js\\vendor-payment.js"
+    },
+    {
+      "Id": "C:\\Users\\Hamid\\Documents\\POS\\owner_portal_work_BC_list___After__filters\\owner_portal_work\\src\\PayNex.Cloud.Api\\wwwroot\\js\\vendors.js",
+      "PackagePath": "staticwebassets\\js\\vendors.js"
+    },
+    {
+      "Id": "C:\\Users\\Hamid\\Documents\\POS\\owner_portal_work_BC_list___After__filters\\owner_portal_work\\src\\PayNex.Cloud.Api\\wwwroot\\js\\workspace.js",
+      "PackagePath": "staticwebassets\\js\\workspace.js"
+    },
+    {
+      "Id": "C:\\Users\\Hamid\\Documents\\POS\\owner_portal_work_BC_list___After__filters\\owner_portal_work\\src\\PayNex.Cloud.Api\\wwwroot\\login.html",
+      "PackagePath": "staticwebassets\\login.html"
+    },
+    {
+      "Id": "C:\\Users\\Hamid\\Documents\\POS\\owner_portal_work_BC_list___After__filters\\owner_portal_work\\src\\PayNex.Cloud.Api\\wwwroot\\modules.html",
+      "PackagePath": "staticwebassets\\modules.html"
+    },
+    {
+      "Id": "C:\\Users\\Hamid\\Documents\\POS\\owner_portal_work_BC_list___After__filters\\owner_portal_work\\src\\PayNex.Cloud.Api\\wwwroot\\owner-email-security.html",
+      "PackagePath": "staticwebassets\\owner-email-security.html"
+    },
+    {
+      "Id": "C:\\Users\\Hamid\\Documents\\POS\\owner_portal_work_BC_list___After__filters\\owner_portal_work\\src\\PayNex.Cloud.Api\\wwwroot\\picture-sales.html",
+      "PackagePath": "staticwebassets\\picture-sales.html"
+    },
+    {
+      "Id": "C:\\Users\\Hamid\\Documents\\POS\\owner_portal_work_BC_list___After__filters\\owner_portal_work\\src\\PayNex.Cloud.Api\\wwwroot\\platform-company-card.html",
+      "PackagePath": "staticwebassets\\platform-company-card.html"
+    },
+    {
+      "Id": "C:\\Users\\Hamid\\Documents\\POS\\owner_portal_work_BC_list___After__filters\\owner_portal_work\\src\\PayNex.Cloud.Api\\wwwroot\\platform-mobile-app.html",
+      "PackagePath": "staticwebassets\\platform-mobile-app.html"
+    },
+    {
+      "Id": "C:\\Users\\Hamid\\Documents\\POS\\owner_portal_work_BC_list___After__filters\\owner_portal_work\\src\\PayNex.Cloud.Api\\wwwroot\\platform-portal.html",
+      "PackagePath": "staticwebassets\\platform-portal.html"
+    },
+    {
+      "Id": "C:\\Users\\Hamid\\Documents\\POS\\owner_portal_work_BC_list___After__filters\\owner_portal_work\\src\\PayNex.Cloud.Api\\wwwroot\\portal.html",
+      "PackagePath": "staticwebassets\\portal.html"
+    },
+    {
+      "Id": "C:\\Users\\Hamid\\Documents\\POS\\owner_portal_work_BC_list___After__filters\\owner_portal_work\\src\\PayNex.Cloud.Api\\wwwroot\\pos.html",
+      "PackagePath": "staticwebassets\\pos.html"
+    },
+    {
+      "Id": "C:\\Users\\Hamid\\Documents\\POS\\owner_portal_work_BC_list___After__filters\\owner_portal_work\\src\\PayNex.Cloud.Api\\wwwroot\\posted-purchase-invoices.html",
+      "PackagePath": "staticwebassets\\posted-purchase-invoices.html"
+    },
+    {
+      "Id": "C:\\Users\\Hamid\\Documents\\POS\\owner_portal_work_BC_list___After__filters\\owner_portal_work\\src\\PayNex.Cloud.Api\\wwwroot\\posted-sales-invoices.html",
+      "PackagePath": "staticwebassets\\posted-sales-invoices.html"
+    },
+    {
+      "Id": "C:\\Users\\Hamid\\Documents\\POS\\owner_portal_work_BC_list___After__filters\\owner_portal_work\\src\\PayNex.Cloud.Api\\wwwroot\\product-variants.html",
+      "PackagePath": "staticwebassets\\product-variants.html"
+    },
+    {
+      "Id": "C:\\Users\\Hamid\\Documents\\POS\\owner_portal_work_BC_list___After__filters\\owner_portal_work\\src\\PayNex.Cloud.Api\\wwwroot\\purchase-invoice-card.html",
+      "PackagePath": "staticwebassets\\purchase-invoice-card.html"
+    },
+    {
+      "Id": "C:\\Users\\Hamid\\Documents\\POS\\owner_portal_work_BC_list___After__filters\\owner_portal_work\\src\\PayNex.Cloud.Api\\wwwroot\\purchases.html",
+      "PackagePath": "staticwebassets\\purchases.html"
+    },
+    {
+      "Id": "C:\\Users\\Hamid\\Documents\\POS\\owner_portal_work_BC_list___After__filters\\owner_portal_work\\src\\PayNex.Cloud.Api\\wwwroot\\released-products.html",
+      "PackagePath": "staticwebassets\\released-products.html"
+    },
+    {
+      "Id": "C:\\Users\\Hamid\\Documents\\POS\\owner_portal_work_BC_list___After__filters\\owner_portal_work\\src\\PayNex.Cloud.Api\\wwwroot\\reports.html",
+      "PackagePath": "staticwebassets\\reports.html"
+    },
+    {
+      "Id": "C:\\Users\\Hamid\\Documents\\POS\\owner_portal_work_BC_list___After__filters\\owner_portal_work\\src\\PayNex.Cloud.Api\\wwwroot\\retail-products.html",
+      "PackagePath": "staticwebassets\\retail-products.html"
+    },
+    {
+      "Id": "C:\\Users\\Hamid\\Documents\\POS\\owner_portal_work_BC_list___After__filters\\owner_portal_work\\src\\PayNex.Cloud.Api\\wwwroot\\saas-flow.html",
+      "PackagePath": "staticwebassets\\saas-flow.html"
+    },
+    {
+      "Id": "C:\\Users\\Hamid\\Documents\\POS\\owner_portal_work_BC_list___After__filters\\owner_portal_work\\src\\PayNex.Cloud.Api\\wwwroot\\sales-invoice-card.html",
+      "PackagePath": "staticwebassets\\sales-invoice-card.html"
+    },
+    {
+      "Id": "C:\\Users\\Hamid\\Documents\\POS\\owner_portal_work_BC_list___After__filters\\owner_portal_work\\src\\PayNex.Cloud.Api\\wwwroot\\sales.html",
+      "PackagePath": "staticwebassets\\sales.html"
+    },
+    {
+      "Id": "C:\\Users\\Hamid\\Documents\\POS\\owner_portal_work_BC_list___After__filters\\owner_portal_work\\src\\PayNex.Cloud.Api\\wwwroot\\settings.html",
+      "PackagePath": "staticwebassets\\settings.html"
+    },
+    {
+      "Id": "C:\\Users\\Hamid\\Documents\\POS\\owner_portal_work_BC_list___After__filters\\owner_portal_work\\src\\PayNex.Cloud.Api\\wwwroot\\shift.html",
+      "PackagePath": "staticwebassets\\shift.html"
+    },
+    {
+      "Id": "C:\\Users\\Hamid\\Documents\\POS\\owner_portal_work_BC_list___After__filters\\owner_portal_work\\src\\PayNex.Cloud.Api\\wwwroot\\tax-discount.html",
+      "PackagePath": "staticwebassets\\tax-discount.html"
+    },
+    {
+      "Id": "C:\\Users\\Hamid\\Documents\\POS\\owner_portal_work_BC_list___After__filters\\owner_portal_work\\src\\PayNex.Cloud.Api\\wwwroot\\tax-setup.html",
+      "PackagePath": "staticwebassets\\tax-setup.html"
+    },
+    {
+      "Id": "C:\\Users\\Hamid\\Documents\\POS\\owner_portal_work_BC_list___After__filters\\owner_portal_work\\src\\PayNex.Cloud.Api\\wwwroot\\user-card.html",
+      "PackagePath": "staticwebassets\\user-card.html"
+    },
+    {
+      "Id": "C:\\Users\\Hamid\\Documents\\POS\\owner_portal_work_BC_list___After__filters\\owner_portal_work\\src\\PayNex.Cloud.Api\\wwwroot\\users.html",
+      "PackagePath": "staticwebassets\\users.html"
+    },
+    {
+      "Id": "C:\\Users\\Hamid\\Documents\\POS\\owner_portal_work_BC_list___After__filters\\owner_portal_work\\src\\PayNex.Cloud.Api\\wwwroot\\vendor-card.html",
+      "PackagePath": "staticwebassets\\vendor-card.html"
+    },
+    {
+      "Id": "C:\\Users\\Hamid\\Documents\\POS\\owner_portal_work_BC_list___After__filters\\owner_portal_work\\src\\PayNex.Cloud.Api\\wwwroot\\vendor-ledger.html",
+      "PackagePath": "staticwebassets\\vendor-ledger.html"
+    },
+    {
+      "Id": "C:\\Users\\Hamid\\Documents\\POS\\owner_portal_work_BC_list___After__filters\\owner_portal_work\\src\\PayNex.Cloud.Api\\wwwroot\\vendor-payment.html",
+      "PackagePath": "staticwebassets\\vendor-payment.html"
+    },
+    {
+      "Id": "C:\\Users\\Hamid\\Documents\\POS\\owner_portal_work_BC_list___After__filters\\owner_portal_work\\src\\PayNex.Cloud.Api\\wwwroot\\vendors.html",
+      "PackagePath": "staticwebassets\\vendors.html"
+    },
+    {
+      "Id": "C:\\Users\\Hamid\\Documents\\POS\\owner_portal_work_BC_list___After__filters\\owner_portal_work\\src\\PayNex.Cloud.Api\\wwwroot\\workspace.html",
+      "PackagePath": "staticwebassets\\workspace.html"
+    },
+    {
+      "Id": "obj\\Debug\\net8.0\\staticwebassets\\msbuild.PayNex.Cloud.Api.Microsoft.AspNetCore.StaticWebAssets.props",
+      "PackagePath": "build\\Microsoft.AspNetCore.StaticWebAssets.props"
+    },
+    {
+      "Id": "obj\\Debug\\net8.0\\staticwebassets\\msbuild.build.PayNex.Cloud.Api.props",
+      "PackagePath": "build\\PayNex.Cloud.Api.props"
+    },
+    {
+      "Id": "obj\\Debug\\net8.0\\staticwebassets\\msbuild.buildMultiTargeting.PayNex.Cloud.Api.props",
+      "PackagePath": "buildMultiTargeting\\PayNex.Cloud.Api.props"
+    },
+    {
+      "Id": "obj\\Debug\\net8.0\\staticwebassets\\msbuild.buildTransitive.PayNex.Cloud.Api.props",
+      "PackagePath": "buildTransitive\\PayNex.Cloud.Api.props"
+    }
+  ],
+  "ElementsToRemove": []
+}

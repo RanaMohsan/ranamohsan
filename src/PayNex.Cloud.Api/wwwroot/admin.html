@@ -1,0 +1,30 @@
+<!doctype html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>PayNex Portal</title>
+  <link rel="stylesheet" href="/css/app.css?v=final-fixes-20260715">
+</head>
+<body>
+  <main class="shell">
+    <section class="page-card">
+      <h1>PayNex Portal moved</h1>
+      <p class="muted">Use the same login page. The PayNex owner portal is shown only after owner login.</p>
+      <button class="success" onclick="go()">Open Portal</button>
+      <p id="status"></p>
+    </section>
+  </main>
+  <script src="/js/api.js"></script>
+  <script>
+    async function go(){
+      try{
+        const me=await api.get('/api/me');
+        if(me.isPlatformOwner||me.IsPlatformOwner) location.href='/platform-portal.html';
+        else location.href='/workspace.html';
+      }catch(e){ location.href='/login.html?returnUrl=/platform-portal.html'; }
+    }
+    go();
+  </script>
+</body>
+</html>

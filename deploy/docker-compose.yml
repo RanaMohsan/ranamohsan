@@ -1,0 +1,27 @@
+services:
+  paynex-api:
+    build:
+      context: ..
+      dockerfile: deploy/Dockerfile
+    ports:
+      - "8080:8080"
+    environment:
+      ASPNETCORE_ENVIRONMENT: Production
+      PayNex__TokenSecret: PAYNEX-LOCAL-DEV-TOKEN-SECRET
+      PayNex__MasterDatabaseName: PayNex_MasterDB
+      PayNex__MasterServerConnection: "Server=sqlserver;Database=master;User ID=sa;Password=Your_password123;TrustServerCertificate=True;"
+      PayNex__MasterDbConnection: "Server=sqlserver;Database=PayNex_MasterDB;User ID=sa;Password=Your_password123;TrustServerCertificate=True;"
+      PayNex__TenantConnectionTemplate: "Server=sqlserver;Database={database};User ID=sa;Password=Your_password123;TrustServerCertificate=True;"
+    depends_on:
+      - sqlserver
+  sqlserver:
+    image: mcr.microsoft.com/mssql/server:2022-latest
+    environment:
+      ACCEPT_EULA: Y
+      SA_PASSWORD: Your_password123
+    ports:
+      - "1433:1433"
+    volumes:
+      - sql_data:/var/opt/mssql
+volumes:
+  sql_data:

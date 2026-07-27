@@ -1,0 +1,42 @@
+<!doctype html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>Tax & Discount</title>
+  <link rel="stylesheet" href="/css/app.css?v=final-fixes-20260715">
+</head>
+<body class="erp-list-page">
+  <main class="shell">
+    <div class="top">
+      <div>
+        <h1>Tax & Discount</h1>
+        <p id="who" class="muted">Maintain item-wise sales tax and default discount.</p>
+      </div>
+      <div class="nav"><a href="/workspace.html">Workspace</a><a href="/items.html">Item Master</a></div>
+    </div>
+
+    <section class="panel">
+      <h2>Item Tax / Discount Header</h2>
+      <div class="row">
+        <label>Item<select id="productId" data-lookup-title="Item Lookup"></select></label>
+        <label>Discount %<input id="discountPercent" type="number" step="0.01" min="0" max="100" value="0"></label>
+        <label>Tax %<input id="taxPercent" type="number" step="0.01" min="0" value="0"></label>
+      </div>
+      <div class="actions"><button onclick="saveTaxDiscount()">Save / Update</button><button class="secondary" onclick="loadRows()">Refresh List</button></div>
+      <p id="tdStatus"></p>
+    </section>
+
+    <section class="panel">
+      <div class="setup-section-title"><h2>Item Tax & Discount List</h2><input id="searchTerm" placeholder="Search item" onkeydown="if(event.key==='Enter')loadRows()"></div>
+      <table class="table striped-table">
+        <thead><tr><th>Item Code</th><th>Item Name</th><th>Sale Price</th><th>Discount %</th><th>Tax %</th><th>Tax Type</th><th>Action</th></tr></thead>
+        <tbody id="rowsBody"></tbody>
+      </table>
+    </section>
+  </main>
+  <script src="/js/api.js"></script>
+  <script src="/js/tax-discount.js"></script>
+  <script src="/js/app-shell.js?v=final-fixes-20260715"></script>
+</body>
+</html>

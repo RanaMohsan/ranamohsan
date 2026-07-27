@@ -1,0 +1,56 @@
+<!doctype html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>PayNex Branches</title>
+  <link rel="stylesheet" href="/css/app.css?v=final-fixes-20260715">
+</head>
+<body>
+  <main class="shell">
+    <section class="top">
+      <div>
+        <h1>Branches</h1>
+        <p class="muted">Create and manage client branches. Each branch is used as the transaction context for sales, purchases, inventory, receipts, shifts and transfers.</p>
+      </div>
+      <div class="nav">
+        <a href="/workspace.html">Workspace</a>
+        <a href="/inventory.html">Inventory</a>
+      </div>
+    </section>
+
+    <section class="panel" id="branchDisabled" style="display:none">
+      <div class="branch-disabled-note">Multiple branches are not enabled for this company. Enable <b>Allow Multiple Branches</b> from the Super Admin company card first.</div>
+    </section>
+
+    <section class="branch-grid" id="branchWorkspace" style="display:none">
+      <div class="panel">
+        <div class="branch-toolbar">
+          <div>
+            <h2>Branch List</h2>
+            <p class="muted">Main Branch is selected by default on login. Users can switch branch from the top selector.</p>
+          </div>
+          <div class="actions"><button class="secondary" onclick="loadBranches()">Refresh</button><button class="success" onclick="newBranch()">New Branch</button></div>
+        </div>
+        <div class="branch-table-wrap"><table class="branch-table"><thead><tr><th>Code</th><th>Name</th><th>Address</th><th>Status</th><th>Main</th></tr></thead><tbody id="branchRows"></tbody></table></div>
+      </div>
+
+      <div class="panel">
+        <h2>Branch Card</h2>
+        <div class="branch-form">
+          <input type="hidden" id="branchId">
+          <div class="form-field"><label>Branch Code</label><input id="branchCode" placeholder="MAIN / BR-01"></div>
+          <div class="form-field"><label>Branch Name</label><input id="branchName" placeholder="Main Branch / Gulberg Branch"></div>
+          <div class="form-field"><label>Address</label><input id="branchAddress" placeholder="Branch address"></div>
+          <label class="check-field"><input id="branchActive" type="checkbox" checked> Active</label>
+          <div class="actions"><button class="success" onclick="saveBranch()">Save Branch</button><button class="secondary" onclick="newBranch()">Clear</button></div>
+          <p id="branchMsg"></p>
+        </div>
+      </div>
+    </section>
+  </main>
+  <script src="/js/api.js"></script>
+  <script src="/js/branches.js"></script>
+  <script src="/js/app-shell.js?v=final-fixes-20260715"></script>
+</body>
+</html>

@@ -1,0 +1,61 @@
+<?xml version="1.0" encoding="utf-8"?>
+<Report xmlns="http://schemas.microsoft.com/sqlserver/reporting/2008/01/reportdefinition" xmlns:rd="http://schemas.microsoft.com/SQLServer/reporting/reportdesigner">
+  <Body>
+    <ReportItems>
+      <Textbox Name="ReportTitle">
+        <CanGrow>true</CanGrow><KeepTogether>true</KeepTogether>
+        <Paragraphs><Paragraph><TextRuns><TextRun><Value>Expense Management Report</Value><Style><FontFamily>Segoe UI</FontFamily><FontSize>18pt</FontSize><FontWeight>Bold</FontWeight><Color>#004578</Color></Style></TextRun></TextRuns><Style /></Paragraph></Paragraphs>
+        <Top>0.10in</Top><Left>0.10in</Left><Height>0.38in</Height><Width>7.10in</Width><Style />
+      </Textbox>
+      <Textbox Name="FilterSummary">
+        <CanGrow>true</CanGrow><KeepTogether>true</KeepTogether>
+        <Paragraphs><Paragraph><TextRuns><TextRun><Value>=Parameters!FromDate.Value &amp; " to " &amp; Parameters!ToDate.Value &amp; " | " &amp; Parameters!Branch.Value &amp; " | " &amp; Parameters!ExpenseCategory.Value</Value><Style><FontFamily>Segoe UI</FontFamily><FontSize>9pt</FontSize><Color>#667085</Color></Style></TextRun></TextRuns><Style /></Paragraph></Paragraphs>
+        <Top>0.52in</Top><Left>0.10in</Left><Height>0.25in</Height><Width>7.10in</Width><Style />
+      </Textbox>
+      <Tablix Name="ExpenseTable">
+        <TablixBody>
+          <TablixColumns>
+            <TablixColumn><Width>0.85in</Width></TablixColumn><TablixColumn><Width>1.15in</Width></TablixColumn><TablixColumn><Width>2.05in</Width></TablixColumn><TablixColumn><Width>0.90in</Width></TablixColumn><TablixColumn><Width>1.15in</Width></TablixColumn><TablixColumn><Width>1.00in</Width></TablixColumn>
+          </TablixColumns>
+          <TablixRows>
+            <TablixRow><Height>0.32in</Height><TablixCells>
+              <TablixCell><CellContents><Textbox Name="HDate"><Paragraphs><Paragraph><TextRuns><TextRun><Value>Expense Date</Value><Style><FontWeight>Bold</FontWeight><Color>White</Color></Style></TextRun></TextRuns><Style /></Paragraph></Paragraphs><Style><BackgroundColor>#004578</BackgroundColor><PaddingLeft>4pt</PaddingLeft><PaddingTop>4pt</PaddingTop></Style></Textbox></CellContents></TablixCell>
+              <TablixCell><CellContents><Textbox Name="HCategory"><Paragraphs><Paragraph><TextRuns><TextRun><Value>Category</Value><Style><FontWeight>Bold</FontWeight><Color>White</Color></Style></TextRun></TextRuns><Style /></Paragraph></Paragraphs><Style><BackgroundColor>#004578</BackgroundColor><PaddingLeft>4pt</PaddingLeft><PaddingTop>4pt</PaddingTop></Style></Textbox></CellContents></TablixCell>
+              <TablixCell><CellContents><Textbox Name="HDescription"><Paragraphs><Paragraph><TextRuns><TextRun><Value>Description</Value><Style><FontWeight>Bold</FontWeight><Color>White</Color></Style></TextRun></TextRuns><Style /></Paragraph></Paragraphs><Style><BackgroundColor>#004578</BackgroundColor><PaddingLeft>4pt</PaddingLeft><PaddingTop>4pt</PaddingTop></Style></Textbox></CellContents></TablixCell>
+              <TablixCell><CellContents><Textbox Name="HAmount"><Paragraphs><Paragraph><TextRuns><TextRun><Value>Amount</Value><Style><FontWeight>Bold</FontWeight><Color>White</Color></Style></TextRun></TextRuns><Style /></Paragraph></Paragraphs><Style><BackgroundColor>#004578</BackgroundColor><TextAlign>Right</TextAlign><PaddingRight>4pt</PaddingRight><PaddingTop>4pt</PaddingTop></Style></Textbox></CellContents></TablixCell>
+              <TablixCell><CellContents><Textbox Name="HBranch"><Paragraphs><Paragraph><TextRuns><TextRun><Value>Branch</Value><Style><FontWeight>Bold</FontWeight><Color>White</Color></Style></TextRun></TextRuns><Style /></Paragraph></Paragraphs><Style><BackgroundColor>#004578</BackgroundColor><PaddingLeft>4pt</PaddingLeft><PaddingTop>4pt</PaddingTop></Style></Textbox></CellContents></TablixCell>
+              <TablixCell><CellContents><Textbox Name="HCreatedBy"><Paragraphs><Paragraph><TextRuns><TextRun><Value>Created By</Value><Style><FontWeight>Bold</FontWeight><Color>White</Color></Style></TextRun></TextRuns><Style /></Paragraph></Paragraphs><Style><BackgroundColor>#004578</BackgroundColor><PaddingLeft>4pt</PaddingLeft><PaddingTop>4pt</PaddingTop></Style></Textbox></CellContents></TablixCell>
+            </TablixCells></TablixRow>
+            <TablixRow><Height>0.28in</Height><TablixCells>
+              <TablixCell><CellContents><Textbox Name="DDate"><Paragraphs><Paragraph><TextRuns><TextRun><Value>=Fields!ExpenseDate.Value</Value><Style><Format>yyyy-MM-dd</Format></Style></TextRun></TextRuns><Style /></Paragraph></Paragraphs><Style><Border><Color>#D8E0E8</Color><Style>Solid</Style></Border><PaddingLeft>4pt</PaddingLeft></Style></Textbox></CellContents></TablixCell>
+              <TablixCell><CellContents><Textbox Name="DCategory"><Paragraphs><Paragraph><TextRuns><TextRun><Value>=Fields!ExpenseCategory.Value</Value><Style /></TextRun></TextRuns><Style /></Paragraph></Paragraphs><Style><Border><Color>#D8E0E8</Color><Style>Solid</Style></Border><PaddingLeft>4pt</PaddingLeft></Style></Textbox></CellContents></TablixCell>
+              <TablixCell><CellContents><Textbox Name="DDescription"><CanGrow>true</CanGrow><Paragraphs><Paragraph><TextRuns><TextRun><Value>=Fields!Description.Value</Value><Style /></TextRun></TextRuns><Style /></Paragraph></Paragraphs><Style><Border><Color>#D8E0E8</Color><Style>Solid</Style></Border><PaddingLeft>4pt</PaddingLeft></Style></Textbox></CellContents></TablixCell>
+              <TablixCell><CellContents><Textbox Name="DAmount"><Paragraphs><Paragraph><TextRuns><TextRun><Value>=Fields!Amount.Value</Value><Style><Format>N2</Format></Style></TextRun></TextRuns><Style /></Paragraph></Paragraphs><Style><Border><Color>#D8E0E8</Color><Style>Solid</Style></Border><TextAlign>Right</TextAlign><PaddingRight>4pt</PaddingRight></Style></Textbox></CellContents></TablixCell>
+              <TablixCell><CellContents><Textbox Name="DBranch"><Paragraphs><Paragraph><TextRuns><TextRun><Value>=Fields!Branch.Value</Value><Style /></TextRun></TextRuns><Style /></Paragraph></Paragraphs><Style><Border><Color>#D8E0E8</Color><Style>Solid</Style></Border><PaddingLeft>4pt</PaddingLeft></Style></Textbox></CellContents></TablixCell>
+              <TablixCell><CellContents><Textbox Name="DCreatedBy"><Paragraphs><Paragraph><TextRuns><TextRun><Value>=Fields!CreatedBy.Value</Value><Style /></TextRun></TextRuns><Style /></Paragraph></Paragraphs><Style><Border><Color>#D8E0E8</Color><Style>Solid</Style></Border><PaddingLeft>4pt</PaddingLeft></Style></Textbox></CellContents></TablixCell>
+            </TablixCells></TablixRow>
+            <TablixRow><Height>0.34in</Height><TablixCells>
+              <TablixCell><CellContents><Textbox Name="TLabel"><Paragraphs><Paragraph><TextRuns><TextRun><Value>Grand Total of Expenses</Value><Style><FontWeight>Bold</FontWeight><Color>#004578</Color></Style></TextRun></TextRuns><Style /></Paragraph></Paragraphs><Style><BackgroundColor>#EEF4FB</BackgroundColor><PaddingLeft>4pt</PaddingLeft><PaddingTop>4pt</PaddingTop></Style></Textbox><ColSpan>3</ColSpan></CellContents></TablixCell>
+              <TablixCell><CellContents><Textbox Name="TAmount"><Paragraphs><Paragraph><TextRuns><TextRun><Value>=Sum(Fields!Amount.Value)</Value><Style><FontWeight>Bold</FontWeight><Format>N2</Format><Color>#004578</Color></Style></TextRun></TextRuns><Style /></Paragraph></Paragraphs><Style><BackgroundColor>#EEF4FB</BackgroundColor><TextAlign>Right</TextAlign><PaddingRight>4pt</PaddingRight><PaddingTop>4pt</PaddingTop></Style></Textbox></CellContents></TablixCell>
+              <TablixCell><CellContents><Textbox Name="TBlank1"><Paragraphs><Paragraph><TextRuns><TextRun><Value /></TextRun></TextRuns></Paragraph></Paragraphs><Style><BackgroundColor>#EEF4FB</BackgroundColor></Style></Textbox></CellContents></TablixCell>
+              <TablixCell><CellContents><Textbox Name="TBlank2"><Paragraphs><Paragraph><TextRuns><TextRun><Value /></TextRun></TextRuns></Paragraph></Paragraphs><Style><BackgroundColor>#EEF4FB</BackgroundColor></Style></Textbox></CellContents></TablixCell>
+            </TablixCells></TablixRow>
+          </TablixRows>
+        </TablixBody>
+        <TablixColumnHierarchy><TablixMembers><TablixMember /><TablixMember /><TablixMember /><TablixMember /><TablixMember /><TablixMember /></TablixMembers></TablixColumnHierarchy>
+        <TablixRowHierarchy><TablixMembers><TablixMember><KeepWithGroup>After</KeepWithGroup><RepeatOnNewPage>true</RepeatOnNewPage></TablixMember><TablixMember><Group Name="ExpenseDetails" /></TablixMember><TablixMember><KeepWithGroup>Before</KeepWithGroup></TablixMember></TablixMembers></TablixRowHierarchy>
+        <DataSetName>ExpenseData</DataSetName><Top>0.88in</Top><Left>0.10in</Left><Height>0.94in</Height><Width>7.10in</Width><Style />
+      </Tablix>
+    </ReportItems>
+    <Height>2.00in</Height><Style />
+  </Body>
+  <Width>7.30in</Width>
+  <Page><PageHeight>11.69in</PageHeight><PageWidth>8.27in</PageWidth><LeftMargin>0.45in</LeftMargin><RightMargin>0.45in</RightMargin><TopMargin>0.45in</TopMargin><BottomMargin>0.45in</BottomMargin><Style /></Page>
+  <AutoRefresh>0</AutoRefresh>
+  <DataSources><DataSource Name="PayNexDataSource"><ConnectionProperties><DataProvider>System.Data.DataSet</DataProvider><ConnectString>/* Local DataSet */</ConnectString></ConnectionProperties><rd:DataSourceID>8aefb695-8f2b-4ac1-b95c-2798e8b3d826</rd:DataSourceID></DataSource></DataSources>
+  <DataSets><DataSet Name="ExpenseData"><Fields>
+    <Field Name="ExpenseDate"><DataField>ExpenseDate</DataField><rd:TypeName>System.DateTime</rd:TypeName></Field><Field Name="ExpenseCategory"><DataField>ExpenseCategory</DataField><rd:TypeName>System.String</rd:TypeName></Field><Field Name="Description"><DataField>Description</DataField><rd:TypeName>System.String</rd:TypeName></Field><Field Name="Amount"><DataField>Amount</DataField><rd:TypeName>System.Decimal</rd:TypeName></Field><Field Name="Branch"><DataField>Branch</DataField><rd:TypeName>System.String</rd:TypeName></Field><Field Name="CreatedBy"><DataField>CreatedBy</DataField><rd:TypeName>System.String</rd:TypeName></Field><Field Name="Remarks"><DataField>Remarks</DataField><rd:TypeName>System.String</rd:TypeName></Field>
+    </Fields><Query><DataSourceName>PayNexDataSource</DataSourceName><CommandText>/* Local Expense Data */</CommandText></Query></DataSet></DataSets>
+  <ReportParameters><ReportParameter Name="FromDate"><DataType>String</DataType><Prompt>From Date</Prompt></ReportParameter><ReportParameter Name="ToDate"><DataType>String</DataType><Prompt>To Date</Prompt></ReportParameter><ReportParameter Name="Branch"><DataType>String</DataType><DefaultValue><Values><Value>All Branches</Value></Values></DefaultValue><Prompt>Branch</Prompt></ReportParameter><ReportParameter Name="ExpenseCategory"><DataType>String</DataType><DefaultValue><Values><Value>All Categories</Value></Values></DefaultValue><Prompt>Expense Category</Prompt></ReportParameter></ReportParameters>
+  <rd:ReportUnitType>Inch</rd:ReportUnitType><rd:ReportID>d9e77a39-b84c-40b0-8259-d44a5140bf42</rd:ReportID>
+</Report>

@@ -1,0 +1,6 @@
+
+async function init(){try{const me=await api.get('/api/me');who.textContent=`${me.companyName} | ${me.displayName}`; await dashboard(); await loadProducts();}catch(e){location.href='/login.html'}}
+async function dashboard(){const r=await api.get('/api/reports/dashboard'); const m=r.metrics; metrics.innerHTML=Object.keys(m).map(k=>`<div class="card"><div class="muted">${k}</div><h2>${typeof m[k]==='number'?money(m[k]):m[k]}</h2></div>`).join('');}
+async function loadProducts(){const rows=await api.get('/api/products'); products.innerHTML=rows.map(p=>`<tr><td>${p.ProductCode}</td><td>${p.ProductName}</td><td>${money(p.SalePrice)}</td><td>${p.StockOnHand}</td></tr>`).join('');}
+async function saveProduct(){try{const body={productId:0,productCode:pcode.value,barcode:pbar.value,productName:pname.value,unitOfMeasure:'PCS',purchasePrice:Number(pcost.value||0),salePrice:Number(pprice.value||0),retailPrice:Number(pprice.value||0),stockOnHand:Number(pstock.value||0),discountAllowed:true,minStockLevel:0,reorderLevel:0,isActive:true}; const r=await api.post('/api/products',body); msg('status','Product saved ID '+r.productId,true); await loadProducts(); await dashboard();}catch(e){msg('status',e.message,false)}}
+init();

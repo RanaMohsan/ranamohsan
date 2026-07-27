@@ -1,0 +1,95 @@
+<!doctype html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <link rel="stylesheet" href="/css/app.css?v=final-fixes-20260715">
+  <title>PayNex Owner Portal - Companies</title>
+</head>
+<body>
+  <main class="shell bc-list-page owner-company-list-page" data-page-role="owner-company-list">
+    <section class="bc-page-heading">
+      <div>
+        <div class="bc-breadcrumb">Owner Portal / Client Companies</div>
+        <h1>Client Companies</h1>
+        <p id="who" class="muted">Loading PayNex owner profile...</p>
+      </div>
+      <span class="bc-page-badge">List</span>
+    </section>
+
+    <section class="bc-command-bar" aria-label="Company list actions">
+      <button id="newCompanyBtn" class="bc-command-primary" type="button"><span>＋</span> New Client</button>
+      <button id="openCompanyBtn" class="secondary" type="button"><span>↗</span> Open Card</button>
+      <button id="printCompanyBtn" class="secondary" type="button"><span>▣</span> Print</button>
+      <button id="refreshCompaniesBtn" class="secondary" type="button"><span>↻</span> Refresh</button>
+      <button id="emailSecurityBtn" class="secondary" type="button"><span>✉</span> Email & OTP Setup</button>
+    </section>
+
+    <section class="bc-filter-pane owner-company-filter">
+      <div class="bc-filter-title">Filter</div>
+      <label>Search
+        <input id="companySearch" type="search" placeholder="Company code, name, owner or email...">
+      </label>
+      <label>Status
+        <select id="statusFilter" data-no-lookup="1">
+          <option value="">All statuses</option>
+          <option value="Active">Active</option>
+          <option value="Inactive">Inactive</option>
+          <option value="Suspended">Suspended</option>
+        </select>
+      </label>
+      <label>License
+        <select id="licenseFilter" data-no-lookup="1">
+          <option value="">All licenses</option>
+          <option value="Active">Active</option>
+          <option value="Trial">Trial</option>
+          <option value="Expired">Expired</option>
+          <option value="Suspended">Suspended</option>
+        </select>
+      </label>
+      <button id="applyFilterBtn" type="button">Apply</button>
+      <button id="clearFilterBtn" class="secondary" type="button">Clear</button>
+    </section>
+
+    <section class="bc-list-card">
+      <div class="bc-list-caption">
+        <div><strong>Registered Company List</strong><span id="recordCount" class="muted">0 records</span></div>
+        <div id="selectedCaption" class="muted">No company selected</div>
+      </div>
+      <div class="bc-table-wrap">
+        <table class="bc-data-table owner-company-data-table" aria-label="Registered company list">
+          <thead>
+            <tr>
+              <th class="bc-select-col"></th>
+              <th>Company Code</th>
+              <th>Company Name</th>
+              <th>Owner</th>
+              <th>Owner Email</th>
+              <th>Plan</th>
+              <th>Status</th>
+              <th>License</th>
+              <th class="number">Max Branches</th>
+              <th>Sandbox</th>
+              <th>License Expiry</th>
+              <th>Created At</th>
+            </tr>
+          </thead>
+          <tbody id="companyRows">
+            <tr><td colspan="12" class="bc-empty-row">Loading registered companies...</td></tr>
+          </tbody>
+        </table>
+      </div>
+      <div class="bc-list-footer">
+        <span id="footerSummary">0 active companies</span>
+        <span>Click the company code/name, or double-click a row, to open its Company Card.</span>
+      </div>
+    </section>
+
+    <p id="status" class="bc-status-line" aria-live="polite"></p>
+  </main>
+
+  <script src="/js/api.js?v=bc-owner-company-pages-20260710"></script>
+  <script src="/js/platform-portal.js?v=bc-owner-company-pages-20260710"></script>
+  <script src="/js/app-shell.js?v=final-fixes-20260715"></script>
+</body>
+</html>

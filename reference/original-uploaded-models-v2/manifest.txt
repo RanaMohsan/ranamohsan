@@ -1,0 +1,14 @@
+Uploaded file => normalized detected model file
+CartLine(1).cs => AccountingModels.cs
+CompanyInformation(1).cs => CartLine.cs
+Customer(1).cs => CompanyInformation.cs
+DynamicField(1).cs => Customer.cs
+FinanceModels(1).cs => DynamicField.cs
+PaymentLine(1).cs => FinanceModels.cs
+Product(1).cs => PaymentLine.cs
+ReportModels(1).cs => Product.cs
+ReturnModels(1).cs => ReportModels.cs
+SaleResult(1).cs => ReturnModels.cs
+SalesFinanceModels(1).cs => SaleResult.cs
+ShiftInfo(1).cs => SalesFinanceModels.cs
+UserAccount(1).cs => ShiftInfo.cs

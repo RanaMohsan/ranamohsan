@@ -1,0 +1,128 @@
+<!doctype html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <link rel="stylesheet" href="/css/app.css?v=final-fixes-20260715">
+  <title>Sales Invoice Card</title>
+</head>
+<body>
+  <main class="shell bc-card-page" data-page-role="sales-invoice-card">
+    <section class="bc-page-heading bc-document-heading">
+      <div>
+        <div class="bc-breadcrumb"><a href="/sales.html">Sales Invoices</a> / Card</div>
+        <div class="bc-title-line">
+          <h1 id="documentTitle">New Sales Invoice</h1>
+          <span id="documentStatus" class="bc-status-pill draft">New</span>
+        </div>
+        <p id="who" class="muted">Loading company and user...</p>
+      </div>
+      <div class="bc-document-number">
+        <span>No.</span>
+        <strong id="documentNo">NEW</strong>
+      </div>
+    </section>
+
+    <section class="bc-command-bar" aria-label="Sales invoice card actions">
+      <button id="backBtn" class="secondary" type="button"><span>←</span> Sales Invoices</button>
+      <button id="newBtn" class="secondary" type="button"><span>＋</span> New</button>
+      <button id="postBtn" class="bc-command-primary" type="button"><span>✓</span> Post</button>
+      <button id="printBtn" class="secondary" type="button"><span>▣</span> Print</button>
+      <span class="bc-command-separator"></span>
+      <label class="bc-inline-control">Print layout
+        <select id="printLayout" data-no-lookup="1">
+          <option value="bc">Professional A4</option>
+          <option value="standard">Standard A4</option>
+          <option value="compact">Compact A4</option>
+        </select>
+      </label>
+    </section>
+
+    <div class="bc-card-layout">
+      <div class="bc-card-main">
+        <section class="bc-fasttab open">
+          <div class="bc-fasttab-title"><span>General</span><span>⌃</span></div>
+          <div class="bc-fasttab-body bc-form-grid">
+            <label class="span-2">Customer
+              <select id="customer" data-lookup-title="Customer Lookup"></select>
+            </label>
+            <label>Invoice Date
+              <input id="invoiceDate" type="date">
+            </label>
+            <label>Paid Amount
+              <input id="paidAmount" type="number" min="0" step="0.01" value="0">
+            </label>
+            <label class="span-2">Customer Information
+              <input id="customerInformation" readonly placeholder="Customer details">
+            </label>
+            <label class="span-2">Remarks
+              <textarea id="remarks" rows="2" placeholder="Invoice remarks"></textarea>
+            </label>
+          </div>
+        </section>
+
+        <section class="bc-fasttab open" id="lineEntrySection">
+          <div class="bc-fasttab-title"><span>Sales Invoice Lines</span><span>⌃</span></div>
+          <div class="bc-fasttab-body">
+            <div class="bc-line-entry">
+              <label class="product-field">Item
+                <select id="product" data-lookup-title="Item Lookup"></select>
+              </label>
+              <label>Quantity
+                <input id="qty" type="number" min="0.01" step="0.01" value="1">
+              </label>
+              <label>Unit Price
+                <input id="unitPrice" type="number" min="0" step="0.01">
+              </label>
+              <label>Discount %
+                <input id="discountPercent" type="number" min="0" max="100" step="0.01" value="0">
+              </label>
+              <label>Tax %
+                <input id="taxPercent" type="number" min="0" step="0.01" value="0">
+              </label>
+              <button id="addLineBtn" type="button">Add Line</button>
+            </div>
+            <div class="bc-table-wrap bc-lines-wrap">
+              <table class="bc-data-table bc-lines-table">
+                <thead>
+                  <tr>
+                    <th>Type</th><th>No.</th><th>Description</th><th class="number">Available</th><th class="number">Quantity</th><th class="number">Unit Price</th><th class="number">Discount %</th><th class="number">Tax %</th><th class="number">Line Amount</th><th class="bc-row-action"></th>
+                  </tr>
+                </thead>
+                <tbody id="linesBody"><tr><td colspan="10" class="bc-empty-row">No invoice lines.</td></tr></tbody>
+              </table>
+            </div>
+          </div>
+        </section>
+      </div>
+
+      <aside class="bc-factbox-column">
+        <section class="bc-factbox">
+          <h2>Invoice Summary</h2>
+          <div><span>Subtotal</span><strong id="summarySubtotal">Rs. 0.00</strong></div>
+          <div><span>Discount</span><strong id="summaryDiscount">Rs. 0.00</strong></div>
+          <div><span>Tax</span><strong id="summaryTax">Rs. 0.00</strong></div>
+          <div class="total"><span>Total</span><strong id="summaryTotal">Rs. 0.00</strong></div>
+          <div><span>Paid</span><strong id="summaryPaid">Rs. 0.00</strong></div>
+          <div><span>Balance</span><strong id="summaryBalance">Rs. 0.00</strong></div>
+        </section>
+        <section class="bc-factbox">
+          <h2>Document Details</h2>
+          <dl>
+            <dt>Status</dt><dd id="factStatus">New</dd>
+            <dt>Customer No.</dt><dd id="factCustomerNo">—</dd>
+            <dt>Store</dt><dd id="factStore">Current branch</dd>
+            <dt>Prepared By</dt><dd id="factPreparedBy">—</dd>
+            <dt>Posted At</dt><dd id="factPostedAt">—</dd>
+          </dl>
+        </section>
+      </aside>
+    </div>
+
+    <p id="status" class="bc-status-line" aria-live="polite"></p>
+  </main>
+  <script src="/js/api.js?v=bc-invoice-pages-20260710"></script>
+  <script src="/js/sales-invoice-card.js?v=bc-invoice-pages-20260710"></script>
+  <script src="/js/app-shell.js?v=final-fixes-20260715"></script>
+</body>
+</html>

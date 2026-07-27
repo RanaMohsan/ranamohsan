@@ -1,0 +1,242 @@
+<!doctype html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <link rel="stylesheet" href="/css/app.css?v=final-fixes-20260715">
+  <title>PayNex Company Card</title>
+</head>
+<body>
+  <main class="shell bc-card-page owner-company-card-page" data-page-role="owner-company-card">
+    <section class="bc-page-heading bc-document-heading">
+      <div>
+        <div class="bc-breadcrumb"><a href="/platform-portal.html">Client Companies</a> / Company Card</div>
+        <div class="bc-title-line">
+          <h1 id="documentTitle">New Client Company</h1>
+          <span id="documentStatus" class="bc-status-pill draft">New</span>
+        </div>
+        <p id="who" class="muted">Loading PayNex owner profile...</p>
+      </div>
+      <div class="bc-document-number">
+        <span>Company Code</span>
+        <strong id="documentNo">NEW</strong>
+      </div>
+    </section>
+
+    <section class="bc-command-bar" aria-label="Company card actions">
+      <button id="backBtn" class="secondary" type="button"><span>←</span> Companies</button>
+      <button id="newBtn" class="secondary" type="button"><span>＋</span> New</button>
+      <button id="saveBtn" class="bc-command-primary" type="button"><span>✓</span> Save</button>
+      <button id="printBtn" class="secondary" type="button"><span>▣</span> Print</button>
+      <span class="bc-command-separator"></span>
+      <button id="openProductionBtn" class="secondary" type="button"><span>↗</span> Open Production</button>
+      <button id="createSandboxBtn" class="secondary" type="button"><span>◫</span> Create / Repair Sandbox</button>
+      <button id="mobileAppBtn" class="secondary" type="button"><span>▣</span> Mobile App Detail</button>
+      <button id="refreshBtn" class="secondary" type="button"><span>↻</span> Refresh</button>
+    </section>
+
+    <div class="bc-card-layout owner-company-card-layout">
+      <div class="bc-card-main">
+        <section class="bc-fasttab open">
+          <div class="bc-fasttab-title"><span>General</span><span>⌃</span></div>
+          <div class="bc-fasttab-body bc-form-grid">
+            <label>Company Code
+              <input id="fCompanyCode" readonly placeholder="Auto-generated">
+            </label>
+            <label class="span-2">Company Name
+              <input id="fCompanyName" required autocomplete="organization">
+            </label>
+            <label>Owner Name
+              <input id="fOwnerName" autocomplete="name">
+            </label>
+            <label class="span-2">Owner Email
+              <input id="fOwnerEmail" type="email" autocomplete="email">
+            </label>
+            <label>Owner Mobile
+              <input id="fOwnerMobile" autocomplete="tel">
+            </label>
+            <label>Company Start Date
+              <input id="fCompanyStartDate" type="date">
+            </label>
+          </div>
+        </section>
+
+        <section class="bc-fasttab open">
+          <div class="bc-fasttab-title"><span>License, Environment and Capacity</span><span>⌃</span></div>
+          <div class="bc-fasttab-body bc-form-grid">
+            <label>Subscription Plan
+              <select id="fPlan" data-no-lookup="1">
+                <option>Standard</option>
+                <option>Professional</option>
+                <option>Enterprise</option>
+                <option>Trial</option>
+              </select>
+            </label>
+            <label>Company Status
+              <select id="fStatus" data-no-lookup="1">
+                <option>Active</option>
+                <option>Inactive</option>
+                <option>Suspended</option>
+              </select>
+            </label>
+            <label>License Status
+              <select id="fLicenseStatus" data-no-lookup="1">
+                <option>Active</option>
+                <option>Trial</option>
+                <option>Expired</option>
+                <option>Suspended</option>
+              </select>
+            </label>
+            <label>Max Branches
+              <input id="fMaxBranches" type="number" min="1" value="1">
+            </label>
+            <label>License Expiry Date
+              <input id="fLicenseExpiryDate" type="date">
+            </label>
+            <label>Renewal Date
+              <input id="fRenewalDate" type="date">
+            </label>
+            <label class="bc-check-field"><input id="fAllowMultiBranch" type="checkbox"> Allow Multiple Branches</label>
+            <label class="bc-check-field"><input id="fAllowSandbox" type="checkbox"> Allow Sandbox</label>
+            <label id="createSandboxNowField" class="bc-check-field"><input id="fCreateSandbox" type="checkbox"> Create Sandbox Now</label>
+            <label class="span-2">Production Database
+              <input id="fProductionDb" readonly placeholder="Created automatically">
+            </label>
+            <label class="span-2">Sandbox Database
+              <input id="fSandboxDb" readonly placeholder="Not created">
+            </label>
+          </div>
+        </section>
+
+        <section id="firstAdminSection" class="bc-fasttab open">
+          <div class="bc-fasttab-title"><span>First Company Administrator</span><span>⌃</span></div>
+          <div class="bc-fasttab-body">
+            <div class="amber-note owner-admin-note">These fields are required only when registering a new client company. After creation, the admin email and initial password are sent from Email &amp; OTP Security Setup. OTP is required on first login.</div>
+            <div class="bc-form-grid owner-admin-grid">
+              <label class="span-2">Admin Email
+                <input id="fAdminEmail" type="email" placeholder="Required for new client">
+              </label>
+              <label>Admin Username
+                <input id="fAdminUserName" value="admin">
+              </label>
+              <label>Admin Password
+                <span class="password-input-row">
+                  <input id="fAdminPassword" type="password" value="Admin@123" autocomplete="new-password" spellcheck="false">
+                  <button id="toggleAdminPasswordBtn" class="secondary compact-button" type="button">Show</button>
+                </span>
+              </label>
+            </div>
+          </div>
+        </section>
+
+        <section id="usersSection" class="bc-fasttab open owner-related-section">
+          <div class="bc-fasttab-title"><span>Company Users</span><span id="userCountLabel">0 records</span></div>
+          <div class="bc-fasttab-body bc-table-wrap owner-related-table-wrap">
+            <table class="bc-data-table owner-related-table">
+              <thead><tr><th>ID</th><th>Name</th><th>Email</th><th>Role</th><th>Branch</th><th>Status</th><th>First Login OTP</th><th>Password</th></tr></thead>
+              <tbody id="userRows"><tr><td colspan="8" class="bc-empty-row">No company selected.</td></tr></tbody>
+            </table>
+          </div>
+        </section>
+
+        <section id="passwordManagerSection" class="bc-fasttab open password-action-panel" hidden>
+          <div class="bc-fasttab-title"><span>Set / Reset User Password</span><span id="passwordManagerUser">No user selected</span></div>
+          <div class="bc-fasttab-body">
+            <div class="amber-note">For security, an existing password cannot be retrieved. Enter a new password below. After saving, it can be shown and copied only on this page until refresh or “Forget now”.</div>
+            <input id="passwordManagerUserId" type="hidden" value="0">
+            <div id="companyPasswordEntry" class="password-manager-grid">
+              <label>New Password
+                <span class="password-input-row">
+                  <input id="companyUserPassword" type="password" autocomplete="new-password" spellcheck="false" placeholder="Minimum 8 characters">
+                  <button id="toggleCompanyPasswordBtn" class="secondary compact-button" type="button">Show</button>
+                </span>
+              </label>
+              <label>Confirm Password
+                <input id="companyUserPasswordConfirm" type="password" autocomplete="new-password" spellcheck="false" placeholder="Repeat new password">
+              </label>
+              <div class="password-action-buttons">
+                <button id="saveCompanyUserPasswordBtn" class="success" type="button">Save New Password</button>
+                <button id="cancelCompanyUserPasswordBtn" class="secondary" type="button">Cancel</button>
+              </div>
+            </div>
+            <div id="companyPasswordReceipt" class="password-receipt" hidden>
+              <div>
+                <b>One-time password receipt</b>
+                <p class="muted small-text">Copy this password now. It will not be available again after refresh or leaving this page.</p>
+              </div>
+              <span class="password-input-row">
+                <input id="companyPasswordReceiptValue" type="password" readonly autocomplete="off" spellcheck="false">
+                <button id="toggleCompanyPasswordReceiptBtn" class="secondary compact-button" type="button">Show</button>
+                <button id="copyCompanyPasswordReceiptBtn" class="secondary compact-button" type="button">Copy</button>
+                <button id="forgetCompanyPasswordReceiptBtn" class="danger compact-button" type="button">Forget now</button>
+              </span>
+            </div>
+            <p id="companyPasswordStatus" class="bc-status-line" aria-live="polite"></p>
+          </div>
+        </section>
+
+        <section id="branchesSection" class="bc-fasttab open owner-related-section">
+          <div class="bc-fasttab-title"><span>Company Branches</span><span id="branchCountLabel">0 records</span></div>
+          <div class="bc-fasttab-body bc-table-wrap owner-related-table-wrap">
+            <table class="bc-data-table owner-related-table">
+              <thead><tr><th>ID</th><th>Code</th><th>Name</th><th>Address</th><th>Main Branch</th><th>Status</th></tr></thead>
+              <tbody id="branchRows"><tr><td colspan="6" class="bc-empty-row">No company selected.</td></tr></tbody>
+            </table>
+          </div>
+        </section>
+
+        <section id="directorySection" class="bc-fasttab open owner-related-section">
+          <div class="bc-fasttab-title"><span>Central User Directory</span><span id="directoryCountLabel">0 records</span></div>
+          <div class="bc-fasttab-body bc-table-wrap owner-related-table-wrap">
+            <table class="bc-data-table owner-related-table owner-directory-table">
+              <thead><tr><th>Directory ID</th><th>User ID</th><th>Email</th><th>User Name</th><th>Role</th><th>Company Admin</th><th>Active</th><th>Last Login</th></tr></thead>
+              <tbody id="directoryRows"><tr><td colspan="8" class="bc-empty-row">No company selected.</td></tr></tbody>
+            </table>
+          </div>
+        </section>
+
+        <section id="securitySection" class="bc-fasttab open owner-related-section">
+          <div class="bc-fasttab-title"><span>Security Notes</span><span>⌃</span></div>
+          <div class="bc-fasttab-body">
+            <div class="amber-note" id="securityNote">PayNex owner access is portal-only and is not created inside client company databases.</div>
+          </div>
+        </section>
+      </div>
+
+      <aside class="bc-factbox-column">
+        <section class="bc-factbox">
+          <h2>Company Summary</h2>
+          <dl>
+            <dt>Company Code</dt><dd id="factCompanyCode">NEW</dd>
+            <dt>Plan</dt><dd id="factPlan">Standard</dd>
+            <dt>Status</dt><dd id="factStatus">New</dd>
+            <dt>License</dt><dd id="factLicense">Active</dd>
+            <dt>Expiry</dt><dd id="factExpiry">—</dd>
+          </dl>
+        </section>
+        <section class="bc-factbox">
+          <h2>Environment</h2>
+          <dl>
+            <dt>Production DB</dt><dd id="factProductionDb">Pending</dd>
+            <dt>Sandbox DB</dt><dd id="factSandboxDb">Not created</dd>
+            <dt>Multi Branch</dt><dd id="factMultiBranch">No</dd>
+            <dt>Max Branches</dt><dd id="factMaxBranches">1</dd>
+          </dl>
+        </section>
+        <section class="bc-factbox">
+          <h2>Related Records</h2>
+          <div><span>Users</span><strong id="factUsers">0</strong></div>
+          <div><span>Branches</span><strong id="factBranches">0</strong></div>
+          <div><span>Directory Records</span><strong id="factDirectory">0</strong></div>
+        </section>
+      </aside>
+    </div>
+
+    <p id="status" class="bc-status-line" aria-live="polite"></p>
+  </main>
+
+  <script src="/js/api.js?v=bc-owner-company-pages-20260710"></script>
+  <script src="/js/platform-company-card.js?v=first-login-otp-20260714"></script>
+  <script src="/js/app-shell.js?v=final-fixes-20260715"></script>
+</body>
+</html>

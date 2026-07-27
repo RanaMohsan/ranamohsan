@@ -1,0 +1,60 @@
+<!doctype html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>Currency Setup</title>
+  <link rel="stylesheet" href="/css/app.css?v=final-fixes-20260715">
+</head>
+<body>
+  <main class="shell bc-list-page currency-setup-page">
+    <section class="bc-page-heading">
+      <div>
+        <div class="bc-breadcrumb">Setup / Currency Setup</div>
+        <h1>Currency Setup</h1>
+        <p id="who" class="muted">Configure currencies and select the base currency shown on the dashboard.</p>
+      </div>
+      <span class="bc-page-badge">Setup</span>
+    </section>
+
+    <section class="bc-command-bar" aria-label="Currency setup actions">
+      <button id="newCurrencyBtn" class="secondary" type="button"><span>＋</span> New</button>
+      <button id="saveCurrencyBtn" class="bc-command-primary" type="button"><span>✓</span> Save</button>
+      <button id="refreshCurrencyBtn" class="secondary" type="button"><span>↻</span> Refresh</button>
+      <span class="bc-command-separator"></span>
+      <a class="bc-command-link" href="/dashboard.html">Open Dashboard</a>
+    </section>
+
+    <section class="currency-setup-layout">
+      <article class="bc-list-card currency-list-card">
+        <div class="bc-list-caption"><div><strong>Available Currencies</strong><span id="currencyCount" class="muted">0 records</span></div><div id="baseCurrencyCaption" class="muted">Base currency: loading...</div></div>
+        <div class="bc-table-wrap">
+          <table class="bc-data-table currency-table">
+            <thead><tr><th>Code</th><th>Name</th><th>Symbol</th><th class="number">Exchange Rate</th><th>Base</th><th>Status</th></tr></thead>
+            <tbody id="currencyBody"><tr><td colspan="6" class="bc-empty-row">Loading currency setup...</td></tr></tbody>
+          </table>
+        </div>
+      </article>
+
+      <article class="panel currency-card">
+        <div class="setup-section-title"><h2 id="currencyCardTitle">New Currency</h2><span id="currencyCardBadge" class="lookup-chip">Currency Card</span></div>
+        <input id="currencyId" type="hidden" value="0">
+        <div class="form-grid two currency-form">
+          <label>Currency Code <span class="required">*</span><input id="currencyCode" maxlength="10" placeholder="PKR, USD, AED"></label>
+          <label>Currency Name <span class="required">*</span><input id="currencyName" maxlength="80" placeholder="Pakistani Rupee"></label>
+          <label>Symbol<input id="currencySymbol" maxlength="12" placeholder="Rs., $, €"></label>
+          <label>Decimal Places<select id="currencyDecimals" data-no-lookup="1"><option value="0">0</option><option value="2" selected>2</option><option value="3">3</option><option value="4">4</option></select></label>
+          <label>Exchange Rate<input id="currencyRate" type="number" min="0.000001" step="0.000001" value="1"></label>
+          <label>Status<select id="currencyActive" data-no-lookup="1"><option value="true">Active</option><option value="false">Inactive</option></select></label>
+        </div>
+        <label class="check-field currency-base-check"><input id="currencyIsBase" type="checkbox"> Use as base currency on Dashboard</label>
+        <div class="report-note currency-note">The active base currency controls the code, symbol and decimal places used for all financial amounts on the Business Dashboard. A base currency always uses exchange rate 1.</div>
+      </article>
+    </section>
+    <p id="currencyStatus" class="bc-status-line" aria-live="polite"></p>
+  </main>
+  <script src="/js/api.js?v=final-fixes-20260715"></script>
+  <script src="/js/currency-setup.js?v=final-fixes-20260715"></script>
+  <script src="/js/app-shell.js?v=final-fixes-20260715"></script>
+</body>
+</html>

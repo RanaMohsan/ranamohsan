@@ -1,0 +1,42 @@
+<!doctype html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>Multi-Client SaaS Flow</title>
+  <link rel="stylesheet" href="/css/app.css?v=final-fixes-20260715">
+</head>
+<body>
+<div class="shell">
+  <section class="workspace-hero">
+    <h1>Multi-Client Cloud SaaS Flow</h1>
+    <p>One cloud application and one domain, with a separate isolated database for every registered client/company.</p>
+    <div class="workspace-actions"><a href="/platform-portal.html">PayNex Portal</a><a href="/login.html">Client Login</a><a href="/workspace.html">Workspace</a></div>
+  </section>
+
+  <div class="panel">
+    <h2>Client Onboarding Automation</h2>
+    <div class="tiles">
+      <div class="tile"><div class="icon">01</div><b>Register Company</b><span>Super Admin enters company, owner, license and user details.</span></div>
+      <div class="tile"><div class="icon">02</div><b>Generate Company Code</b><span>System creates a unique login code such as PNX000001.</span></div>
+      <div class="tile"><div class="icon">03</div><b>Create Client DB</b><span>System creates a separate tenant database such as PayNex_ABCSTORE_DB.</span></div>
+      <div class="tile"><div class="icon">04</div><b>Apply Default Setup</b><span>Tables, roles, users, COA, posting setup, tax and payment methods are seeded.</span></div>
+      <div class="tile"><div class="icon">05</div><b>Activate Client</b><span>License, subscription, database status and workspace become active.</span></div>
+      <div class="tile"><div class="icon">06</div><b>Client Login</b><span>Client uses the same application URL but sees only their own company data.</span></div>
+    </div>
+  </div>
+
+  <div class="grid">
+    <div class="panel"><h2>Master Database</h2><ul><li>Client/company list</li><li>Company code and database name</li><li>Subscription and license</li><li>Trial, renewal and expiry</li><li>Admin contact and provisioning status</li></ul></div>
+    <div class="panel"><h2>Client Database</h2><ul><li>Users and roles</li><li>Products, customers and vendors</li><li>Sales, purchases and inventory</li><li>Customer/vendor ledgers</li><li>G/L entries, dashboard, reports and settings</li></ul></div>
+  </div>
+
+  <div class="panel"><h2>Login Rule</h2><p>Every client uses the same app URL. The Company Code selects the correct client database before the workspace opens.</p><pre>app.paynex.com
+Company Code: ABCSTORE
+Username: admin
+Password: ********</pre></div>
+</div>
+<script src="/js/api.js"></script>
+<script src="/js/app-shell.js?v=final-fixes-20260715"></script>
+</body>
+</html>

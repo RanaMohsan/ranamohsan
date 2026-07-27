@@ -1,0 +1,60 @@
+<!doctype html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <link rel="stylesheet" href="/css/app.css?v=final-fixes-20260715">
+  <title>Picture Sales</title>
+</head>
+<body class="sidebar-collapsed picture-sales-body">
+  <div class="shell picture-sales-page">
+    <div class="cashier-layout picture-sales-layout">
+      <div class="panel picture-item-panel">
+        <div class="row picture-search-row">
+          <input id="search" placeholder="Search item" oninput="loadProducts()">
+          <button class="secondary" onclick="loadProducts()">Refresh</button>
+        </div>
+        <div id="cards" class="picture-grid"></div>
+      </div>
+      <div class="panel picture-cart-panel">
+        <div class="setup-section-title"><h2>Cart</h2><span class="lookup-chip">Counter Sale</span></div>
+        <select id="customer" data-no-lookup="1" disabled title="Picture Sales uses Walk-in Customer only."></select>
+        <div id="cartBox" class="picture-cart-list"></div>
+        <div class="total-box picture-total-box"><div>Total</div><div class="amount" id="total">Rs. 0.00</div></div>
+        <label>Paid Amount<input id="paid" type="number" placeholder="Paid Amount"></label>
+        <div class="actions">
+          <button class="success" onclick="postSale()">Pay / Post Payment</button>
+          <button class="secondary" onclick="cart=[];renderCart()">Clear Cart</button>
+        </div>
+        <p id="status"></p>
+      </div>
+    </div>
+  </div>
+
+  <div id="pictureLineModal" class="modal-backdrop picture-line-backdrop">
+    <div class="modal picture-line-modal">
+      <div class="modal-head">
+        <h2 id="lineItemName">Item</h2>
+        <div id="lineItemCode" class="mini"></div>
+        <span id="lineItemStock" class="badge"></span>
+      </div>
+      <div class="modal-body">
+        <div class="line-entry-grid">
+          <label>Quantity<input id="lineQty" type="number" min="1" step="1" value="1"></label>
+          <label>Price<input id="linePrice" type="number" min="0" step="0.01" value="0"></label>
+        </div>
+        <div class="summary-panel line-summary"><b>Line Total: <span id="lineTotal">Rs. 0.00</span></b><br><span class="muted">Press Enter to add item into cart.</span></div>
+        <p id="lineError" class="bad"></p>
+      </div>
+      <div class="modal-foot">
+        <button class="secondary" onclick="closeLineModal()">Cancel</button>
+        <button class="success" onclick="confirmLineModal()">OK / Add to Cart</button>
+      </div>
+    </div>
+  </div>
+
+  <script src="/js/api.js?v=picture-sales-layout-final-20260713"></script>
+  <script src="/js/picture-sales.js?v=picture-sales-layout-final-20260713"></script>
+  <script src="/js/app-shell.js?v=final-fixes-20260715"></script>
+</body>
+</html>
