@@ -88,6 +88,9 @@ app.Use(async (context, next) =>
     var path = context.Request.Path.Value ?? string.Empty;
     if (path.StartsWith("/api/", StringComparison.OrdinalIgnoreCase) &&
         !path.StartsWith("/api/auth", StringComparison.OrdinalIgnoreCase) &&
+        !path.Equals("/api/mobile/login", StringComparison.OrdinalIgnoreCase) &&
+        !path.Equals("/api/mobile/health", StringComparison.OrdinalIgnoreCase) &&
+        !path.Equals("/api/mobile/refresh", StringComparison.OrdinalIgnoreCase) &&
         !path.StartsWith("/api/admin", StringComparison.OrdinalIgnoreCase) &&
         !path.StartsWith("/api/health", StringComparison.OrdinalIgnoreCase))
     {
@@ -117,7 +120,10 @@ app.Use(async (context, next) =>
     var unsafeMethod = HttpMethods.IsPost(context.Request.Method) || HttpMethods.IsPut(context.Request.Method) || HttpMethods.IsPatch(context.Request.Method) || HttpMethods.IsDelete(context.Request.Method);
     var publicAuthAction = path.Equals("/api/auth/login", StringComparison.OrdinalIgnoreCase) ||
         path.Equals("/api/auth/verify-otp", StringComparison.OrdinalIgnoreCase) ||
-        path.Equals("/api/auth/resend-otp", StringComparison.OrdinalIgnoreCase);
+        path.Equals("/api/auth/resend-otp", StringComparison.OrdinalIgnoreCase) ||
+        path.Equals("/api/mobile/login", StringComparison.OrdinalIgnoreCase) ||
+        path.Equals("/api/mobile/health", StringComparison.OrdinalIgnoreCase) ||
+        path.Equals("/api/mobile/refresh", StringComparison.OrdinalIgnoreCase);
     var hasCookieAuthentication = context.Request.Cookies.ContainsKey("paynex_auth") || context.Request.Cookies.ContainsKey("paynex_refresh");
     var hasBearerAuthentication = context.Request.Headers.Authorization.ToString().StartsWith("Bearer ", StringComparison.OrdinalIgnoreCase);
     if (unsafeMethod && path.StartsWith("/api/", StringComparison.OrdinalIgnoreCase) && !publicAuthAction && hasCookieAuthentication && !hasBearerAuthentication)
@@ -469,7 +475,7 @@ ORDER BY ISNULL(u.IsCompanySuperAdmin,0) DESC,
     return Results.Ok(new { token, user = session, redirectUrl = "/workspace.html" });
 });
 
-app.MapGet("/api/platform/companies/{companyCode}/mobile-app", async (HttpContext http, ConnectionFactory db, AuthTokenService tokens, TenantProvisioningService tenants, string companyCode) =>
+app.MapGet("/api/platform/companies/{companyCode}/mobile-app", async (HttpContext http, ConnectionFactory db, AuthTokenService tokens, TenantProvisioningService tenants, AuthenticationSecurityService authSecurity, string companyCode) =>
 {
     var user = ApiAuth.RequireUser(http, tokens);
     if (user == null) return Results.Unauthorized();
@@ -496,13 +502,28 @@ WHERE CompanyCode=@CompanyCode";
         await using (var cmd = master.CreateCommand())
         {
             cmd.CommandText = @"
-SELECT MobileAppUserId,AppId,CompanyCode,UserName,DisplayName,Email,Mobile,RoleName,IsBlocked,IsActive,BlockReason,CreatedAt,UpdatedAt,BlockedAt
+SELECT MobileAppUserId,AppId,CompanyCode,UserName,DisplayName,Email,Mobile,RoleName,IsBlocked,IsActive,BlockReason,CreatedAt,UpdatedAt,BlockedAt,ISNULL(PasswordProtected,'') PasswordProtected
 FROM CompanyMobileAppUsers
 WHERE CompanyCode=@CompanyCode
 ORDER BY DisplayName, UserName";
             cmd.Parameters.AddWithValue("@CompanyCode", tenant.CompanyCode);
             users = await SqlList.ReadAsync(cmd);
         }
+    }
+
+    foreach (var row in users)
+    {
+        var protectedPassword = Convert.ToString(row.TryGetValue("PasswordProtected", out var p) ? p : row.TryGetValue("passwordProtected", out var p2) ? p2 : "") ?? "";
+        var clearPassword = string.Empty;
+        if (!string.IsNullOrWhiteSpace(protectedPassword))
+        {
+            try { clearPassword = authSecurity.UnprotectSecret(protectedPassword); }
+            catch { clearPassword = string.Empty; }
+        }
+        row["password"] = clearPassword;
+        row["Password"] = clearPassword;
+        row.Remove("PasswordProtected");
+        row.Remove("passwordProtected");
     }
 
     return Results.Ok(new
@@ -629,7 +650,7 @@ SELECT @@ROWCOUNT;";
     });
 });
 
-app.MapPost("/api/platform/companies/{companyCode}/mobile-app/users", async (HttpContext http, ConnectionFactory db, AuthTokenService tokens, TenantProvisioningService tenants, PasswordService passwords, string companyCode, MobileAppUserCreateRequest request) =>
+app.MapPost("/api/platform/companies/{companyCode}/mobile-app/users", async (HttpContext http, ConnectionFactory db, AuthTokenService tokens, TenantProvisioningService tenants, PasswordService passwords, AuthenticationSecurityService authSecurity, string companyCode, MobileAppUserCreateRequest request) =>
 {
     var user = ApiAuth.RequireUser(http, tokens);
     if (user == null) return Results.Unauthorized();
@@ -661,22 +682,18 @@ app.MapPost("/api/platform/companies/{companyCode}/mobile-app/users", async (Htt
         companyBlocked = Convert.ToBoolean(reader["IsBlocked"]);
     }
 
-    await using (var dup = master.CreateCommand())
-    {
-        dup.CommandText = "SELECT COUNT(1) FROM CompanyMobileAppUsers WHERE CompanyCode=@CompanyCode AND UserName=@UserName";
-        dup.Parameters.AddWithValue("@CompanyCode", tenant.CompanyCode);
-        dup.Parameters.AddWithValue("@UserName", userName);
-        if (Convert.ToInt32(await dup.ExecuteScalarAsync() ?? 0) > 0)
-            return Results.BadRequest(new { message = "A mobile app user with this user name already exists for the company." });
-    }
+    var existingCompany = await FindGlobalMobileAppUserCompanyAsync(master, userName, excludeUserId: null);
+    if (!string.IsNullOrWhiteSpace(existingCompany))
+        return Results.BadRequest(new { message = $"User name '{userName}' is already registered for company {existingCompany}. Mobile app user names must be unique across all companies." });
 
     var passwordHash = passwords.Hash(request.Password);
+    var passwordProtected = authSecurity.ProtectSecret(request.Password);
     await using (var cmd = master.CreateCommand())
     {
         cmd.CommandText = @"
-INSERT INTO CompanyMobileAppUsers(AppId,TenantId,CompanyCode,UserName,DisplayName,Email,Mobile,PasswordHash,RoleName,IsBlocked,IsActive,CreatedAt)
+INSERT INTO CompanyMobileAppUsers(AppId,TenantId,CompanyCode,UserName,DisplayName,Email,Mobile,PasswordHash,PasswordProtected,RoleName,IsBlocked,IsActive,CreatedAt)
 OUTPUT INSERTED.MobileAppUserId
-VALUES(@AppId,@TenantId,@CompanyCode,@UserName,@DisplayName,@Email,@Mobile,@PasswordHash,@RoleName,0,1,SYSUTCDATETIME());";
+VALUES(@AppId,@TenantId,@CompanyCode,@UserName,@DisplayName,@Email,@Mobile,@PasswordHash,@PasswordProtected,@RoleName,0,1,SYSUTCDATETIME());";
         cmd.Parameters.AddWithValue("@AppId", appId);
         cmd.Parameters.AddWithValue("@TenantId", tenant.TenantId);
         cmd.Parameters.AddWithValue("@CompanyCode", tenant.CompanyCode);
@@ -685,6 +702,7 @@ VALUES(@AppId,@TenantId,@CompanyCode,@UserName,@DisplayName,@Email,@Mobile,@Pass
         cmd.Parameters.AddWithValue("@Email", string.IsNullOrWhiteSpace(email) ? DBNull.Value : email);
         cmd.Parameters.AddWithValue("@Mobile", string.IsNullOrWhiteSpace(mobile) ? DBNull.Value : mobile);
         cmd.Parameters.AddWithValue("@PasswordHash", passwordHash);
+        cmd.Parameters.AddWithValue("@PasswordProtected", passwordProtected);
         cmd.Parameters.AddWithValue("@RoleName", roleName);
         var mobileAppUserId = Convert.ToInt64(await cmd.ExecuteScalarAsync() ?? 0L);
         return Results.Ok(new
@@ -694,9 +712,64 @@ VALUES(@AppId,@TenantId,@CompanyCode,@UserName,@DisplayName,@Email,@Mobile,@Pass
                 : "Mobile app user added.",
             mobileAppUserId,
             userName,
+            password = request.Password,
             companyCode = tenant.CompanyCode
         });
     }
+});
+
+app.MapPut("/api/platform/companies/{companyCode}/mobile-app/users/{id:long}", async (HttpContext http, ConnectionFactory db, AuthTokenService tokens, TenantProvisioningService tenants, PasswordService passwords, AuthenticationSecurityService authSecurity, string companyCode, long id, MobileAppUserUpdateRequest request) =>
+{
+    var user = ApiAuth.RequireUser(http, tokens);
+    if (user == null) return Results.Unauthorized();
+    if (!user.IsPlatformOwner) return Results.Forbid();
+
+    var tenant = await tenants.GetTenantAsync(companyCode);
+    await EnsureCompanyMobileAppSchemaAsync(db);
+
+    var userName = (request.UserName ?? string.Empty).Trim();
+    var displayName = string.IsNullOrWhiteSpace(request.DisplayName) ? userName : request.DisplayName.Trim();
+    var email = string.IsNullOrWhiteSpace(request.Email) ? string.Empty : NormalizeCloudEmail(request.Email);
+    var mobile = (request.Mobile ?? string.Empty).Trim();
+    var roleName = string.IsNullOrWhiteSpace(request.RoleName) ? "Mobile User" : request.RoleName.Trim();
+
+    if (string.IsNullOrWhiteSpace(userName)) return Results.BadRequest(new { message = "Mobile app user name is required." });
+    if (!IsAcceptablePassword(request.Password))
+        return Results.BadRequest(new { message = "Password must be 8 to 128 characters and include upper-case, lower-case, and a number." });
+
+    await using var master = await db.OpenMasterAsync();
+    var existingCompany = await FindGlobalMobileAppUserCompanyAsync(master, userName, excludeUserId: id);
+    if (!string.IsNullOrWhiteSpace(existingCompany))
+        return Results.BadRequest(new { message = $"User name '{userName}' is already registered for company {existingCompany}. Mobile app user names must be unique across all companies." });
+
+    var passwordHash = passwords.Hash(request.Password);
+    var passwordProtected = authSecurity.ProtectSecret(request.Password);
+    await using var cmd = master.CreateCommand();
+    cmd.CommandText = @"
+UPDATE CompanyMobileAppUsers
+SET UserName=@UserName,DisplayName=@DisplayName,Email=@Email,Mobile=@Mobile,RoleName=@RoleName,
+    PasswordHash=@PasswordHash,PasswordProtected=@PasswordProtected,UpdatedAt=SYSUTCDATETIME()
+WHERE CompanyCode=@CompanyCode AND MobileAppUserId=@MobileAppUserId;
+SELECT @@ROWCOUNT;";
+    cmd.Parameters.AddWithValue("@CompanyCode", tenant.CompanyCode);
+    cmd.Parameters.AddWithValue("@MobileAppUserId", id);
+    cmd.Parameters.AddWithValue("@UserName", userName);
+    cmd.Parameters.AddWithValue("@DisplayName", displayName);
+    cmd.Parameters.AddWithValue("@Email", string.IsNullOrWhiteSpace(email) ? DBNull.Value : email);
+    cmd.Parameters.AddWithValue("@Mobile", string.IsNullOrWhiteSpace(mobile) ? DBNull.Value : mobile);
+    cmd.Parameters.AddWithValue("@RoleName", roleName);
+    cmd.Parameters.AddWithValue("@PasswordHash", passwordHash);
+    cmd.Parameters.AddWithValue("@PasswordProtected", passwordProtected);
+    var rows = Convert.ToInt32(await cmd.ExecuteScalarAsync() ?? 0);
+    if (rows <= 0) return Results.NotFound(new { message = "Mobile app user not found for this company." });
+    return Results.Ok(new
+    {
+        message = "Mobile app user saved.",
+        mobileAppUserId = id,
+        userName,
+        password = request.Password,
+        companyCode = tenant.CompanyCode
+    });
 });
 
 app.MapPost("/api/platform/companies/{companyCode}/mobile-app/users/{id:long}/block", async (HttpContext http, ConnectionFactory db, AuthTokenService tokens, TenantProvisioningService tenants, string companyCode, long id, MobileAppUserBlockRequest request) =>
@@ -732,6 +805,295 @@ SELECT @@ROWCOUNT;";
         mobileAppUserId = id
     });
 });
+
+// ===== PayNex Mobile App public APIs (one app build for all clients; username finds company) =====
+app.MapGet("/api/mobile/health", () => Results.Ok(new
+{
+    status = "OK",
+    service = "PayNex Mobile API",
+    utc = DateTime.UtcNow,
+    message = "Mobile app can connect. Login with username + password. Company is resolved automatically."
+}));
+
+app.MapPost("/api/mobile/login", async (HttpContext http, ConnectionFactory db, TenantProvisioningService tenants, PasswordService passwords, AuthTokenService tokens, AuthenticationSecurityService authSecurity, MobileLoginRequest request) =>
+{
+    await EnsureCompanyMobileAppSchemaAsync(db);
+    var userName = (request.UserName ?? string.Empty).Trim();
+    var password = request.Password ?? string.Empty;
+    if (string.IsNullOrWhiteSpace(userName) || string.IsNullOrWhiteSpace(password))
+        return Results.BadRequest(new { ok = false, code = "MISSING_CREDENTIALS", message = "User name and password are required." });
+
+    await using var master = await db.OpenMasterAsync();
+    await using var cmd = master.CreateCommand();
+    cmd.CommandText = @"
+SELECT TOP 1
+    u.MobileAppUserId,u.AppId,u.TenantId,u.CompanyCode,u.UserName,u.DisplayName,u.Email,u.Mobile,u.PasswordHash,u.RoleName,
+    u.IsBlocked UserBlocked,u.IsActive UserActive,ISNULL(u.BlockReason,'') UserBlockReason,
+    a.AppName,a.Platform,a.ApiKey,a.Status AppStatus,a.IsBlocked AppBlocked,ISNULL(a.BlockReason,'') AppBlockReason,
+    a.PackageName,a.BundleId,a.AppVersion
+FROM CompanyMobileAppUsers u
+INNER JOIN CompanyMobileApps a ON a.AppId=u.AppId AND a.CompanyCode=u.CompanyCode
+WHERE LOWER(LTRIM(RTRIM(u.UserName))) = LOWER(LTRIM(RTRIM(@UserName)))
+ORDER BY u.MobileAppUserId";
+    cmd.Parameters.AddWithValue("@UserName", userName);
+    await using var reader = await cmd.ExecuteReaderAsync();
+    if (!await reader.ReadAsync())
+        return Results.Json(new { ok = false, code = "USER_NOT_FOUND", message = "This user name is not registered for any company mobile app." }, statusCode: StatusCodes.Status401Unauthorized);
+
+    var mobileAppUserId = Convert.ToInt64(reader["MobileAppUserId"]);
+    var companyCode = SqlRead.String(reader, "CompanyCode");
+    var displayName = SqlRead.String(reader, "DisplayName");
+    var email = SqlRead.String(reader, "Email");
+    var mobile = SqlRead.String(reader, "Mobile");
+    var roleName = SqlRead.String(reader, "RoleName");
+    var passwordHash = SqlRead.String(reader, "PasswordHash");
+    var userBlocked = Convert.ToBoolean(reader["UserBlocked"]);
+    var userActive = Convert.ToBoolean(reader["UserActive"]);
+    var userBlockReason = SqlRead.String(reader, "UserBlockReason");
+    var appName = SqlRead.String(reader, "AppName");
+    var platform = SqlRead.String(reader, "Platform");
+    var apiKey = SqlRead.String(reader, "ApiKey");
+    var appStatus = SqlRead.String(reader, "AppStatus");
+    var appBlocked = Convert.ToBoolean(reader["AppBlocked"]);
+    var appBlockReason = SqlRead.String(reader, "AppBlockReason");
+    await reader.CloseAsync();
+
+    if (!passwords.Verify(password, passwordHash))
+        return Results.Json(new { ok = false, code = "INVALID_PASSWORD", message = "Invalid user name or password." }, statusCode: StatusCodes.Status401Unauthorized);
+
+    if (userBlocked || !userActive)
+        return Results.Json(new
+        {
+            ok = false,
+            code = "USER_BLOCKED",
+            message = string.IsNullOrWhiteSpace(userBlockReason)
+                ? "This mobile user is blocked. Contact PayNex support."
+                : $"This mobile user is blocked. {userBlockReason}"
+        }, statusCode: StatusCodes.Status403Forbidden);
+
+    if (appBlocked || string.Equals(appStatus, "Blocked", StringComparison.OrdinalIgnoreCase))
+        return Results.Json(new
+        {
+            ok = false,
+            code = "COMPANY_APP_BLOCKED",
+            companyCode,
+            message = string.IsNullOrWhiteSpace(appBlockReason)
+                ? "This company mobile app access is blocked in PayNex."
+                : $"This company mobile app access is blocked. {appBlockReason}"
+        }, statusCode: StatusCodes.Status403Forbidden);
+
+    TenantInfo tenant;
+    try { tenant = await tenants.GetTenantAsync(companyCode); }
+    catch
+    {
+        return Results.Json(new { ok = false, code = "COMPANY_NOT_FOUND", message = "Company linked to this mobile user was not found in PayNex." }, statusCode: StatusCodes.Status403Forbidden);
+    }
+
+    if (string.Equals(tenant.Status, "Suspended", StringComparison.OrdinalIgnoreCase) ||
+        string.Equals(tenant.Status, "Inactive", StringComparison.OrdinalIgnoreCase))
+        return Results.Json(new { ok = false, code = "COMPANY_INACTIVE", companyCode, message = $"Company {companyCode} is {tenant.Status} in PayNex." }, statusCode: StatusCodes.Status403Forbidden);
+
+    if (string.Equals(tenant.LicenseStatus, "Expired", StringComparison.OrdinalIgnoreCase) ||
+        string.Equals(tenant.LicenseStatus, "Suspended", StringComparison.OrdinalIgnoreCase))
+        return Results.Json(new { ok = false, code = "LICENSE_BLOCKED", companyCode, message = $"Company {companyCode} license is {tenant.LicenseStatus}." }, statusCode: StatusCodes.Status403Forbidden);
+
+    var databaseName = string.IsNullOrWhiteSpace(tenant.ProductionDatabaseName) ? tenant.DatabaseName : tenant.ProductionDatabaseName;
+    var sessionId = "MOB-" + Guid.NewGuid().ToString("N");
+    var permissionsJson = JsonSerializer.Serialize(new Dictionary<string, bool>(StringComparer.OrdinalIgnoreCase)
+    {
+        ["mobile.access"] = true,
+        ["mobile.sync"] = true
+    });
+    var sessionUserId = mobileAppUserId > int.MaxValue ? int.MaxValue : (int)mobileAppUserId;
+    var session = new UserSession(
+        tenant.CompanyCode, tenant.CompanyName, databaseName,
+        sessionUserId, userName, string.IsNullOrWhiteSpace(displayName) ? userName : displayName,
+        0, string.IsNullOrWhiteSpace(roleName) ? "Mobile User" : roleName,
+        0, "Mobile", "Production",
+        0, "MOBILE", "Mobile App", tenant.AllowMultipleBranches,
+        email, false, false, permissionsJson, sessionId);
+    var token = tokens.Create(session);
+    var refresh = await authSecurity.ReplaceRefreshTokenAsync(null, session);
+
+    return Results.Ok(new
+    {
+        ok = true,
+        code = "LOGIN_OK",
+        message = "Login successful. Company resolved automatically from user name.",
+        token,
+        refreshToken = refresh.PlainToken,
+        expiresInMinutes = Math.Clamp(tenants.Options.AccessTokenExpiryMinutes, 5, 120),
+        company = new
+        {
+            tenant.CompanyCode,
+            tenant.CompanyName,
+            tenant.Status,
+            tenant.LicenseStatus,
+            tenant.SubscriptionPlan
+        },
+        user = new
+        {
+            mobileAppUserId,
+            userName,
+            displayName,
+            email,
+            mobile,
+            roleName
+        },
+        app = new
+        {
+            appName,
+            platform,
+            apiKey,
+            status = appStatus
+        },
+        device = new
+        {
+            deviceName = request.DeviceName,
+            appVersion = request.AppVersion
+        },
+        sync = new
+        {
+            autoConnect = true,
+            noClientSetupRequired = true,
+            authHeader = "Authorization: Bearer {token}",
+            endpoints = new
+            {
+                health = "/api/mobile/health",
+                me = "/api/mobile/me",
+                company = "/api/mobile/company",
+                logout = "/api/mobile/logout",
+                refresh = "/api/mobile/refresh"
+            }
+        }
+    });
+}).RequireRateLimiting("auth");
+
+app.MapGet("/api/mobile/me", async (HttpContext http, ConnectionFactory db, AuthTokenService tokens) =>
+{
+    var session = ApiAuth.RequireUser(http, tokens);
+    if (session == null) return Results.Unauthorized();
+    await EnsureCompanyMobileAppSchemaAsync(db);
+
+    await using var master = await db.OpenMasterAsync();
+    await using var cmd = master.CreateCommand();
+    cmd.CommandText = @"
+SELECT TOP 1 u.MobileAppUserId,u.CompanyCode,u.UserName,u.DisplayName,u.Email,u.Mobile,u.RoleName,u.IsBlocked,u.IsActive,
+       a.IsBlocked AppBlocked,a.Status AppStatus,ISNULL(a.ApiKey,'') ApiKey,a.AppName
+FROM CompanyMobileAppUsers u
+INNER JOIN CompanyMobileApps a ON a.AppId=u.AppId AND a.CompanyCode=u.CompanyCode
+WHERE u.CompanyCode=@CompanyCode AND LOWER(LTRIM(RTRIM(u.UserName))) = LOWER(LTRIM(RTRIM(@UserName)))";
+    cmd.Parameters.AddWithValue("@CompanyCode", session.CompanyCode);
+    cmd.Parameters.AddWithValue("@UserName", session.UserName);
+    await using var reader = await cmd.ExecuteReaderAsync();
+    if (!await reader.ReadAsync())
+        return Results.Json(new { ok = false, code = "SESSION_INVALID", message = "Mobile session user was not found." }, statusCode: StatusCodes.Status401Unauthorized);
+
+    if (Convert.ToBoolean(reader["IsBlocked"]) || !Convert.ToBoolean(reader["IsActive"]) || Convert.ToBoolean(reader["AppBlocked"]))
+        return Results.Json(new { ok = false, code = "ACCESS_BLOCKED", message = "Mobile access is blocked. Please login again." }, statusCode: StatusCodes.Status403Forbidden);
+
+    return Results.Ok(new
+    {
+        ok = true,
+        companyCode = SqlRead.String(reader, "CompanyCode"),
+        companyName = session.CompanyName,
+        user = new
+        {
+            mobileAppUserId = Convert.ToInt64(reader["MobileAppUserId"]),
+            userName = SqlRead.String(reader, "UserName"),
+            displayName = SqlRead.String(reader, "DisplayName"),
+            email = SqlRead.String(reader, "Email"),
+            mobile = SqlRead.String(reader, "Mobile"),
+            roleName = SqlRead.String(reader, "RoleName")
+        },
+        app = new
+        {
+            appName = SqlRead.String(reader, "AppName"),
+            status = SqlRead.String(reader, "AppStatus"),
+            apiKey = SqlRead.String(reader, "ApiKey")
+        }
+    });
+});
+
+app.MapGet("/api/mobile/company", async (HttpContext http, AuthTokenService tokens, TenantProvisioningService tenants, ConnectionFactory db) =>
+{
+    var session = ApiAuth.RequireUser(http, tokens);
+    if (session == null) return Results.Unauthorized();
+    await EnsureCompanyMobileAppSchemaAsync(db);
+
+    var tenant = await tenants.GetTenantAsync(session.CompanyCode);
+    await using var master = await db.OpenMasterAsync();
+    await using var cmd = master.CreateCommand();
+    cmd.CommandText = @"
+SELECT TOP 1 AppName,Platform,Status,IsBlocked,ISNULL(BlockReason,'') BlockReason,ApiKey,AppVersion,PackageName,BundleId
+FROM CompanyMobileApps WHERE CompanyCode=@CompanyCode";
+    cmd.Parameters.AddWithValue("@CompanyCode", tenant.CompanyCode);
+    var rows = await SqlList.ReadAsync(cmd);
+    var app = rows.FirstOrDefault();
+    if (app == null)
+        return Results.Json(new { ok = false, code = "COMPANY_APP_NOT_REGISTERED", message = "Mobile app is not registered for this company in PayNex." }, statusCode: StatusCodes.Status403Forbidden);
+
+    var appBlocked = Convert.ToBoolean(app.TryGetValue("IsBlocked", out var b) ? b : app.TryGetValue("isBlocked", out var b2) ? b2 : false);
+    if (appBlocked)
+        return Results.Json(new { ok = false, code = "COMPANY_APP_BLOCKED", message = "Company mobile app is blocked." }, statusCode: StatusCodes.Status403Forbidden);
+
+    return Results.Ok(new
+    {
+        ok = true,
+        company = new
+        {
+            tenant.CompanyCode,
+            tenant.CompanyName,
+            tenant.OwnerName,
+            tenant.OwnerEmail,
+            tenant.Status,
+            tenant.LicenseStatus,
+            tenant.SubscriptionPlan,
+            tenant.AllowMultipleBranches,
+            tenant.MaxBranches
+        },
+        app
+    });
+});
+
+app.MapPost("/api/mobile/logout", (HttpContext http, AuthTokenService tokens) =>
+{
+    var session = ApiAuth.RequireUser(http, tokens);
+    if (session == null) return Results.Unauthorized();
+    return Results.Ok(new { ok = true, message = "Logged out. Clear token on the mobile device." });
+});
+
+app.MapPost("/api/mobile/refresh", async (HttpContext http, ConnectionFactory db, AuthTokenService tokens, AuthenticationSecurityService authSecurity, MobileRefreshRequest? request) =>
+{
+    var plain = request?.RefreshToken;
+    if (string.IsNullOrWhiteSpace(plain))
+        plain = http.Request.Cookies["paynex_refresh"];
+    if (string.IsNullOrWhiteSpace(plain))
+        return Results.Json(new { ok = false, code = "MISSING_REFRESH_TOKEN", message = "Refresh token is required." }, statusCode: StatusCodes.Status401Unauthorized);
+
+    var rotation = await authSecurity.RotateRefreshTokenAsync(plain);
+    if (rotation == null)
+        return Results.Json(new { ok = false, code = "REFRESH_INVALID", message = "Refresh token is invalid or expired. Please login again." }, statusCode: StatusCodes.Status401Unauthorized);
+
+    if (await IsTenantSessionLoggedOutAsync(db, rotation.Session.SessionId))
+    {
+        await authSecurity.RevokeRefreshTokenAsync(rotation.NewToken.PlainToken);
+        return Results.Json(new { ok = false, code = "SESSION_LOGGED_OUT", message = "Session has expired or user logged out." }, statusCode: StatusCodes.Status401Unauthorized);
+    }
+
+    var accessToken = tokens.Create(rotation.Session);
+    return Results.Ok(new
+    {
+        ok = true,
+        code = "REFRESH_OK",
+        token = accessToken,
+        refreshToken = rotation.NewToken.PlainToken,
+        authenticated = true,
+        requiresVerification = false,
+        user = rotation.Session,
+        expiresInMinutes = Math.Clamp(authSecurity.AccessTokenExpiryMinutes, 5, 120)
+    });
+}).RequireRateLimiting("auth");
 
 app.MapPost("/api/auth/login", async (HttpContext http, ConnectionFactory db, TenantProvisioningService tenants, SuperAdminService admins, PasswordService passwords, AuthTokenService tokens, AuthenticationSecurityService authSecurity, LoginRequest request) =>
 {
@@ -935,9 +1297,14 @@ app.MapPost("/api/auth/resend-otp", async (HttpContext http, AuthenticationSecur
     }
 }).RequireRateLimiting("auth");
 
-app.MapPost("/api/auth/refresh", async (HttpContext http, ConnectionFactory db, AuthTokenService tokens, AuthenticationSecurityService authSecurity) =>
+app.MapPost("/api/auth/refresh", async (HttpContext http, ConnectionFactory db, AuthTokenService tokens, AuthenticationSecurityService authSecurity, MobileRefreshRequest? request) =>
 {
-    var rotation = await authSecurity.RotateRefreshTokenAsync(http.Request.Cookies["paynex_refresh"]);
+    // Browser uses cookie; Mobile App sends JSON body { refreshToken }.
+    var plain = http.Request.Cookies["paynex_refresh"];
+    if (string.IsNullOrWhiteSpace(plain))
+        plain = request?.RefreshToken;
+
+    var rotation = await authSecurity.RotateRefreshTokenAsync(plain);
     if (rotation == null)
     {
         ClearAuthenticationCookies(http);
@@ -953,7 +1320,14 @@ app.MapPost("/api/auth/refresh", async (HttpContext http, ConnectionFactory db, 
     SetTenantAuthCookie(http, accessToken, authSecurity.AccessTokenExpiryMinutes);
     SetRefreshTokenCookie(http, rotation.NewToken.PlainToken, rotation.NewToken.ExpiresAt);
     SetCsrfCookie(http);
-    return Results.Ok(new AuthenticatedLoginResponse(accessToken, rotation.Session));
+    return Results.Ok(new
+    {
+        token = accessToken,
+        refreshToken = rotation.NewToken.PlainToken,
+        user = rotation.Session,
+        authenticated = true,
+        requiresVerification = false
+    });
 }).RequireRateLimiting("auth");
 
 app.MapGet("/api/me", (HttpContext http, AuthTokenService tokens) => ApiAuth.RequireUser(http, tokens) is { } user ? Results.Ok(user) : Results.Unauthorized());
@@ -4262,6 +4636,7 @@ CREATE TABLE CompanyMobileAppUsers(
     Email NVARCHAR(180) NULL,
     Mobile NVARCHAR(40) NULL,
     PasswordHash NVARCHAR(500) NOT NULL,
+    PasswordProtected NVARCHAR(MAX) NULL,
     RoleName NVARCHAR(80) NOT NULL DEFAULT 'Mobile User',
     IsBlocked BIT NOT NULL DEFAULT 0,
     IsActive BIT NOT NULL DEFAULT 1,
@@ -4269,10 +4644,33 @@ CREATE TABLE CompanyMobileAppUsers(
     CreatedAt DATETIME2 NOT NULL DEFAULT SYSUTCDATETIME(),
     UpdatedAt DATETIME2 NULL,
     BlockedAt DATETIME2 NULL,
-    CONSTRAINT UQ_CompanyMobileAppUsers_CompanyUser UNIQUE(CompanyCode, UserName)
+    CONSTRAINT UQ_CompanyMobileAppUsers_UserName UNIQUE(UserName)
 );
-END;";
+END;
+IF COL_LENGTH('CompanyMobileAppUsers','PasswordProtected') IS NULL
+    ALTER TABLE CompanyMobileAppUsers ADD PasswordProtected NVARCHAR(MAX) NULL;
+IF EXISTS (SELECT 1 FROM sys.key_constraints WHERE name = 'UQ_CompanyMobileAppUsers_CompanyUser' AND parent_object_id = OBJECT_ID('CompanyMobileAppUsers'))
+    ALTER TABLE CompanyMobileAppUsers DROP CONSTRAINT UQ_CompanyMobileAppUsers_CompanyUser;
+IF OBJECT_ID('CompanyMobileAppUsers') IS NOT NULL
+   AND NOT EXISTS (SELECT 1 FROM sys.key_constraints WHERE name = 'UQ_CompanyMobileAppUsers_UserName' AND parent_object_id = OBJECT_ID('CompanyMobileAppUsers'))
+   AND NOT EXISTS (SELECT 1 FROM CompanyMobileAppUsers GROUP BY UserName HAVING COUNT(1) > 1)
+    ALTER TABLE CompanyMobileAppUsers ADD CONSTRAINT UQ_CompanyMobileAppUsers_UserName UNIQUE(UserName);";
     await cmd.ExecuteNonQueryAsync();
+}
+
+static async Task<string?> FindGlobalMobileAppUserCompanyAsync(SqlConnection master, string userName, long? excludeUserId)
+{
+    await using var cmd = master.CreateCommand();
+    cmd.CommandText = @"
+SELECT TOP 1 CompanyCode
+FROM CompanyMobileAppUsers
+WHERE LOWER(LTRIM(RTRIM(UserName))) = LOWER(LTRIM(RTRIM(@UserName)))
+  AND (@ExcludeUserId IS NULL OR MobileAppUserId <> @ExcludeUserId)
+ORDER BY MobileAppUserId";
+    cmd.Parameters.AddWithValue("@UserName", userName ?? string.Empty);
+    cmd.Parameters.AddWithValue("@ExcludeUserId", (object?)excludeUserId ?? DBNull.Value);
+    var result = await cmd.ExecuteScalarAsync();
+    return result == null || result == DBNull.Value ? null : Convert.ToString(result);
 }
 
 static async Task EnsureMasterUserDirectorySchemaAsync(ConnectionFactory db)

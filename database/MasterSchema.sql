@@ -292,6 +292,7 @@ CREATE TABLE CompanyMobileAppUsers(
     Email NVARCHAR(180) NULL,
     Mobile NVARCHAR(40) NULL,
     PasswordHash NVARCHAR(500) NOT NULL,
+    PasswordProtected NVARCHAR(MAX) NULL,
     RoleName NVARCHAR(80) NOT NULL DEFAULT 'Mobile User',
     IsBlocked BIT NOT NULL DEFAULT 0,
     IsActive BIT NOT NULL DEFAULT 1,
@@ -299,8 +300,16 @@ CREATE TABLE CompanyMobileAppUsers(
     CreatedAt DATETIME2 NOT NULL DEFAULT SYSUTCDATETIME(),
     UpdatedAt DATETIME2 NULL,
     BlockedAt DATETIME2 NULL,
-    CONSTRAINT UQ_CompanyMobileAppUsers_CompanyUser UNIQUE(CompanyCode, UserName),
+    CONSTRAINT UQ_CompanyMobileAppUsers_UserName UNIQUE(UserName),
     CONSTRAINT FK_CompanyMobileAppUsers_App FOREIGN KEY(AppId) REFERENCES CompanyMobileApps(AppId)
 );
 END;
+IF COL_LENGTH('CompanyMobileAppUsers','PasswordProtected') IS NULL
+    ALTER TABLE CompanyMobileAppUsers ADD PasswordProtected NVARCHAR(MAX) NULL;
+IF EXISTS (SELECT 1 FROM sys.key_constraints WHERE name = 'UQ_CompanyMobileAppUsers_CompanyUser' AND parent_object_id = OBJECT_ID('CompanyMobileAppUsers'))
+    ALTER TABLE CompanyMobileAppUsers DROP CONSTRAINT UQ_CompanyMobileAppUsers_CompanyUser;
+IF OBJECT_ID('CompanyMobileAppUsers') IS NOT NULL
+   AND NOT EXISTS (SELECT 1 FROM sys.key_constraints WHERE name = 'UQ_CompanyMobileAppUsers_UserName' AND parent_object_id = OBJECT_ID('CompanyMobileAppUsers'))
+   AND NOT EXISTS (SELECT 1 FROM CompanyMobileAppUsers GROUP BY UserName HAVING COUNT(1) > 1)
+    ALTER TABLE CompanyMobileAppUsers ADD CONSTRAINT UQ_CompanyMobileAppUsers_UserName UNIQUE(UserName);
 GO

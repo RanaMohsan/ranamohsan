@@ -95,7 +95,8 @@
         <section id="usersSection" class="bc-fasttab open owner-related-section" hidden>
           <div class="bc-fasttab-title"><span>Mobile App Users</span><span id="userCountLabel">0 records</span></div>
           <div class="bc-fasttab-body">
-            <div class="amber-note">Add users that can sign in to this company's mobile app. Block a user to stop mobile access for that account only.</div>
+            <div id="userFormNote" class="amber-note">User Name must be unique across all companies. Add a new mobile user, or click a user line below to load it here for change and save again.</div>
+            <input id="fMobileAppUserId" type="hidden" value="0">
             <div class="bc-form-grid" style="margin-bottom:14px">
               <label>User Name
                 <input id="fUserName" maxlength="80" autocomplete="off">
@@ -114,12 +115,14 @@
               </label>
               <label>Password
                 <span class="password-input-row">
-                  <input id="fUserPassword" type="password" maxlength="128" autocomplete="new-password" spellcheck="false" placeholder="Min 8 chars, upper, lower, number">
-                  <button id="toggleUserPasswordBtn" class="secondary compact-button" type="button">Show</button>
+                  <input id="fUserPassword" type="text" maxlength="128" autocomplete="off" spellcheck="false" placeholder="Min 8 chars, upper, lower, number">
+                  <button id="toggleUserPasswordBtn" class="secondary compact-button" type="button">Hide</button>
                 </span>
               </label>
-              <div class="span-2">
+              <div class="span-2" style="display:flex;gap:10px;flex-wrap:wrap;align-items:center">
                 <button id="addUserBtn" class="success" type="button">Add Mobile User</button>
+                <button id="saveUserBtn" class="bc-command-primary" type="button" hidden>Save User Changes</button>
+                <button id="cancelUserEditBtn" class="secondary" type="button" hidden>Cancel Edit</button>
               </div>
             </div>
             <div class="bc-table-wrap owner-related-table-wrap">
@@ -132,12 +135,13 @@
                     <th>Email</th>
                     <th>Mobile</th>
                     <th>Role</th>
+                    <th>Password</th>
                     <th>Status</th>
                     <th>Action</th>
                   </tr>
                 </thead>
                 <tbody id="userRows">
-                  <tr><td colspan="8" class="bc-empty-row">No mobile users yet.</td></tr>
+                  <tr><td colspan="9" class="bc-empty-row">No mobile users yet.</td></tr>
                 </tbody>
               </table>
             </div>
@@ -168,7 +172,7 @@
   </main>
 
   <script src="/js/api.js?v=bc-owner-company-pages-20260710"></script>
-  <script src="/js/platform-mobile-app.js?v=mobile-app-detail-20260727"></script>
+  <script src="/js/platform-mobile-app.js?v=mobile-app-user-edit-20260727"></script>
   <script src="/js/app-shell.js?v=final-fixes-20260715"></script>
 </body>
 </html>

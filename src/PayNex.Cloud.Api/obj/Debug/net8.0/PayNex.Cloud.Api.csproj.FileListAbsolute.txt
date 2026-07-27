@@ -259,3 +259,4 @@ C:\Users\Hamid\Documents\POS\owner_portal_work_BC_list___After__filters\owner_po
 C:\Users\Hamid\Documents\POS\owner_portal_work_BC_list___After__filters\owner_portal_work\src\PayNex.Cloud.Api\obj\Debug\net8.0\PayNex.Cloud.Api.pdb
 C:\Users\Hamid\Documents\POS\owner_portal_work_BC_list___After__filters\owner_portal_work\src\PayNex.Cloud.Api\obj\Debug\net8.0\PayNex.Cloud.Api.genruntimeconfig.cache
 C:\Users\Hamid\Documents\POS\owner_portal_work_BC_list___After__filters\owner_portal_work\src\PayNex.Cloud.Api\obj\Debug\net8.0\ref\PayNex.Cloud.Api.dll
+C:\Users\Hamid\Documents\POS\owner_portal_work_BC_list___After__filters\owner_portal_work\src\PayNex.Cloud.Api\obj\Debug\net8.0\PayNex.Cloud.Api.sourcelink.json

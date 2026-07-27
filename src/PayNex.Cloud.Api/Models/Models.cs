@@ -171,10 +171,33 @@ public sealed class MobileAppUserCreateRequest
     public string RoleName { get; set; } = "Mobile User";
 }
 
+public sealed class MobileAppUserUpdateRequest
+{
+    public string UserName { get; set; } = string.Empty;
+    public string DisplayName { get; set; } = string.Empty;
+    public string? Email { get; set; }
+    public string? Mobile { get; set; }
+    public string Password { get; set; } = string.Empty;
+    public string RoleName { get; set; } = "Mobile User";
+}
+
 public sealed class MobileAppUserBlockRequest
 {
     public bool IsBlocked { get; set; }
     public string? Reason { get; set; }
+}
+
+public sealed class MobileLoginRequest
+{
+    public string UserName { get; set; } = string.Empty;
+    public string Password { get; set; } = string.Empty;
+    public string? DeviceName { get; set; }
+    public string? AppVersion { get; set; }
+}
+
+public sealed class MobileRefreshRequest
+{
+    public string? RefreshToken { get; set; }
 }
 
 public sealed class ProductTaxDiscountUpdateRequest

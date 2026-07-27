@@ -746,6 +746,9 @@ VALUES(@UserName,@ActionName,@Path,@IpAddress,@Result,@Details)";
         }
     }
 
+    public string ProtectSecret(string plaintext) => Protect(plaintext);
+    public string UnprotectSecret(string protectedValue) => Unprotect(protectedValue);
+
     private string Protect(string plaintext)
     {
         var nonce = RandomNumberGenerator.GetBytes(12);
