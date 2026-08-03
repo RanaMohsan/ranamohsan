@@ -1,6 +1,7 @@
 const foModules = [
   ['/pos.html','cash','Counter Sales / POS Billing'],
   ['/picture-sales.html','product','Picture Sales'],
+  ['/returns.html','reserve','Customer Returns'],
   ['/items.html','product','Item Master'],
   ['/customers.html','self','Customer Master'],
   ['/sales.html','invoice','Sales Invoices'],
@@ -18,14 +19,16 @@ const foModules = [
   ['/tax-discount.html','price','Tax & Discount'],
   ['/currency-setup.html','bank','Currency Setup'],
   ['/finance.html#coa','ledger','Chart of Accounts'],
+  ['/banks.html','bank','Bank Management'],
   ['/inventory.html','asset','Inventory Assets'],
   ['/accounting-reports.html','analysis','Accounting Reports'],
   ['/expense-report.html','analysis','Expense Management Report'],
   ['/reports.html','journal','Document Print Center'],
-  ['/finance.html#bank','bank','Bank Management'],
   ['/finance.html#budget','budget','Budget Planning'],
   ['/shift.html','cash','Shift / Cash Drawer'],
-  ['/dashboard.html','cash','Cash Overview'],
+  ['/day-closing.html','period','Day Closing'],
+  ['/branches.html','self','Branches & Counters'],
+  ['/dashboard.html','cash','Executive Dashboard'],
   ['/retail-products.html','retail','Retail Products'],
   ['/product-variants.html','variant','Product Variants'],
   ['/released-products.html','release','Released Products'],
@@ -88,6 +91,42 @@ function buildCalendar(){
   grid.innerHTML = cells.map(c=>`<span class="${c.muted?'muted-date':''} ${c.today?'today':''}">${c.day}</span>`).join('');
 }
 
+function companyInitials(name){
+  const parts = String(name || 'PN').trim().split(/\s+/).filter(Boolean);
+  if(!parts.length) return 'PN';
+  return parts.slice(0, 2).map(x => x.charAt(0)).join('').toUpperCase();
+}
+
+function setHomeCompanyAvatar(companyName, logoBase64){
+  const initialsEl = document.getElementById('homeCompanyInitials');
+  const img = document.getElementById('homeCompanyLogo');
+  const nameEl = document.getElementById('homeCompanyAvatarName');
+  const avatar = document.getElementById('homeCompanyAvatar');
+  if(nameEl) nameEl.textContent = companyName || 'Company';
+  if(initialsEl) initialsEl.textContent = companyInitials(companyName);
+  if(!img || !avatar) return;
+  if(logoBase64){
+    img.src = String(logoBase64).startsWith('data:') ? logoBase64 : `data:image/png;base64,${logoBase64}`;
+    img.hidden = false;
+    avatar.classList.add('has-photo');
+  }else{
+    img.removeAttribute('src');
+    img.hidden = true;
+    avatar.classList.remove('has-photo');
+  }
+}
+
+async function loadHomeCompanyAvatar(fallbackName){
+  try{
+    const c = await api.get('/api/company');
+    const name = c.companyName || c.CompanyName || fallbackName || 'Company';
+    const logo = c.logoBase64 || c.LogoBase64 || '';
+    setHomeCompanyAvatar(name, logo);
+  }catch{
+    setHomeCompanyAvatar(fallbackName || 'PayNex', '');
+  }
+}
+
 async function init(){
   buildCalendar();
   try{
@@ -104,9 +143,12 @@ async function init(){
     const sideRole = document.getElementById('sideRole');
     if(sideUser && userName) sideUser.textContent = userName;
     if(sideRole) sideRole.textContent = [roleName, companyName].filter(Boolean).join(' • ') || 'Company workspace';
+    setHomeCompanyAvatar(companyName, '');
+    await loadHomeCompanyAvatar(companyName);
   }catch{
     const homeCompanyName = document.getElementById('homeCompanyName');
     if(homeCompanyName) homeCompanyName.textContent = 'PayNex Cloud ERP';
+    setHomeCompanyAvatar('PayNex', '');
   }
 
   try{

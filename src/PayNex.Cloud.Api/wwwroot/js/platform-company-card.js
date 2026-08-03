@@ -75,6 +75,7 @@
     $('printBtn').addEventListener('click', () => window.print());
     $('openProductionBtn').addEventListener('click', openProduction);
     $('createSandboxBtn').addEventListener('click', createSandbox);
+    $('deleteSandboxBtn')?.addEventListener('click', deleteSandbox);
     $('mobileAppBtn').addEventListener('click', () => {
       if(!companyCode || isNew){
         setMessage('Save the company first, then open Mobile App Detail.', false);
@@ -134,7 +135,9 @@
     $('saveBtn').innerHTML = '<span>✓</span> Create Company';
     $('openProductionBtn').disabled = true;
     $('createSandboxBtn').disabled = false;
+    if($('deleteSandboxBtn')) $('deleteSandboxBtn').disabled = true;
     $('mobileAppBtn').disabled = true;
+    if($('fRequireOtpEveryLogin')) $('fRequireOtpEveryLogin').checked = false;
     $('firstAdminSection').hidden = false;
     $('createSandboxNowField').hidden = false;
     document.querySelectorAll('.owner-related-section').forEach(section => section.hidden = true);
@@ -178,15 +181,19 @@
       $('saveBtn').innerHTML = '<span>✓</span> Save';
       $('openProductionBtn').disabled = false;
       $('createSandboxBtn').disabled = false;
+      if($('deleteSandboxBtn')) $('deleteSandboxBtn').disabled = !value(company, 'sandboxDatabaseName', 'SandboxDatabaseName');
       $('mobileAppBtn').disabled = false;
       $('firstAdminSection').hidden = true;
       $('createSandboxNowField').hidden = true;
       document.querySelectorAll('.owner-related-section').forEach(section => section.hidden = false);
+      if($('fRequireOtpEveryLogin')){
+        $('fRequireOtpEveryLogin').checked = toBool(details.requireOtpEveryLogin ?? details.RequireOtpEveryLogin ?? value(company, 'requireOtpEveryLogin', 'RequireOtpEveryLogin'));
+      }
 
       const users = details.users || details.Users || [];
       const branches = details.branches || details.Branches || [];
       const directory = details.centralDirectory || details.CentralDirectory || [];
-      const policy = details.passwordPolicy || details.PasswordPolicy || 'Passwords are securely hashed and cannot be displayed.';
+      const policy = details.passwordPolicy || details.PasswordPolicy || 'Platform Owner can view clear passwords set from this card.';
       renderRelated(users, branches, directory, `${policy} PayNex owner email is portal-only and is not created inside client databases.`);
       updateFactBoxes(users, branches, directory);
       setMessage(`Company Card ${companyCode} loaded.`, true);
@@ -213,6 +220,7 @@
     $('fMaxBranches').value = Number(value(c, 'maxBranches', 'MaxBranches') || 1);
     $('fAllowSandbox').checked = toBool(value(c, 'allowSandbox', 'AllowSandbox'));
     $('fAllowMultiBranch').checked = toBool(value(c, 'allowMultipleBranches', 'AllowMultipleBranches'));
+    if($('fRequireOtpEveryLogin')) $('fRequireOtpEveryLogin').checked = toBool(value(c, 'requireOtpEveryLogin', 'RequireOtpEveryLogin'));
     $('fProductionDb').value = value(c, 'productionDatabaseName', 'ProductionDatabaseName') || value(c, 'databaseName', 'DatabaseName') || '';
     $('fSandboxDb').value = value(c, 'sandboxDatabaseName', 'SandboxDatabaseName') || '';
   }
@@ -232,6 +240,7 @@
       allowSandbox:$('fAllowSandbox').checked || $('fCreateSandbox').checked,
       createSandbox:$('fCreateSandbox').checked,
       allowMultipleBranches:$('fAllowMultiBranch').checked,
+      requireOtpEveryLogin:!!$('fRequireOtpEveryLogin')?.checked,
       maxBranches:Number($('fMaxBranches').value || 1),
       adminEmail:$('fAdminEmail').value.trim(),
       adminUserName:$('fAdminUserName').value.trim() || 'admin',
@@ -290,6 +299,20 @@
       setMessage('Sandbox database is ready.', true);
     }catch(error){ setMessage(error.message, false); }
     finally{ $('createSandboxBtn').disabled = false; }
+  }
+
+  async function deleteSandbox(){
+    if(isNew || !companyCode){ setMessage('Open a saved company before deleting its sandbox.', false); return; }
+    if(!$('fSandboxDb')?.value){ setMessage('This company has no sandbox database to delete.', false); return; }
+    if(!confirm(`Delete sandbox database for ${companyCode}?\n\nThis permanently removes the sandbox DB. Production is not affected.`)) return;
+    try{
+      if($('deleteSandboxBtn')) $('deleteSandboxBtn').disabled = true;
+      setMessage('Deleting sandbox database...', true);
+      await api.post(`/api/platform/companies/${encodeURIComponent(companyCode)}/sandbox/delete`, {});
+      await loadCompany();
+      setMessage('Sandbox database deleted.', true);
+    }catch(error){ setMessage(error.message, false); }
+    finally{ if($('deleteSandboxBtn')) $('deleteSandboxBtn').disabled = !$('fSandboxDb')?.value; }
   }
 
   async function openProduction(){
@@ -383,13 +406,15 @@
       if(selectedUser){
         selectedUser.hasPassword = true;
         selectedUser.HasPassword = true;
-        selectedUser.passwordInfo = 'Password set securely';
-        selectedUser.PasswordInfo = 'Password set securely';
+        selectedUser.clearPassword = newPassword;
+        selectedUser.ClearPassword = newPassword;
+        selectedUser.passwordInfo = newPassword;
+        selectedUser.PasswordInfo = newPassword;
       }
       renderCurrentRelated();
       openPasswordManager(id, true);
-      msg('companyPasswordStatus', result.message || 'Password saved securely. Copy it before leaving this page.', true);
-      setMessage('Company user password saved. A one-time View / Copy receipt is available in the Password column.', true);
+      msg('companyPasswordStatus', result.message || 'Password saved. It is now visible in the Password column.', true);
+      setMessage('Company user password saved and shown in the Password column.', true);
     }catch(error){
       msg('companyPasswordStatus', error.message, false);
     }finally{
@@ -442,7 +467,11 @@
       const active = toBool(value(user, 'isActive', 'IsActive'));
       const userId = Number(value(user, 'userId', 'UserId'));
       const hasPassword = toBool(value(user, 'hasPassword', 'HasPassword'));
+      const clearPassword = String(value(user, 'clearPassword', 'ClearPassword') || passwordReceipts.get(userId) || '').trim();
       const hasReceipt = passwordReceipts.has(userId);
+      const passwordDisplay = clearPassword
+        ? `<code class="owner-clear-password">${esc(clearPassword)}</code>`
+        : pill(hasPassword ? 'Saved (reset to view)' : 'Not set', hasPassword ? 'active' : 'inactive');
       return `<tr>
         <td>${esc(userId)}</td>
         <td><b>${esc(value(user, 'displayName', 'DisplayName') || value(user, 'userName', 'UserName'))}</b><br><span class="muted small-text">${esc(value(user, 'userName', 'UserName'))}</span></td>
@@ -452,9 +481,9 @@
         <td>${pill(active ? 'Active' : 'Inactive', active ? 'active' : 'inactive')}</td>
         <td>${toBool(value(user, 'emailVerified', 'EmailVerified')) ? pill('Verified', 'active') : pill('Pending OTP')}</td>
         <td><div class="password-table-actions">
-          ${pill(hasPassword ? 'Set securely' : 'Not set', hasPassword ? 'active' : 'inactive')}
+          ${passwordDisplay}
           <button type="button" class="secondary compact-button" data-reset-company-user="${userId}">Set / Reset</button>
-          ${hasReceipt ? `<button type="button" class="success compact-button" data-view-password-receipt="${userId}">View / Copy once</button>` : ''}
+          ${hasReceipt && !clearPassword ? `<button type="button" class="success compact-button" data-view-password-receipt="${userId}">View / Copy once</button>` : ''}
         </div></td>
       </tr>`;
     }).join('') : '<tr><td colspan="8" class="bc-empty-row">No users found.</td></tr>';

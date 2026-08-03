@@ -1,0 +1,59 @@
+<!doctype html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>Bank Accounts</title>
+  <link rel="stylesheet" href="/css/app.css?v=api-catalog-20260731">
+</head>
+<body>
+  <main class="shell">
+    <section class="top">
+      <div>
+        <h1>Bank Accounts</h1>
+        <p class="muted">Register banks with G/L account codes. POS and Picture Sales use these when payment method is Bank.</p>
+      </div>
+      <div class="nav">
+        <a href="/workspace.html">Workspace</a>
+        <a href="/finance.html">Chart of Accounts</a>
+        <a href="/gl-setup.html">G/L Setup</a>
+      </div>
+    </section>
+
+    <section class="branch-grid">
+      <div class="panel">
+        <div class="branch-toolbar">
+          <div>
+            <h2>Bank List</h2>
+            <p class="muted">Each bank links to one Chart of Accounts number.</p>
+          </div>
+          <div class="actions"><button class="secondary" onclick="loadBanks()">Refresh</button><button class="success" onclick="newBank()">New Bank</button></div>
+        </div>
+        <div class="branch-table-wrap">
+          <table class="branch-table">
+            <thead><tr><th>Code</th><th>Name</th><th>G/L Account</th><th>Status</th></tr></thead>
+            <tbody id="bankRows"></tbody>
+          </table>
+        </div>
+      </div>
+
+      <div class="panel">
+        <h2>Bank Card</h2>
+        <div class="branch-form">
+          <input type="hidden" id="bankAccountId" value="0">
+          <div class="form-field"><label>Bank Code</label><input id="bankCode" placeholder="HBL-01"></div>
+          <div class="form-field"><label>Bank Name</label><input id="bankName" placeholder="HBL Main Branch"></div>
+          <div class="form-field"><label>G/L Account No.</label><input id="accountNo" placeholder="1010" list="coaList"></div>
+          <datalist id="coaList"></datalist>
+          <label class="check-field"><input id="bankActive" type="checkbox" checked> Active</label>
+          <div class="actions"><button class="success" onclick="saveBank()">Save Bank</button><button class="secondary" onclick="newBank()">Clear</button></div>
+          <p id="bankMsg"></p>
+        </div>
+      </div>
+    </section>
+  </main>
+  <script src="/js/api.js"></script>
+  <script src="/js/banks.js?v=banks-20260729"></script>
+  <script src="/js/app-shell.js?v=api-nav-20260731"></script>
+</body>
+</html>

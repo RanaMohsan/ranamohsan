@@ -14,7 +14,7 @@ async function runReport(kind){
   try{
     const f = val('fromDate').value, t = val('toDate').value, term = encodeURIComponent(val('accountTerm').value || '');
     const urls = {
-      trial:`/api/reports/trial-balance?from=${f}&to=${t}`,
+      trial:`/api/accounting/report/trial-balance?from=${f}&to=${t}`,
       ledger:`/api/accounting/report/gl-ledger?from=${f}&to=${t}&accountTerm=${term}`,
       pl:`/api/accounting/report/profit-loss?from=${f}&to=${t}`,
       bs:`/api/accounting/report/balance-sheet?asOf=${t}`,

@@ -51,10 +51,13 @@ BEGIN
         ReturnDevOtp BIT NOT NULL DEFAULT 0,
         LoginOtpExpiryMinutes INT NOT NULL DEFAULT 10,
         TrustedDeviceDays INT NOT NULL DEFAULT 30,
+        EnableLoginOtp BIT NOT NULL DEFAULT 1,
         UpdatedBy NVARCHAR(180) NULL,
         UpdatedAt DATETIME2 NOT NULL DEFAULT SYSUTCDATETIME()
     );
 END;
+IF COL_LENGTH('PlatformEmailSecuritySettings','EnableLoginOtp') IS NULL
+    ALTER TABLE PlatformEmailSecuritySettings ADD EnableLoginOtp BIT NOT NULL CONSTRAINT DF_PESS_EnableLoginOtp DEFAULT 1;
 IF OBJECT_ID('LoginSecurityState') IS NULL
 BEGIN
     CREATE TABLE LoginSecurityState(
@@ -126,7 +129,8 @@ END;";
         await using var con = await _db.OpenMasterAsync();
         await using var cmd = con.CreateCommand();
         cmd.CommandText = @"SELECT TOP 1 FromEmail,FromName,SmtpHost,SmtpPort,ISNULL(SmtpUser,'') SmtpUser,
-ISNULL(SmtpPasswordProtected,'') SmtpPasswordProtected,EnableSsl,ReturnDevOtp,LoginOtpExpiryMinutes,TrustedDeviceDays
+ISNULL(SmtpPasswordProtected,'') SmtpPasswordProtected,EnableSsl,ReturnDevOtp,LoginOtpExpiryMinutes,TrustedDeviceDays,
+ISNULL(EnableLoginOtp,1) EnableLoginOtp
 FROM PlatformEmailSecuritySettings WHERE SettingId=1";
         await using var r = await cmd.ExecuteReaderAsync();
         if (await r.ReadAsync())
@@ -143,7 +147,8 @@ FROM PlatformEmailSecuritySettings WHERE SettingId=1";
                 SqlRead.Bool(r, "ReturnDevOtp"),
                 Math.Clamp(SqlRead.Int(r, "LoginOtpExpiryMinutes"), 5, 30),
                 Math.Clamp(SqlRead.Int(r, "TrustedDeviceDays"), 1, 90),
-                true);
+                true,
+                SqlRead.Bool(r, "EnableLoginOtp"));
         }
 
         return new EffectiveEmailSecuritySettings(
@@ -157,7 +162,8 @@ FROM PlatformEmailSecuritySettings WHERE SettingId=1";
             _configuration.GetValue<bool?>("OtpEmail:ReturnDevOtp") ?? false,
             DefaultOtpExpiryMinutes,
             DefaultTrustedDeviceDays,
-            false);
+            false,
+            true);
     }
 
     public async Task SaveEmailSettingsAsync(OwnerEmailSecuritySettingsRequest request, string updatedBy)
@@ -180,9 +186,9 @@ MERGE PlatformEmailSecuritySettings AS target
 USING (SELECT CAST(1 AS INT) SettingId) AS source ON target.SettingId=source.SettingId
 WHEN MATCHED THEN UPDATE SET FromEmail=@FromEmail,FromName=@FromName,SmtpHost=@SmtpHost,SmtpPort=@SmtpPort,
 SmtpUser=@SmtpUser,SmtpPasswordProtected=@SmtpPasswordProtected,EnableSsl=@EnableSsl,ReturnDevOtp=@ReturnDevOtp,
-LoginOtpExpiryMinutes=@LoginOtpExpiryMinutes,TrustedDeviceDays=@TrustedDeviceDays,UpdatedBy=@UpdatedBy,UpdatedAt=SYSUTCDATETIME()
-WHEN NOT MATCHED THEN INSERT(SettingId,FromEmail,FromName,SmtpHost,SmtpPort,SmtpUser,SmtpPasswordProtected,EnableSsl,ReturnDevOtp,LoginOtpExpiryMinutes,TrustedDeviceDays,UpdatedBy)
-VALUES(1,@FromEmail,@FromName,@SmtpHost,@SmtpPort,@SmtpUser,@SmtpPasswordProtected,@EnableSsl,@ReturnDevOtp,@LoginOtpExpiryMinutes,@TrustedDeviceDays,@UpdatedBy);";
+LoginOtpExpiryMinutes=@LoginOtpExpiryMinutes,TrustedDeviceDays=@TrustedDeviceDays,EnableLoginOtp=@EnableLoginOtp,UpdatedBy=@UpdatedBy,UpdatedAt=SYSUTCDATETIME()
+WHEN NOT MATCHED THEN INSERT(SettingId,FromEmail,FromName,SmtpHost,SmtpPort,SmtpUser,SmtpPasswordProtected,EnableSsl,ReturnDevOtp,LoginOtpExpiryMinutes,TrustedDeviceDays,EnableLoginOtp,UpdatedBy)
+VALUES(1,@FromEmail,@FromName,@SmtpHost,@SmtpPort,@SmtpUser,@SmtpPasswordProtected,@EnableSsl,@ReturnDevOtp,@LoginOtpExpiryMinutes,@TrustedDeviceDays,@EnableLoginOtp,@UpdatedBy);";
         cmd.Parameters.AddWithValue("@FromEmail", fromEmail);
         cmd.Parameters.AddWithValue("@FromName", string.IsNullOrWhiteSpace(request.FromName) ? "PayNex Cloud ERP" : request.FromName.Trim());
         cmd.Parameters.AddWithValue("@SmtpHost", (request.SmtpHost ?? string.Empty).Trim());
@@ -193,6 +199,7 @@ VALUES(1,@FromEmail,@FromName,@SmtpHost,@SmtpPort,@SmtpUser,@SmtpPasswordProtect
         cmd.Parameters.AddWithValue("@ReturnDevOtp", request.ReturnDevOtp);
         cmd.Parameters.AddWithValue("@LoginOtpExpiryMinutes", Math.Clamp(request.LoginOtpExpiryMinutes, 5, 30));
         cmd.Parameters.AddWithValue("@TrustedDeviceDays", Math.Clamp(request.TrustedDeviceDays, 1, 90));
+        cmd.Parameters.AddWithValue("@EnableLoginOtp", request.EnableLoginOtp);
         cmd.Parameters.AddWithValue("@UpdatedBy", updatedBy ?? string.Empty);
         await cmd.ExecuteNonQueryAsync();
         await WriteSecurityAuditAsync(updatedBy, "OWNER_EMAIL_SECURITY_SETTINGS_UPDATED", "Success", $"Sender={fromEmail}; Host={request.SmtpHost}; Port={request.SmtpPort}", null, null);
@@ -207,8 +214,8 @@ VALUES(1,@FromEmail,@FromName,@SmtpHost,@SmtpPort,@SmtpUser,@SmtpPasswordProtect
         var expiry = purpose.Equals("LOGIN_MFA", StringComparison.OrdinalIgnoreCase)
             ? settings.LoginOtpExpiryMinutes
             : 15;
-        var body = $"Your PayNex Cloud ERP verification code is {code}.\r\n\r\nCompany: {companyName}\r\nRequested by: {requestedBy}\r\nThis code expires in {expiry} minutes.\r\n\r\nIf you did not request this code, do not share it and contact your administrator.";
-        return await SendEmailAsync(settings, toEmail, subject, body);
+        var html = BuildOtpEmailHtml(code, companyName, requestedBy, expiry, isTest: false);
+        return await SendEmailAsync(settings, toEmail, subject, html, isHtml: true);
     }
 
     public async Task<EmailDeliveryResult> SendNewUserCredentialsEmailAsync(
@@ -262,12 +269,18 @@ Keep this email and password private. If you did not expect this account, contac
         }
     }
 
-    public async Task<EmailDeliveryResult> SendTestEmailAsync(string toEmail)
+    public async Task<(EmailDeliveryResult Delivery, string TestOtp)> SendTestEmailAsync(string toEmail)
     {
         var normalized = NormalizeEmail(toEmail);
         if (string.IsNullOrWhiteSpace(normalized)) throw new InvalidOperationException("A valid test recipient email is required.");
         var settings = await GetEffectiveEmailSettingsAsync();
-        return await SendEmailAsync(settings, normalized, "PayNex Cloud ERP email setup test", "This is a test email from the PayNex owner-managed Email & OTP Security Setup. This mailbox sends new-user login details and sign-in OTP codes.");
+        // Same 6-digit OTP format used for real login verification emails.
+        var testOtp = RandomNumberGenerator.GetInt32(100000, 1000000).ToString();
+        var expiry = Math.Clamp(settings.LoginOtpExpiryMinutes, 5, 30);
+        var subject = "PayNex Cloud ERP — OTP Setup Test Code";
+        var html = BuildOtpEmailHtml(testOtp, "PayNex OTP Setup", "Owner test", expiry, isTest: true);
+        var delivery = await SendEmailAsync(settings, normalized, subject, html, isHtml: true);
+        return (delivery, testOtp);
     }
 
     public async Task<DateTimeOffset?> GetLockoutUntilAsync(string email, string ipAddress)
@@ -682,7 +695,33 @@ VALUES(@TokenHash,@SessionId,@Email,@CompanyCode,@UserId,@ProtectedSessionJson,@
         return new RefreshTokenIssue(plain, expires);
     }
 
-    private async Task<EmailDeliveryResult> SendEmailAsync(EffectiveEmailSecuritySettings settings, string toEmail, string subject, string body)
+    private static string BuildOtpEmailHtml(string code, string companyName, string requestedBy, int expiryMinutes, bool isTest)
+    {
+        var safeCode = System.Net.WebUtility.HtmlEncode(code ?? string.Empty);
+        var safeCompany = System.Net.WebUtility.HtmlEncode(companyName ?? "PayNex");
+        var safeBy = System.Net.WebUtility.HtmlEncode(requestedBy ?? string.Empty);
+        var title = isTest ? "Test verification code" : "Your sign-in verification code";
+        var testNote = isTest
+            ? "<p style='margin:12px 0 0;text-align:center;font-size:12px;color:#667085;'>This is a TEST OTP only (not for login).</p>"
+            : "";
+        return $@"<!DOCTYPE html>
+<html>
+<body style='margin:0;padding:24px;background:#f4f7fb;font-family:Segoe UI,Arial,sans-serif;color:#1f2937;'>
+  <div style='max-width:480px;margin:0 auto;background:#ffffff;border:1px solid #d8e2ee;border-radius:12px;padding:28px 24px;'>
+    <p style='margin:0;text-align:center;font-size:13px;color:#667085;letter-spacing:.04em;'>PayNex Cloud ERP</p>
+    <p style='margin:10px 0 0;text-align:center;font-size:16px;font-weight:600;'>{title}</p>
+    <div style='text-align:center;margin:28px 0 18px;'>
+      <div style='display:inline-block;font-size:44px;font-weight:800;letter-spacing:10px;line-height:1.15;color:#0b5cab;'>{safeCode}</div>
+    </div>
+    <p style='margin:0;text-align:center;font-size:13px;font-weight:700;color:#b42318;'>Don't share this code with anyone.</p>
+    {testNote}
+    <p style='margin:18px 0 0;text-align:center;font-size:12px;color:#667085;'>Company: {safeCompany}<br>Requested by: {safeBy}<br>Expires in {expiryMinutes} minutes.</p>
+  </div>
+</body>
+</html>";
+    }
+
+    private async Task<EmailDeliveryResult> SendEmailAsync(EffectiveEmailSecuritySettings settings, string toEmail, string subject, string body, bool isHtml = false)
     {
         if (string.IsNullOrWhiteSpace(settings.SmtpHost))
             return new EmailDeliveryResult(false, false, settings.ReturnDevOtp, settings.FromEmail, "SMTP host is not configured.");
@@ -693,7 +732,7 @@ VALUES(@TokenHash,@SessionId,@Email,@CompanyCode,@UserId,@ProtectedSessionJson,@
                 From = new MailAddress(settings.FromEmail, settings.FromName),
                 Subject = subject,
                 Body = body,
-                IsBodyHtml = false
+                IsBodyHtml = isHtml
             };
             message.To.Add(toEmail);
             using var smtp = new SmtpClient(settings.SmtpHost, settings.SmtpPort)

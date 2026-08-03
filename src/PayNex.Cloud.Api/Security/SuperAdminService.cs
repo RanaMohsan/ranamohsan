@@ -49,6 +49,7 @@ BEGIN
     SET UserName=@UserName,
         DisplayName=@DisplayName,
         Email=@Email,
+        PasswordHash=@PasswordHash,
         RoleName='SuperAdmin',
         IsActive=1
     WHERE UserName=@UserName OR LOWER(ISNULL(Email,''))=@Email;

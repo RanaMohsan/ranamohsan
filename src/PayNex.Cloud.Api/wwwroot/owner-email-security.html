@@ -2,93 +2,11 @@
 <html>
 <head>
   <meta charset="utf-8">
-  <meta name="viewport" content="width=device-width,initial-scale=1">
-  <title>Email & OTP Security Setup</title>
-  <link rel="stylesheet" href="/css/app.css?v=final-fixes-20260715">
-  <style>
-    .security-setup-grid{display:grid;grid-template-columns:minmax(0,2fr) minmax(280px,1fr);gap:18px}.security-form-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:14px}.security-form-grid .full{grid-column:1/-1}.security-card{background:#fff;border:1px solid #d8e2ee;border-radius:10px;padding:20px}.security-card h2{margin-top:0}.setting-check{display:flex;align-items:center;gap:9px;margin:10px 0}.setting-check input{width:auto}.security-note{padding:12px;border-radius:7px;background:#f5f8fb;border-left:4px solid #2b6fa6}.security-warning{padding:12px;border-radius:7px;background:#fff7e6;border-left:4px solid #c47b00}.password-state{font-size:12px;margin-top:5px}.owner-security-actions{display:flex;gap:10px;flex-wrap:wrap;margin-top:16px}@media(max-width:900px){.security-setup-grid,.security-form-grid{grid-template-columns:1fr}.security-form-grid .full{grid-column:auto}}
-  </style>
+  <meta http-equiv="refresh" content="0; url=/email-setup.html">
+  <title>OTP Setup</title>
+  <script>location.replace('/email-setup.html');</script>
 </head>
 <body>
-  <main class="shell bc-list-page">
-    <section class="bc-page-heading">
-      <div>
-        <div class="bc-breadcrumb">Owner Portal / Security / Email & OTP Setup</div>
-        <h1>Email & OTP Security Setup</h1>
-        <p id="who" class="muted">Loading PayNex owner profile...</p>
-      </div>
-      <span class="bc-page-badge">Owner Only</span>
-    </section>
-
-    <section class="bc-command-bar">
-      <button id="saveBtn" class="bc-command-primary" type="button">Save Security Setup</button>
-      <button id="testBtn" class="secondary" type="button">Send Test Email</button>
-      <a class="secondary" href="/platform-portal.html">Back to Owner Portal</a>
-    </section>
-
-    <div class="security-setup-grid">
-      <section class="security-card">
-        <h2>OTP &amp; User Login Mailbox</h2>
-        <p class="muted">Login OTP codes and new-user login details (email and initial password) are sent from this mailbox. The SMTP password is encrypted before it is stored in the master database.</p>
-        <div class="security-form-grid">
-          <label>From Email Address
-            <input id="fromEmail" type="email" placeholder="no-reply@yourdomain.com" maxlength="180">
-          </label>
-          <label>Display Name
-            <input id="fromName" placeholder="PayNex Cloud ERP" maxlength="150">
-          </label>
-          <label>SMTP Host
-            <input id="smtpHost" placeholder="smtp.office365.com" maxlength="180">
-          </label>
-          <label>SMTP Port
-            <input id="smtpPort" type="number" min="1" max="65535" value="587">
-          </label>
-          <label>SMTP User / Login Email
-            <input id="smtpUser" type="text" autocomplete="username" placeholder="no-reply@yourdomain.com" maxlength="180">
-          </label>
-          <label>SMTP Password / App Password
-            <input id="smtpPassword" type="password" autocomplete="new-password" placeholder="Leave blank to keep saved password">
-            <div id="passwordState" class="password-state muted">No password status loaded.</div>
-          </label>
-          <label>Login OTP Expiry (minutes)
-            <input id="otpMinutes" type="number" min="5" max="30" value="10">
-          </label>
-          <label>Trusted Device Duration (days)
-            <input id="trustedDays" type="number" min="1" max="90" value="30">
-          </label>
-          <div class="full">
-            <label class="setting-check"><input id="enableSsl" type="checkbox" checked> Use SSL/TLS for SMTP</label>
-            <label class="setting-check"><input id="clearPassword" type="checkbox"> Remove the currently stored SMTP password</label>
-            <label class="setting-check"><input id="returnDevOtp" type="checkbox"> Return OTP in the API response for local development only</label>
-          </div>
-        </div>
-        <div class="owner-security-actions">
-          <button id="saveBtnBottom" class="success" type="button">Save Security Setup</button>
-        </div>
-        <p id="status" aria-live="polite"></p>
-      </section>
-
-      <aside>
-        <section class="security-card">
-          <h2>Test Configuration</h2>
-          <label>Test Recipient Email
-            <input id="testEmail" type="email" placeholder="owner@example.com">
-          </label>
-          <button id="sendTestBtn" class="secondary" type="button" style="width:100%;margin-top:12px">Send Test Email</button>
-          <p id="testStatus" aria-live="polite"></p>
-        </section>
-        <section class="security-card" style="margin-top:18px">
-          <h2>Security Behavior</h2>
-          <div class="security-note">A new user first receives login details from this mailbox. On first login, a new browser/device, or after the configured trust period expires, the same mailbox sends a one-time OTP. Successful OTP verification trusts that browser for 30 days by default.</div>
-          <div class="security-warning" style="margin-top:12px"><b>Production:</b> Disable “Return OTP in API response.” Use an app password, SMTP relay credential, Microsoft Graph, or another controlled sender mailbox.</div>
-          <p class="muted" style="margin-bottom:0">Only the PayNex Platform Owner can open this page or call its APIs. Company administrators and normal users cannot view the SMTP configuration.</p>
-        </section>
-      </aside>
-    </div>
-  </main>
-
-  <script src="/js/api.js?v=first-login-otp-20260714"></script>
-  <script src="/js/owner-email-security.js?v=first-login-otp-20260714"></script>
-  <script src="/js/app-shell.js?v=final-fixes-20260715"></script>
+  <p>Redirecting to <a href="/email-setup.html">OTP Setup</a>...</p>
 </body>
 </html>

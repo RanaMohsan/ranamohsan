@@ -63,6 +63,11 @@
       $('who').textContent = `${me.companyName} | ${me.displayName} | ${me.roleName}`;
       $('factPreparedBy').textContent = me.displayName || '—';
       $('factStore').textContent = me.branchName || me.storeName || 'Current branch';
+      if(me.postingBlocked || me.PostingBlocked){
+        window.__paynexPostingBlocked = true;
+        $('postBtn').disabled = true;
+        $('postBtn').title = me.licenseMessage || me.LicenseMessage || 'License expired. Draft only.';
+      }
     }catch{
       location.href = '/login.html';
       return;

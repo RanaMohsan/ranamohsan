@@ -4,7 +4,7 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width,initial-scale=1">
   <title>PayNex Cloud ERP</title>
-  <link rel="stylesheet" href="/css/app.css?v=final-fixes-20260715">
+  <link rel="stylesheet" href="/css/app.css?v=home-cal-compact-20260801">
 </head>
 <body class="fo-home-page">
   <main class="shell fo-home-shell">
@@ -15,10 +15,20 @@
 
     <section class="fo-dashboard-layout">
       <aside class="fo-home-left-card">
+        <div class="fo-company-avatar-wrap">
+          <div class="fo-company-avatar" id="homeCompanyAvatar" aria-hidden="true">
+            <img id="homeCompanyLogo" alt="" hidden>
+            <span id="homeCompanyInitials">PN</span>
+          </div>
+          <div class="fo-company-avatar-meta">
+            <strong id="homeCompanyAvatarName">Company</strong>
+          </div>
+        </div>
+
         <div class="fo-calendar-card">
           <div class="fo-calendar-head">
             <button type="button" class="fo-calendar-nav" aria-label="Previous month">‹</button>
-            <strong id="foCalendarMonth">July&nbsp;&nbsp;2027</strong>
+            <strong id="foCalendarMonth">August 2026</strong>
             <button type="button" class="fo-calendar-nav" aria-label="Next month">›</button>
           </div>
           <div class="fo-calendar-weekdays">
@@ -29,10 +39,9 @@
 
         <div class="fo-workitems-card">
           <div class="fo-workitems-head">
-            <h2>Work items assigned to me</h2>
-            <span>⌃</span>
+            <h2>My work</h2>
           </div>
-          <p>Work items will be displayed here after they are assigned to you.</p>
+          <p>No items yet.</p>
         </div>
       </aside>
 
@@ -41,7 +50,7 @@
   </main>
 
   <script src="/js/api.js"></script>
-  <script src="/js/workspace.js?v=final-fixes-20260715"></script>
-  <script src="/js/app-shell.js?v=final-fixes-20260715"></script>
+  <script src="/js/workspace.js?v=home-cal-compact-20260801"></script>
+  <script src="/js/app-shell.js?v=otp-nav-20260731"></script>
 </body>
 </html>

@@ -1,5 +1,6 @@
 using Microsoft.Data.SqlClient;
 using PayNex.Cloud.Api.Data;
+using PayNex.Cloud.Api.Endpoints;
 using PayNex.Cloud.Api.Models;
 
 namespace PayNex.Cloud.Api.Services;
@@ -132,10 +133,49 @@ VALUES(@StoreId,@BranchCode,@ProductId,'Sale',@InvoiceNo,0,@Quantity,@UnitCost,'
     public static async Task PostBasicSalesAccountingAsync(SqlConnection con, SqlTransaction tran, string invoiceNo, int saleId, decimal grandTotal, decimal taxAmount, decimal costTotal, List<SalePaymentRequest> payments, string branchCode = "")
     {
         var setup = await GetPostingSetupAsync(con, tran);
-        var cashReceived = payments.Where(p => !p.PaymentMethodName.Equals("Credit", StringComparison.OrdinalIgnoreCase)).Sum(p => p.Amount);
-        var creditAmount = payments.Where(p => p.PaymentMethodName.Equals("Credit", StringComparison.OrdinalIgnoreCase)).Sum(p => p.Amount);
+        // Allocate tenders only up to grandTotal. Cash → CashAccount; Bank-like → selected AccountNo (or default Bank); Credit → AR.
+        var cashByAccount = new Dictionary<string, decimal>(StringComparer.OrdinalIgnoreCase);
+        var bankByAccount = new Dictionary<string, decimal>(StringComparer.OrdinalIgnoreCase);
+        decimal creditAmount = 0, remaining = grandTotal;
+
+        foreach (var p in payments)
+        {
+            if (remaining <= 0) break;
+            var take = Math.Min(p.Amount, remaining);
+            if (take <= 0) continue;
+            remaining -= take;
+            var method = BankAccountEndpoints.NormalizePaymentMethodName(p.PaymentMethodName);
+            if (method.Equals("Credit", StringComparison.OrdinalIgnoreCase))
+            {
+                creditAmount += take;
+                continue;
+            }
+
+            var accountNo = await BankAccountEndpoints.ResolvePaymentAccountAsync(con, tran, new SalePaymentRequest
+            {
+                PaymentMethodId = p.PaymentMethodId,
+                PaymentMethodName = method,
+                Amount = take,
+                ReferenceNo = p.ReferenceNo,
+                AccountNo = p.AccountNo,
+                BankAccountId = p.BankAccountId
+            }, setup);
+
+            if (IsBankLikePayment(method))
+            {
+                bankByAccount[accountNo] = bankByAccount.GetValueOrDefault(accountNo) + take;
+            }
+            else
+            {
+                cashByAccount[accountNo] = cashByAccount.GetValueOrDefault(accountNo) + take;
+            }
+        }
+
         var netSales = grandTotal - taxAmount;
-        if (cashReceived > 0) await InsertGlAsync(con, tran, setup["CashAccount"], DateTime.Today, "POS Sale", invoiceNo, cashReceived, 0, "Cash/Card/Bank received", saleId, branchCode);
+        foreach (var kv in cashByAccount)
+            await InsertGlAsync(con, tran, kv.Key, DateTime.Today, "POS Sale", invoiceNo, kv.Value, 0, "Cash received", saleId, branchCode);
+        foreach (var kv in bankByAccount)
+            await InsertGlAsync(con, tran, kv.Key, DateTime.Today, "POS Sale", invoiceNo, kv.Value, 0, "Bank received", saleId, branchCode);
         if (creditAmount > 0) await InsertGlAsync(con, tran, setup["ReceivableAccount"], DateTime.Today, "POS Sale", invoiceNo, creditAmount, 0, "Customer receivable", saleId, branchCode);
         if (netSales > 0) await InsertGlAsync(con, tran, setup["SalesAccount"], DateTime.Today, "POS Sale", invoiceNo, 0, netSales, "Sales revenue", saleId, branchCode);
         if (taxAmount > 0) await InsertGlAsync(con, tran, setup["OutputTaxAccount"], DateTime.Today, "POS Sale", invoiceNo, 0, taxAmount, "Output tax", saleId, branchCode);
@@ -145,6 +185,20 @@ VALUES(@StoreId,@BranchCode,@ProductId,'Sale',@InvoiceNo,0,@Quantity,@UnitCost,'
             await InsertGlAsync(con, tran, setup["InventoryAccount"], DateTime.Today, "POS Sale", invoiceNo, 0, costTotal, "Inventory issued", saleId, branchCode);
         }
     }
+
+    public static bool IsBankLikePayment(string paymentMethod)
+    {
+        var m = BankAccountEndpoints.NormalizePaymentMethodName(paymentMethod);
+        return m.Equals("Bank", StringComparison.OrdinalIgnoreCase)
+            || m.Equals("Card", StringComparison.OrdinalIgnoreCase)
+            || m.Equals("Bank Transfer", StringComparison.OrdinalIgnoreCase)
+            || m.Equals("Wallet", StringComparison.OrdinalIgnoreCase)
+            || m.Equals("Cheque", StringComparison.OrdinalIgnoreCase)
+            || m.Equals("Check", StringComparison.OrdinalIgnoreCase);
+    }
+
+    public static string PaymentGlAccount(Dictionary<string, string> setup, string paymentMethod)
+        => IsBankLikePayment(paymentMethod) ? setup["BankAccount"] : setup["CashAccount"];
 
     private static async Task<Dictionary<string,string>> GetPostingSetupAsync(SqlConnection con, SqlTransaction tran)
     {

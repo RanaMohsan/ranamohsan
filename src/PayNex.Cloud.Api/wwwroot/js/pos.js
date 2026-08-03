@@ -23,18 +23,123 @@ async function init(){
   try{
     const me = await api.get('/api/me');
     document.getElementById('who').textContent = `${me.companyName || me.CompanyName} | ${me.displayName || me.DisplayName} | ${me.roleName || me.RoleName}`;
+    if(me.postingBlocked || me.PostingBlocked){
+      window.__paynexPostingBlocked = true;
+      window.__paynexLicenseMessage = me.licenseMessage || me.LicenseMessage || 'License expired. Posting is blocked.';
+      msg('status', window.__paynexLicenseMessage, false);
+    }
     const look = await api.get('/api/lookups');
     lockCustomerToWalkIn(look.customers || []);
+    await PayNexPayment.load();
+    PayNexPayment.fillBankSelect(document.getElementById('payBank'));
+    PayNexPayment.toggleBankRow('payMethod','bankPickWrap');
+    wireBarcodeScan();
     await loadProducts();
+    focusScan();
   }catch{
     location.href = '/login.html';
+  }
+}
+
+function focusScan(){
+  const el = document.getElementById('cartBarcode');
+  if(el){ el.focus(); el.select(); }
+}
+
+function wireBarcodeScan(){
+  const el = document.getElementById('cartBarcode');
+  if(!el) return;
+  el.addEventListener('keydown', async ev => {
+    if(ev.key !== 'Enter') return;
+    ev.preventDefault();
+    const code = String(el.value || '').trim();
+    el.value = '';
+    if(!code) return;
+    await autoAddByBarcode(code);
+    focusScan();
+  });
+}
+
+function productMatchKey(p, code){
+  const q = String(code || '').trim().toLowerCase();
+  if(!q) return false;
+  const barcode = String(val(p,'barcode','Barcode') || '').trim().toLowerCase();
+  const productCode = String(val(p,'productCode','ProductCode') || '').trim().toLowerCase();
+  return barcode === q || productCode === q;
+}
+
+async function findProductByCode(code){
+  const q = String(code || '').trim();
+  if(!q) return null;
+  let p = (products || []).find(x => productMatchKey(x, q));
+  if(p) return p;
+  try{
+    const list = await api.get('/api/products?term=' + encodeURIComponent(q));
+    const rows = list || [];
+    p = rows.find(x => productMatchKey(x, q)) || null;
+    // If API returns a single strong hit with matching barcode/code prefix, still require exact.
+    if(!p && rows.length === 1 && productMatchKey(rows[0], q)) p = rows[0];
+    if(p && !(products || []).some(x => Number(val(x,'productId','ProductId')) === Number(val(p,'productId','ProductId')))){
+      products = [p, ...(products || [])];
+    }
+    return p;
+  }catch{
+    return null;
+  }
+}
+
+function addProductToCart(p, qty = 1){
+  const pid = Number(val(p,'productId','ProductId'));
+  const availableStock = Number(val(p,'stockOnHand','StockOnHand') || 0);
+  const existingLine = cart.find(x => x.productId === pid);
+  const finalQuantity = Math.max(1, Number(qty || 1)) + Number(existingLine?.quantity || 0);
+  if(finalQuantity > availableStock){
+    msg('status', `Stock not enough for ${val(p,'productName','ProductName')}. Available: ${availableStock}`, false);
+    return false;
+  }
+  const price = Math.max(0, Number(val(p,'salePrice','SalePrice') || 0));
+  const discountAllowed = Boolean(val(p,'discountAllowed','DiscountAllowed'));
+  const discountPercent = discountAllowed ? Math.min(100, Math.max(0, Number(val(p,'productDiscountPercent','ProductDiscountPercent') || 0))) : 0;
+  const taxPercent = Number(val(p,'taxPercent','TaxPercent') || 0);
+  const taxInclusive = Boolean(val(p,'taxInclusive','TaxInclusive'));
+  if(existingLine){
+    existingLine.quantity = finalQuantity;
+  }else{
+    cart.push({
+      productId: pid,
+      productName: val(p,'productName','ProductName'),
+      productCode: val(p,'productCode','ProductCode'),
+      barcode: val(p,'barcode','Barcode') || '',
+      quantity: Math.max(1, Number(qty || 1)),
+      price,
+      discountPercent,
+      taxPercent,
+      taxInclusive
+    });
+  }
+  renderCart();
+  return true;
+}
+
+async function autoAddByBarcode(code){
+  try{
+    const p = await findProductByCode(code);
+    if(!p){
+      msg('status', `No item found for barcode/code: ${code}`, false);
+      return;
+    }
+    if(addProductToCart(p, 1)){
+      msg('status', `Added: ${val(p,'productName','ProductName')}`, true);
+    }
+  }catch(e){
+    msg('status', e.message || 'Scan failed.', false);
   }
 }
 
 async function loadProducts(){
   try{
     products = await api.get('/api/products?term=' + encodeURIComponent(term.value || ''));
-    document.getElementById('products').innerHTML = products.map(p => `<tr class="product"><td><b>${val(p,'productName','ProductName')}</b><br><span class="muted">${val(p,'productCode','ProductCode')} ${val(p,'barcode','Barcode') || ''}</span></td><td>${money(val(p,'salePrice','SalePrice'))}</td><td><span class="stock-badge">${val(p,'stockOnHand','StockOnHand')}</span></td><td><button class="accent" onclick="add(${val(p,'productId','ProductId')})">Add</button></td></tr>`).join('');
+    document.getElementById('products').innerHTML = products.map(p => `<tr class="product"><td><b>${val(p,'productName','ProductName')}</b><br><span class="muted">${val(p,'productCode','ProductCode')} ${val(p,'barcode','Barcode') || ''}</span></td><td class="pos-num">${money(val(p,'salePrice','SalePrice'))}</td><td class="pos-num"><span class="stock-badge">${val(p,'stockOnHand','StockOnHand')}</span></td><td class="pos-action"><button class="accent" onclick="add(${val(p,'productId','ProductId')})">Add</button></td></tr>`).join('');
   }catch(e){
     msg('status', e.message, false);
   }
@@ -129,6 +234,7 @@ function confirmProductModal(){
   }
   closeProductModal();
   renderCart();
+  focusScan();
 }
 
 function lineTotal(line){
@@ -147,8 +253,9 @@ function renderCart(){
 
 async function postSale(){
   try{
+    if(window.__paynexPostingBlocked){ msg('status', window.__paynexLicenseMessage || 'License expired. Posting is blocked.', false); return; }
     if(!cart.length){ msg('status','Cart is empty.',false); return; }
-    const method = payMethod.value || 'Cash';
+    const payment = PayNexPayment.buildPayment('payMethod', 'payBank', Number(paid.value || 0));
     const body = {
       customerId: 0,
       remarks: 'Web POS sale',
@@ -158,12 +265,7 @@ async function postSale(){
         unitPrice: line.price,
         discountPercent: line.discountPercent || 0
       })),
-      payments: [{
-        paymentMethodId: 1,
-        paymentMethodName: method,
-        amount: Number(paid.value || 0),
-        referenceNo: ''
-      }]
+      payments: [payment]
     };
     const result = await api.post('/api/pos/sales', body);
     lastSaleId = result.saleId || result.SaleId;
@@ -172,6 +274,7 @@ async function postSale(){
     cart = [];
     renderCart();
     await loadProducts();
+    focusScan();
     if(postedId) await api.openReport('/api/reports/pos-receipt/' + postedId + '/html');
   }catch(e){
     msg('status', e.message, false);

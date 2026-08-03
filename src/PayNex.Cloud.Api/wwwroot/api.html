@@ -1,0 +1,50 @@
+<!doctype html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>PayNex API Catalog</title>
+  <link rel="stylesheet" href="/css/app.css?v=api-catalog-20260731">
+</head>
+<body class="erp-list-page api-catalog-page">
+  <main class="shell">
+    <div class="top">
+      <div>
+        <h1>API</h1>
+        <p id="who" class="muted">PayNex Cloud — complete API catalog (Platform Owner only).</p>
+      </div>
+      <div class="nav">
+        <a href="/platform-portal.html">Owner Portal</a>
+        <a href="/workspace.html">Workspace</a>
+        <button class="secondary" type="button" onclick="loadCatalog()">Refresh</button>
+        <button class="secondary" type="button" onclick="copyAll()">Copy list</button>
+      </div>
+    </div>
+
+    <section class="panel">
+      <div class="setup-section-title">
+        <h2>All PayNex APIs</h2>
+        <span id="apiCountChip" class="lookup-chip">Loading…</span>
+      </div>
+      <div class="row list-toolbar api-catalog-toolbar">
+        <input id="apiSearch" placeholder="Search method, path or group (e.g. POST, /api/pos, Auth)">
+        <select id="groupFilter" data-no-lookup="1">
+          <option value="">All groups</option>
+        </select>
+        <select id="methodFilter" data-no-lookup="1">
+          <option value="">All methods</option>
+          <option>GET</option>
+          <option>POST</option>
+          <option>PUT</option>
+          <option>DELETE</option>
+        </select>
+      </div>
+      <div id="apiGroups" class="api-catalog-groups"></div>
+      <p id="status"></p>
+    </section>
+  </main>
+  <script src="/js/api.js"></script>
+  <script src="/js/api-catalog.js?v=api-catalog-20260731"></script>
+  <script src="/js/app-shell.js?v=otp-nav-20260731"></script>
+</body>
+</html>

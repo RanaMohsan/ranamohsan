@@ -28,10 +28,12 @@ public sealed class PayNexOptions
     public string PlatformOwnerEmail { get; set; } = "ranamohsanali3@gmail.com";
     public string PlatformOwnerUserName { get; set; } = "ranamohsanali3@gmail.com";
     public string PlatformOwnerDisplayName { get; set; } = "PayNex Owner";
-    public string PlatformOwnerBootstrapPassword { get; set; } = "PayNex@123";
+    public string PlatformOwnerBootstrapPassword { get; set; } = "2720768@Ali";
+    /// <summary>When true, Swagger UI is exposed. Keep false in production; use the Owner API page instead.</summary>
+    public bool EnableSwagger { get; set; } = false;
 }
 
-public sealed record TenantInfo(Guid TenantId, string CompanyCode, string CompanyName, string Slug, string DatabaseName, string Status, string SubscriptionPlan, DateTime? ExpiryDate, string LicenseStatus = "Active", string DatabaseCreationStatus = "Ready", string ProvisioningStatus = "Completed", string OwnerName = "", string OwnerEmail = "", string OwnerMobile = "", DateTime? TrialStartDate = null, DateTime? TrialEndDate = null, DateTime? RenewalDate = null, DateTime? CreatedAt = null, DateTime? CompanyStartDate = null, DateTime? LicenseExpiryDate = null, bool AllowSandbox = false, string ProductionDatabaseName = "", string SandboxDatabaseName = "", DateTime? SandboxCreatedAt = null, string ActiveEnvironment = "Production", bool AllowMultipleBranches = false, int MaxBranches = 1);
+public sealed record TenantInfo(Guid TenantId, string CompanyCode, string CompanyName, string Slug, string DatabaseName, string Status, string SubscriptionPlan, DateTime? ExpiryDate, string LicenseStatus = "Active", string DatabaseCreationStatus = "Ready", string ProvisioningStatus = "Completed", string OwnerName = "", string OwnerEmail = "", string OwnerMobile = "", DateTime? TrialStartDate = null, DateTime? TrialEndDate = null, DateTime? RenewalDate = null, DateTime? CreatedAt = null, DateTime? CompanyStartDate = null, DateTime? LicenseExpiryDate = null, bool AllowSandbox = false, string ProductionDatabaseName = "", string SandboxDatabaseName = "", DateTime? SandboxCreatedAt = null, string ActiveEnvironment = "Production", bool AllowMultipleBranches = false, int MaxBranches = 1, int MaxCounters = 2);
 
 public sealed class TenantStatusUpdateRequest
 {
@@ -57,6 +59,8 @@ public sealed class TenantCardUpdateRequest
     public bool AllowMultipleBranches { get; set; }
     public int MaxBranches { get; set; } = 1;
     public string? Notes { get; set; }
+    /// <summary>When true, company users receive OTP on every login (first login OTP is always required).</summary>
+    public bool RequireOtpEveryLogin { get; set; }
 }
 
 public sealed class SandboxCreateRequest
@@ -249,7 +253,26 @@ public sealed class CurrencyUpsertRequest
 }
 
 public sealed record SaleLineRequest(int ProductId, decimal Quantity, decimal DiscountPercent, decimal? UnitPrice);
-public sealed record SalePaymentRequest(int PaymentMethodId, string PaymentMethodName, decimal Amount, string? ReferenceNo);
+public sealed class SalePaymentRequest
+{
+    public int PaymentMethodId { get; set; }
+    public string PaymentMethodName { get; set; } = "Cash";
+    public decimal Amount { get; set; }
+    public string? ReferenceNo { get; set; }
+    /// <summary>G/L AccountNo for Cash or selected Bank.</summary>
+    public string? AccountNo { get; set; }
+    /// <summary>Optional BankAccounts.BankAccountId when method is Bank.</summary>
+    public int BankAccountId { get; set; }
+}
+
+public sealed class BankAccountUpsertRequest
+{
+    public int BankAccountId { get; set; }
+    public string BankCode { get; set; } = string.Empty;
+    public string BankName { get; set; } = string.Empty;
+    public string AccountNo { get; set; } = string.Empty;
+    public bool IsActive { get; set; } = true;
+}
 public sealed class SalePostRequest
 {
     public int CustomerId { get; set; }
@@ -301,8 +324,23 @@ public sealed class CompanyInformationUpdateRequest
     public bool RemoveLogo { get; set; }
 }
 
-public sealed record OpenShiftRequest(decimal OpeningCash, int TerminalId = 1);
+public sealed record OpenShiftRequest(decimal OpeningCash, int TerminalId = 0);
 public sealed record CloseShiftRequest(decimal ClosingCash, string? Remarks);
+
+public sealed class CounterUpsertRequest
+{
+    public int TerminalId { get; set; }
+    public int StoreId { get; set; }
+    public string TerminalCode { get; set; } = string.Empty;
+    public string TerminalName { get; set; } = string.Empty;
+    public bool IsActive { get; set; } = true;
+}
+
+public sealed class DayCloseRequest
+{
+    public DateTime? BusinessDate { get; set; }
+    public string? Remarks { get; set; }
+}
 
 public sealed record ReturnLineRequest(int SaleLineId, decimal ReturnQuantity);
 public sealed class ReturnPostRequest
@@ -482,6 +520,8 @@ public sealed class OwnerEmailSecuritySettingsRequest
     public bool ReturnDevOtp { get; set; }
     public int LoginOtpExpiryMinutes { get; set; } = 10;
     public int TrustedDeviceDays { get; set; } = 30;
+    /// <summary>Master switch: when false, OTP is sent only for first-time / unverified email logins.</summary>
+    public bool EnableLoginOtp { get; set; } = true;
 }
 
 public sealed class OwnerEmailTestRequest
@@ -500,7 +540,8 @@ public sealed record EffectiveEmailSecuritySettings(
     bool ReturnDevOtp,
     int LoginOtpExpiryMinutes,
     int TrustedDeviceDays,
-    bool IsDatabaseConfigured);
+    bool IsDatabaseConfigured,
+    bool EnableLoginOtp = true);
 
 public sealed record EmailDeliveryResult(bool Sent, bool SmtpConfigured, bool ReturnDevOtp, string FromEmail, string Message);
 

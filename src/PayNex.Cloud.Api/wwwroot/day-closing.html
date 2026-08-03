@@ -1,0 +1,75 @@
+<!doctype html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <link rel="stylesheet" href="/css/app.css?v=api-catalog-20260731">
+  <title>Day Closing</title>
+</head>
+<body>
+  <div class="shell shift-simple-page">
+    <div class="top">
+      <div>
+        <h1>Day Closing</h1>
+        <p id="who" class="muted">Close the business day for the current branch. Shifts must be closed first.</p>
+      </div>
+      <div class="nav">
+        <a href="/workspace.html">Workspace</a>
+        <a href="/shift.html">Shift</a>
+        <a href="/pos.html">POS</a>
+      </div>
+    </div>
+
+    <div class="shift-status-card panel">
+      <div>
+        <span id="dayBadge" class="status-pill neutral">Checking</span>
+        <h2 id="dayTitle">Business Day</h2>
+        <p id="dayText" class="muted">Loading day status...</p>
+      </div>
+      <div class="shift-kpis">
+        <div><span>Total Sales</span><b id="kSales">Rs. 0.00</b></div>
+        <div><span>Total Profit</span><b id="kProfit">Rs. 0.00</b></div>
+        <div><span>Refunds</span><b id="kRefunds">Rs. 0.00</b></div>
+      </div>
+    </div>
+
+    <div class="shift-flow-grid">
+      <div class="panel shift-step">
+        <span class="step-no">1</span>
+        <h2>Select Date</h2>
+        <p class="muted">Choose the business date to preview or close.</p>
+        <label>Business Date<input id="businessDate" type="date"></label>
+        <button class="secondary" onclick="loadPreview()">Refresh Preview</button>
+      </div>
+      <div class="panel shift-step">
+        <span class="step-no">2</span>
+        <h2>Close Day</h2>
+        <p class="muted">Stores one summary row only (no duplicate invoice copies).</p>
+        <label>Remarks<input id="closeRemarks" placeholder="Optional closing notes"></label>
+        <button class="danger" id="closeDayBtn" onclick="closeDay()">Close Business Day</button>
+        <p id="dayStatus"></p>
+      </div>
+      <div class="panel shift-step">
+        <span class="step-no">3</span>
+        <h2>Print Report</h2>
+        <p class="muted">Professional day summary with shift breakdown.</p>
+        <button onclick="loadReport()">Load Report</button>
+        <button class="secondary" onclick="window.print()">Print</button>
+      </div>
+    </div>
+
+    <div class="panel z-report-card">
+      <div class="setup-section-title">
+        <h2>Day Closing Report</h2>
+      </div>
+      <div id="dayReport" class="z-summary-grid"></div>
+      <div id="cashBankBreakdown" style="margin-top:16px"></div>
+      <div id="branchBreakdown" style="margin-top:16px"></div>
+      <div id="shiftBreakdown" style="margin-top:16px"></div>
+    </div>
+  </div>
+  <script src="/js/api.js?v=day-closing-20260728"></script>
+  <script src="/js/day-closing.js?v=pay-bank-20260729"></script>
+  <script src="/js/app-shell.js?v=api-nav-20260731"></script>
+</body>
+</html>

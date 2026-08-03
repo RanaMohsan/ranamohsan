@@ -13,9 +13,18 @@ function showProfileFallback(name){
 }
 function showProfilePreview(src){
   if(!src){showProfileFallback();return;}
-  profilePreviewImage.onload=()=>{profilePreviewImage.hidden=false;profilePreviewFallback.hidden=true};
+  profilePreviewImage.onload=()=>{
+    profilePreviewImage.hidden=false;
+    profilePreviewFallback.hidden=true;
+    syncHeaderAvatar(src);
+  };
   profilePreviewImage.onerror=()=>showProfileFallback();
   profilePreviewImage.src=src;
+}
+function syncHeaderAvatar(photoUrl){
+  const id=Number(userId?.value||editingId||0);
+  if(!id || !currentUserId || id!==currentUserId) return;
+  window.dispatchEvent(new CustomEvent('paynex-profile-updated',{detail:{userId:id,photoUrl:photoUrl||''}}));
 }
 function resetProfileEditor(name,hasPhoto=false,id=0){
   profileImageBase64=null; removeProfileImage=false; profileImageInput.value='';
@@ -141,7 +150,10 @@ async function saveUser(){
     if(removeProfileImage) showProfileFallback(displayName.value); else if(profileImageBase64) showProfilePreview(`/api/users/${savedId}/photo?v=${Date.now()}`);
     profileImageBase64=null; removeProfileImage=false; profileImageInput.value='';
     profileImageHelp.textContent='PNG, JPG, WEBP or GIF. Maximum file size: 2 MB.';
-    if(profileWasChanged&&savedId===currentUserId) window.dispatchEvent(new CustomEvent('paynex-profile-updated'));
+    if(profileWasChanged&&savedId===currentUserId){
+      const photoUrl=removeProfileImage?'':`/api/users/${savedId}/photo?v=${Date.now()}`;
+      window.dispatchEvent(new CustomEvent('paynex-profile-updated',{detail:{userId:savedId,photoUrl}}));
+    }
     if(submittedPassword && (r.passwordChanged!==false)) showPasswordReceipt(submittedPassword,(r.message||'User saved.')+' Password is ready in the one-time receipt.');
     else msg('userStatus',r.message||'User saved.',true);
   }catch(e){msg('userStatus',e.message,false)}

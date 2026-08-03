@@ -218,6 +218,13 @@ public sealed class TenantProvisioningService
         await using (var con = await _db.OpenMasterAsync())
         {
             await _runner.ExecuteScriptFileAsync(con, SchemaPath("MasterSchema.sql"));
+            await using var alter = con.CreateCommand();
+            alter.CommandText = @"
+IF COL_LENGTH('Tenants','RequireOtpEveryLogin') IS NULL
+    ALTER TABLE Tenants ADD RequireOtpEveryLogin BIT NOT NULL CONSTRAINT DF_Tenants_RequireOtpEveryLogin DEFAULT 0;
+IF COL_LENGTH('CentralUserDirectory','OwnerVisiblePassword') IS NULL
+    ALTER TABLE CentralUserDirectory ADD OwnerVisiblePassword NVARCHAR(200) NULL;";
+            await alter.ExecuteNonQueryAsync();
         }
     }
 
@@ -231,7 +238,7 @@ SELECT TenantId,CompanyCode,CompanyName,Slug,DatabaseName,Status,SubscriptionPla
        ISNULL(OwnerName,'') OwnerName,ISNULL(OwnerEmail,'') OwnerEmail,ISNULL(OwnerMobile,'') OwnerMobile,
        TrialStartDate,TrialEndDate,RenewalDate,CreatedAt,CompanyStartDate,LicenseExpiryDate,
        ISNULL(AllowSandbox,0) AllowSandbox,ISNULL(ProductionDatabaseName,DatabaseName) ProductionDatabaseName,
-       ISNULL(SandboxDatabaseName,'') SandboxDatabaseName,SandboxCreatedAt,ISNULL(ActiveEnvironment,'Production') ActiveEnvironment,ISNULL(AllowMultipleBranches,0) AllowMultipleBranches,ISNULL(MaxBranches,1) MaxBranches
+       ISNULL(SandboxDatabaseName,'') SandboxDatabaseName,SandboxCreatedAt,ISNULL(ActiveEnvironment,'Production') ActiveEnvironment,ISNULL(AllowMultipleBranches,0) AllowMultipleBranches,ISNULL(MaxBranches,1) MaxBranches,ISNULL(MaxCounters,2) MaxCounters
 FROM Tenants ORDER BY CreatedAt DESC";
         var list = new List<TenantInfo>();
         await using var r = await cmd.ExecuteReaderAsync();
@@ -258,6 +265,8 @@ FROM Tenants ORDER BY CreatedAt DESC";
         var adminEmail = NormalizeEmail(req.AdminEmail) ?? NormalizeEmail(req.OwnerEmail) ?? $"{adminUser.ToLowerInvariant()}@{companyCode.ToLowerInvariant()}.paynex.local";
         if (string.Equals(adminEmail, NormalizeEmail(Options.PlatformOwnerEmail), StringComparison.OrdinalIgnoreCase))
             adminEmail = $"{adminUser.ToLowerInvariant()}@{companyCode.ToLowerInvariant()}.paynex.local";
+        // One email = one PayNex login identity across all companies + mobile apps.
+        await EnsureGlobalEmailAvailableAsync(adminEmail);
         var plan = string.IsNullOrWhiteSpace(req.SubscriptionPlan) ? "Standard" : req.SubscriptionPlan!.Trim();
         var startDate = req.CompanyStartDate?.Date ?? DateTime.Today;
         var expiry = req.LicenseExpiryDate?.Date ?? DateTime.Today.AddDays(Options.DefaultSubscriptionDays);
@@ -467,7 +476,7 @@ END";
         SqlRead.String(r,"ProductionDatabaseName"),
         SqlRead.String(r,"SandboxDatabaseName"),
         SqlRead.NullableDateTime(r,"SandboxCreatedAt"),
-        SqlRead.String(r,"ActiveEnvironment"), SqlRead.Bool(r,"AllowMultipleBranches"), SqlRead.Int(r,"MaxBranches"));
+        SqlRead.String(r,"ActiveEnvironment"), SqlRead.Bool(r,"AllowMultipleBranches"), SqlRead.Int(r,"MaxBranches"), SqlRead.Int(r,"MaxCounters"));
 
     public async Task UpdateTenantCardAsync(string companyCode, TenantCardUpdateRequest request)
     {
@@ -496,6 +505,7 @@ SET CompanyName=@CompanyName,
     AllowMultipleBranches=@AllowMultipleBranches,
     MaxBranches=@MaxBranches,
     Notes=@Notes,
+    RequireOtpEveryLogin=@RequireOtpEveryLogin,
     UpdatedAt=SYSUTCDATETIME()
 WHERE CompanyCode=@CompanyCode;
 INSERT INTO TenantAuditLog(CompanyCode,ActionName,Description)
@@ -515,8 +525,64 @@ VALUES(@CompanyCode,'UPDATE_TENANT_CARD','Company card updated from Super Admin 
         cmd.Parameters.AddWithValue("@AllowMultipleBranches", request.AllowMultipleBranches);
         cmd.Parameters.AddWithValue("@MaxBranches", request.AllowMultipleBranches ? Math.Max(2, request.MaxBranches) : 1);
         cmd.Parameters.AddWithValue("@Notes", request.Notes ?? "");
+        cmd.Parameters.AddWithValue("@RequireOtpEveryLogin", request.RequireOtpEveryLogin);
         var rows = await cmd.ExecuteNonQueryAsync();
         if (rows == 0) throw new InvalidOperationException("Company code not found.");
+    }
+
+    public async Task<TenantInfo> DeleteSandboxAsync(string companyCode)
+    {
+        await EnsureMasterDatabaseAsync();
+        var tenant = await _db.GetTenantByCodeAsync(companyCode) ?? throw new InvalidOperationException("Company code not found.");
+        var sandboxDb = (tenant.SandboxDatabaseName ?? string.Empty).Trim();
+        if (string.IsNullOrWhiteSpace(sandboxDb))
+            throw new InvalidOperationException("This company has no sandbox database to delete.");
+        if (!ConnectionFactory.IsSafeDatabaseName(sandboxDb))
+            throw new InvalidOperationException("Invalid sandbox database name.");
+
+        // Never drop production/master databases by mistake.
+        if (string.Equals(sandboxDb, tenant.ProductionDatabaseName, StringComparison.OrdinalIgnoreCase) ||
+            string.Equals(sandboxDb, tenant.DatabaseName, StringComparison.OrdinalIgnoreCase) ||
+            string.Equals(sandboxDb, Options.MasterDatabaseName, StringComparison.OrdinalIgnoreCase))
+            throw new InvalidOperationException("Sandbox delete refused: database name matches production/master.");
+
+        await using (var master = await _db.OpenMasterServerAsync())
+        {
+            await using var drop = master.CreateCommand();
+            drop.CommandText = $@"
+IF DB_ID(@DbName) IS NOT NULL
+BEGIN
+    DECLARE @kill nvarchar(max) = N'';
+    SELECT @kill = @kill + N'KILL ' + CONVERT(varchar(11), session_id) + N';'
+    FROM sys.dm_exec_sessions
+    WHERE database_id = DB_ID(@DbName) AND session_id <> @@SPID;
+    IF LEN(@kill) > 0 EXEC(@kill);
+    EXEC('ALTER DATABASE [{sandboxDb.Replace("]", "]]")}] SET SINGLE_USER WITH ROLLBACK IMMEDIATE');
+    EXEC('DROP DATABASE [{sandboxDb.Replace("]", "]]")}]');
+END";
+            drop.Parameters.AddWithValue("@DbName", sandboxDb);
+            await drop.ExecuteNonQueryAsync();
+        }
+
+        await using (var con = await _db.OpenMasterAsync())
+        await using (var cmd = con.CreateCommand())
+        {
+            cmd.CommandText = @"
+UPDATE Tenants
+SET SandboxDatabaseName='',
+    SandboxCreatedAt=NULL,
+    ActiveEnvironment='Production',
+    UpdatedAt=SYSUTCDATETIME()
+WHERE CompanyCode=@CompanyCode;
+INSERT INTO TenantAuditLog(TenantId,CompanyCode,ActionName,Description)
+VALUES(@TenantId,@CompanyCode,'SANDBOX_DELETED',CONCAT('Sandbox database deleted: ',@SandboxDatabaseName));";
+            cmd.Parameters.AddWithValue("@TenantId", tenant.TenantId);
+            cmd.Parameters.AddWithValue("@CompanyCode", tenant.CompanyCode);
+            cmd.Parameters.AddWithValue("@SandboxDatabaseName", sandboxDb);
+            await cmd.ExecuteNonQueryAsync();
+        }
+
+        return await GetTenantAsync(tenant.CompanyCode);
     }
 
     public async Task<TenantInfo> CreateSandboxAsync(string companyCode, SandboxCreateRequest? request = null)
@@ -716,6 +782,63 @@ END";
         cmd.Parameters.AddWithValue("@DisplayName", "System Admin");
         cmd.Parameters.AddWithValue("@PasswordHash", hash);
         await cmd.ExecuteNonQueryAsync();
+    }
+
+    /// <summary>
+    /// Ensures an email is not already used by any company ERP user or mobile-app user.
+    /// </summary>
+    public async Task EnsureGlobalEmailAvailableAsync(
+        string? email,
+        string? excludeCompanyCode = null,
+        int? excludeTenantUserId = null,
+        long? excludeMobileAppUserId = null)
+    {
+        var normalized = NormalizeEmail(email);
+        if (string.IsNullOrWhiteSpace(normalized)) return;
+        if (string.Equals(normalized, NormalizeEmail(Options.PlatformOwnerEmail), StringComparison.OrdinalIgnoreCase))
+            throw new InvalidOperationException("This email belongs to the PayNex Platform Owner and cannot be used for company or mobile app users.");
+
+        await EnsureMasterDatabaseAsync();
+        await using var con = await _db.OpenMasterAsync();
+
+        await using (var dir = con.CreateCommand())
+        {
+            dir.CommandText = @"
+IF OBJECT_ID('CentralUserDirectory') IS NOT NULL
+SELECT TOP 1 CompanyCode
+FROM CentralUserDirectory
+WHERE LOWER(LTRIM(RTRIM(Email))) = @Email
+  AND NOT (
+        @ExcludeCompanyCode IS NOT NULL
+        AND CompanyCode = @ExcludeCompanyCode
+        AND @ExcludeUserId IS NOT NULL
+        AND UserId = @ExcludeUserId
+      )
+ORDER BY DirectoryUserId;";
+            dir.Parameters.AddWithValue("@Email", normalized);
+            dir.Parameters.AddWithValue("@ExcludeCompanyCode", (object?)excludeCompanyCode ?? DBNull.Value);
+            dir.Parameters.AddWithValue("@ExcludeUserId", (object?)excludeTenantUserId ?? DBNull.Value);
+            var company = Convert.ToString(await dir.ExecuteScalarAsync());
+            if (!string.IsNullOrWhiteSpace(company))
+                throw new InvalidOperationException($"Email '{normalized}' is already registered for company {company}. One email can be used for only one company user.");
+        }
+
+        await using (var mobile = con.CreateCommand())
+        {
+            mobile.CommandText = @"
+IF OBJECT_ID('CompanyMobileAppUsers') IS NOT NULL
+SELECT TOP 1 CompanyCode
+FROM CompanyMobileAppUsers
+WHERE Email IS NOT NULL AND LTRIM(RTRIM(Email)) <> ''
+  AND LOWER(LTRIM(RTRIM(Email))) = @Email
+  AND (@ExcludeMobileAppUserId IS NULL OR MobileAppUserId <> @ExcludeMobileAppUserId)
+ORDER BY MobileAppUserId;";
+            mobile.Parameters.AddWithValue("@Email", normalized);
+            mobile.Parameters.AddWithValue("@ExcludeMobileAppUserId", (object?)excludeMobileAppUserId ?? DBNull.Value);
+            var company = Convert.ToString(await mobile.ExecuteScalarAsync());
+            if (!string.IsNullOrWhiteSpace(company))
+                throw new InvalidOperationException($"Email '{normalized}' is already registered as a mobile app user for company {company}. One email can be used only once.");
+        }
     }
 
     private static string? NormalizeEmail(string? email)

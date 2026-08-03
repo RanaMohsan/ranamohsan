@@ -10,6 +10,7 @@ dotnet run
 Open:
 - Login: `http://localhost:5000/login.html`
 - Platform Owner Portal: `http://localhost:5000/platform-portal.html`
+- Owner API Catalog: `http://localhost:5000/api.html` (left menu **API**, Platform Owner only)
 - Owner Email & OTP Setup: `http://localhost:5000/owner-email-security.html`
 - Super Admin: `http://localhost:5000/admin.html`
 - Workspace: `http://localhost:5000/workspace.html`

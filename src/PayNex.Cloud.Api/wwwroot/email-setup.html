@@ -1,0 +1,95 @@
+<!doctype html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>OTP Setup</title>
+  <link rel="stylesheet" href="/css/app.css?v=api-catalog-20260731">
+  <style>
+    .security-setup-grid{display:grid;grid-template-columns:minmax(0,2fr) minmax(280px,1fr);gap:18px}.security-form-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:14px}.security-form-grid .full{grid-column:1/-1}.security-card{background:#fff;border:1px solid #d8e2ee;border-radius:10px;padding:20px}.security-card h2{margin-top:0}.setting-check{display:flex;align-items:center;gap:9px;margin:10px 0}.setting-check input{width:auto}.security-note{padding:12px;border-radius:7px;background:#f5f8fb;border-left:4px solid #2b6fa6}.security-warning{padding:12px;border-radius:7px;background:#fff7e6;border-left:4px solid #c47b00}.password-state{font-size:12px;margin-top:5px}.owner-security-actions{display:flex;gap:10px;flex-wrap:wrap;margin-top:16px}@media(max-width:900px){.security-setup-grid,.security-form-grid{grid-template-columns:1fr}.security-form-grid .full{grid-column:auto}}
+  </style>
+</head>
+<body>
+  <main class="shell bc-list-page">
+    <section class="bc-page-heading">
+      <div>
+        <div class="bc-breadcrumb">Owner Portal / Security / OTP Setup</div>
+        <h1>OTP Setup</h1>
+        <p id="who" class="muted">Loading PayNex owner profile...</p>
+      </div>
+      <span class="bc-page-badge">Owner Only</span>
+    </section>
+
+    <section class="bc-command-bar">
+      <button id="saveBtn" class="bc-command-primary" type="button">Save OTP Setup</button>
+      <button id="testBtn" class="secondary" type="button">Send Test Email</button>
+      <a class="secondary" href="/platform-portal.html">Back to Owner Portal</a>
+    </section>
+
+    <div class="security-setup-grid">
+      <section class="security-card">
+        <h2>Email Setup (OTP Mailbox)</h2>
+        <p class="muted">Configure Gmail (or another SMTP mailbox) so login OTP codes can be sent. Use a Gmail <b>App Password</b>, not the normal Google password. After you save a working setup, turn on OTP below so codes can start going out.</p>
+        <div class="security-form-grid">
+          <label>Gmail Email (From)
+            <input id="fromEmail" type="email" placeholder="you@gmail.com" maxlength="180">
+          </label>
+          <label>Display Name
+            <input id="fromName" placeholder="PayNex Cloud ERP" maxlength="150">
+          </label>
+          <label>SMTP Host
+            <input id="smtpHost" placeholder="smtp.gmail.com" maxlength="180">
+          </label>
+          <label>SMTP Port
+            <input id="smtpPort" type="number" min="1" max="65535" value="587">
+          </label>
+          <label>SMTP User (same Gmail)
+            <input id="smtpUser" type="text" autocomplete="username" placeholder="you@gmail.com" maxlength="180">
+          </label>
+          <label>App Password (not normal password)
+            <input id="smtpPassword" type="password" autocomplete="new-password" placeholder="16-character Gmail app password">
+            <div id="passwordState" class="password-state muted">No password status loaded.</div>
+          </label>
+          <label>Login OTP Expiry (minutes)
+            <input id="otpMinutes" type="number" min="5" max="30" value="10">
+          </label>
+          <label>Trusted Device Duration (days)
+            <input id="trustedDays" type="number" min="1" max="90" value="30">
+          </label>
+          <div class="full">
+            <label class="setting-check"><input id="enableLoginOtp" type="checkbox" checked> Enable OTP emails (required for login OTP delivery)</label>
+            <label class="setting-check"><input id="enableSsl" type="checkbox" checked> Use SSL/TLS for SMTP</label>
+            <label class="setting-check"><input id="clearPassword" type="checkbox"> Remove the currently stored App Password</label>
+            <label class="setting-check"><input id="returnDevOtp" type="checkbox"> Return OTP in the API response for local development only</label>
+          </div>
+        </div>
+        <div class="owner-security-actions">
+          <button id="saveBtnBottom" class="success" type="button">Save OTP Setup</button>
+        </div>
+        <p id="status" aria-live="polite"></p>
+      </section>
+
+      <aside>
+        <section class="security-card">
+          <h2>Test Configuration</h2>
+          <label>Test Recipient Email
+            <input id="testEmail" type="email" placeholder="owner@example.com">
+          </label>
+          <button id="sendTestBtn" class="secondary" type="button" style="width:100%;margin-top:12px">Send Test Email</button>
+          <p id="testStatus" aria-live="polite"></p>
+        </section>
+        <section class="security-card" style="margin-top:18px">
+          <h2>Security Behavior</h2>
+          <div class="security-note"><b>First login:</b> OTP is always required for every user.<br><b>Every login:</b> turn on “OTP on every login” on that company’s Company Card.<br><b>This page:</b> Enable OTP emails + save Gmail App Password so codes can be delivered.</div>
+          <div class="security-warning" style="margin-top:12px"><b>Production:</b> Disable “Return OTP in API response.” Use an app password, SMTP relay credential, Microsoft Graph, or another controlled sender mailbox.</div>
+          <p class="muted" style="margin-bottom:0">Only the PayNex Platform Owner can open this page or call its APIs.</p>
+        </section>
+      </aside>
+    </div>
+  </main>
+
+  <script src="/js/api.js?v=first-login-otp-20260714"></script>
+  <script src="/js/owner-email-security.js?v=test-otp-code-20260731"></script>
+  <script src="/js/app-shell.js?v=otp-nav-20260731"></script>
+</body>
+</html>

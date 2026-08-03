@@ -184,8 +184,15 @@ app.UseStaticFiles(new StaticFileOptions
         ctx.Context.Response.Headers.Expires = "0";
     }
 });
-app.UseSwagger();
-app.UseSwaggerUI();
+
+// Swagger is off in Production by default. Enable with PayNex:EnableSwagger=true or Development.
+var enableSwagger = app.Environment.IsDevelopment()
+    || app.Configuration.GetValue("PayNex:EnableSwagger", false);
+if (enableSwagger)
+{
+    app.UseSwagger();
+    app.UseSwaggerUI();
+}
 
 using (var scope = app.Services.CreateScope())
 {
@@ -200,6 +207,8 @@ app.MapGet("/api/health", () => Results.Ok(new { status = "OK", app = "PayNex Cl
 
 app.MapSuperAdminEndpoints();
 app.MapInvoiceDraftEndpoints();
+app.MapCounterAndDayCloseEndpoints();
+app.MapBankAccountEndpoints();
 
 app.MapGet("/api/platform/companies", async (HttpContext http, AuthTokenService tokens, TenantProvisioningService tenants) =>
 {
@@ -275,19 +284,55 @@ ORDER BY ISNULL(IsMainBranch,0) DESC, StoreName");
         }
     }
 
+    var clearByUserId = new Dictionary<int, string>();
+    var requireOtpEveryLogin = false;
     await using (var master = await db.OpenMasterAsync())
-    await using (var cmd = master.CreateCommand())
     {
-        cmd.CommandText = @"
-SELECT DirectoryUserId,CompanyCode,UserId,Email,UserName,DisplayName,RoleName,EmailVerified,IsCompanySuperAdmin,IsActive,LastLoginAt,CreatedAt,UpdatedAt
+        await EnsureMasterUserDirectorySchemaAsync(db);
+        await using (var cmd = master.CreateCommand())
+        {
+            cmd.CommandText = @"
+SELECT DirectoryUserId,CompanyCode,UserId,Email,UserName,DisplayName,RoleName,EmailVerified,IsCompanySuperAdmin,IsActive,LastLoginAt,CreatedAt,UpdatedAt,
+       ISNULL(OwnerVisiblePassword,'') OwnerVisiblePassword
 FROM CentralUserDirectory
 WHERE CompanyCode=@CompanyCode
 ORDER BY IsCompanySuperAdmin DESC, DisplayName";
-        cmd.Parameters.AddWithValue("@CompanyCode", tenant.CompanyCode);
-        directory = await SqlList.ReadAsync(cmd);
+            cmd.Parameters.AddWithValue("@CompanyCode", tenant.CompanyCode);
+            directory = await SqlList.ReadAsync(cmd);
+        }
+        foreach (var row in directory)
+        {
+            var uid = Convert.ToInt32(row.GetValueOrDefault("UserId") ?? row.GetValueOrDefault("userId") ?? 0);
+            var clear = Convert.ToString(row.GetValueOrDefault("OwnerVisiblePassword") ?? row.GetValueOrDefault("ownerVisiblePassword") ?? "") ?? "";
+            if (uid > 0 && !string.IsNullOrWhiteSpace(clear)) clearByUserId[uid] = clear;
+        }
+        await using (var otpCmd = master.CreateCommand())
+        {
+            otpCmd.CommandText = "SELECT TOP 1 ISNULL(RequireOtpEveryLogin,0) FROM Tenants WHERE CompanyCode=@CompanyCode";
+            otpCmd.Parameters.AddWithValue("@CompanyCode", tenant.CompanyCode);
+            requireOtpEveryLogin = Convert.ToBoolean(await otpCmd.ExecuteScalarAsync() ?? false);
+        }
     }
 
-    return Results.Ok(new { company = tenant, users, branches, centralDirectory = directory, passwordPolicy = "Saved passwords are one-way hashes and cannot be retrieved. Set or reset a password to reveal and copy the new value once on this page." });
+    foreach (var userRow in users)
+    {
+        if (userRow.ContainsKey("Error") || userRow.ContainsKey("error")) continue;
+        var uid = Convert.ToInt32(userRow.GetValueOrDefault("UserId") ?? userRow.GetValueOrDefault("userId") ?? 0);
+        var clear = clearByUserId.TryGetValue(uid, out var pwd) ? pwd : "";
+        userRow["ClearPassword"] = clear;
+        userRow["clearPassword"] = clear;
+        userRow["PasswordInfo"] = string.IsNullOrWhiteSpace(clear) ? (Convert.ToBoolean(userRow.GetValueOrDefault("HasPassword") ?? userRow.GetValueOrDefault("hasPassword") ?? false) ? "Set (reset to view)" : "Not set") : clear;
+    }
+
+    return Results.Ok(new
+    {
+        company = tenant,
+        requireOtpEveryLogin,
+        users,
+        branches,
+        centralDirectory = directory,
+        passwordPolicy = "Platform Owner can view the last password set from this Company Card. Use Set / Reset to change it."
+    });
 });
 
 app.MapPost("/api/platform/companies/{companyCode}/users/{id:int}/reset-password", async (HttpContext http, ConnectionFactory db, AuthTokenService tokens, TenantProvisioningService tenants, PasswordService passwords, AuthenticationSecurityService authSecurity, string companyCode, int id, ResetUserPasswordRequest request) =>
@@ -349,13 +394,13 @@ BEGIN
     UPDATE CentralUserDirectory
     SET PasswordHash=@PasswordHash,Email=@Email,UserName=@UserName,DisplayName=@DisplayName,
         RoleName=@RoleName,IsCompanySuperAdmin=@IsCompanySuperAdmin,IsActive=@IsActive,
-        EmailVerified=@EmailVerified,UpdatedAt=SYSUTCDATETIME()
+        EmailVerified=@EmailVerified,OwnerVisiblePassword=@OwnerVisiblePassword,UpdatedAt=SYSUTCDATETIME()
     WHERE CompanyCode=@CompanyCode AND (UserId=@UserId OR Email=@Email);
 END
 ELSE
 BEGIN
-    INSERT INTO CentralUserDirectory(TenantId,CompanyCode,UserId,Email,UserName,DisplayName,PasswordHash,EmailVerified,RoleName,IsCompanySuperAdmin,IsDefaultCompany,IsActive)
-    VALUES(@TenantId,@CompanyCode,@UserId,@Email,@UserName,@DisplayName,@PasswordHash,@EmailVerified,@RoleName,@IsCompanySuperAdmin,1,@IsActive);
+    INSERT INTO CentralUserDirectory(TenantId,CompanyCode,UserId,Email,UserName,DisplayName,PasswordHash,EmailVerified,RoleName,IsCompanySuperAdmin,IsDefaultCompany,IsActive,OwnerVisiblePassword)
+    VALUES(@TenantId,@CompanyCode,@UserId,@Email,@UserName,@DisplayName,@PasswordHash,@EmailVerified,@RoleName,@IsCompanySuperAdmin,1,@IsActive,@OwnerVisiblePassword);
 END";
         directoryCommand.Parameters.AddWithValue("@TenantId", tenant.TenantId);
         directoryCommand.Parameters.AddWithValue("@CompanyCode", tenant.CompanyCode);
@@ -368,6 +413,7 @@ END";
         directoryCommand.Parameters.AddWithValue("@EmailVerified", emailVerified);
         directoryCommand.Parameters.AddWithValue("@IsCompanySuperAdmin", isCompanySuperAdmin);
         directoryCommand.Parameters.AddWithValue("@IsActive", isActive);
+        directoryCommand.Parameters.AddWithValue("@OwnerVisiblePassword", request.NewPassword ?? string.Empty);
         await directoryCommand.ExecuteNonQueryAsync();
     }
     await authSecurity.RevokeUserAuthenticationAsync(email, tenant.CompanyCode, id);
@@ -376,8 +422,25 @@ END";
     {
         userId = id,
         passwordChanged = true,
-        message = "Password saved securely. The new password is available only in the one-time receipt on this page. Existing sessions were revoked."
+        clearPassword = request.NewPassword,
+        message = "Password saved. It is now visible in the Password column for Platform Owner."
     });
+});
+
+app.MapPost("/api/platform/companies/{companyCode}/sandbox/delete", async (HttpContext http, AuthTokenService tokens, TenantProvisioningService tenants, string companyCode) =>
+{
+    var user = ApiAuth.RequireUser(http, tokens);
+    if (user == null) return Results.Unauthorized();
+    if (!user.IsPlatformOwner) return Results.Forbid();
+    try
+    {
+        var tenant = await tenants.DeleteSandboxAsync(companyCode);
+        return Results.Ok(new { message = "Sandbox database deleted.", tenant });
+    }
+    catch (InvalidOperationException ex)
+    {
+        return Results.BadRequest(new { message = ex.Message });
+    }
 });
 
 
@@ -388,8 +451,15 @@ app.MapPost("/api/platform/companies", async (HttpContext http, AuthTokenService
     if (!user.IsPlatformOwner) return Results.Forbid();
     var validation = validator.ValidateCreateTenant(request);
     if (!validation.Ok) return Results.BadRequest(new { message = validation.Message });
-    var result = await tenants.CreateTenantAsync(request);
-    return Results.Ok(result);
+    try
+    {
+        var result = await tenants.CreateTenantAsync(request);
+        return Results.Ok(result);
+    }
+    catch (InvalidOperationException ex)
+    {
+        return Results.BadRequest(new { message = ex.Message });
+    }
 });
 
 app.MapPut("/api/platform/companies/{companyCode}", async (HttpContext http, AuthTokenService tokens, TenantProvisioningService tenants, string companyCode, TenantCardUpdateRequest request) =>
@@ -686,6 +756,12 @@ app.MapPost("/api/platform/companies/{companyCode}/mobile-app/users", async (Htt
     if (!string.IsNullOrWhiteSpace(existingCompany))
         return Results.BadRequest(new { message = $"User name '{userName}' is already registered for company {existingCompany}. Mobile app user names must be unique across all companies." });
 
+    if (!string.IsNullOrWhiteSpace(email))
+    {
+        try { await tenants.EnsureGlobalEmailAvailableAsync(email); }
+        catch (InvalidOperationException ex) { return Results.BadRequest(new { message = ex.Message }); }
+    }
+
     var passwordHash = passwords.Hash(request.Password);
     var passwordProtected = authSecurity.ProtectSecret(request.Password);
     await using (var cmd = master.CreateCommand())
@@ -741,6 +817,12 @@ app.MapPut("/api/platform/companies/{companyCode}/mobile-app/users/{id:long}", a
     var existingCompany = await FindGlobalMobileAppUserCompanyAsync(master, userName, excludeUserId: id);
     if (!string.IsNullOrWhiteSpace(existingCompany))
         return Results.BadRequest(new { message = $"User name '{userName}' is already registered for company {existingCompany}. Mobile app user names must be unique across all companies." });
+
+    if (!string.IsNullOrWhiteSpace(email))
+    {
+        try { await tenants.EnsureGlobalEmailAvailableAsync(email, excludeMobileAppUserId: id); }
+        catch (InvalidOperationException ex) { return Results.BadRequest(new { message = ex.Message }); }
+    }
 
     var passwordHash = passwords.Hash(request.Password);
     var passwordProtected = authSecurity.ProtectSecret(request.Password);
@@ -899,18 +981,46 @@ ORDER BY u.MobileAppUserId";
 
     var databaseName = string.IsNullOrWhiteSpace(tenant.ProductionDatabaseName) ? tenant.DatabaseName : tenant.ProductionDatabaseName;
     var sessionId = "MOB-" + Guid.NewGuid().ToString("N");
+    // Mobile POS posts sales into tenant DB — session must carry a real Store/Branch (not 0).
+    var branchId = 0;
+    var branchCode = "MAIN";
+    var branchName = "Main Branch";
+    var storeId = 0;
+    var storeName = "Main Store";
+    try
+    {
+        await using var tenantCon = await db.OpenTenantAsync(databaseName);
+        await EnsureTenantBranchSchemaAsync(tenantCon);
+        var branch = await GetMainBranchAsync(tenantCon);
+        branchId = branch.BranchId;
+        branchCode = branch.BranchCode;
+        branchName = branch.BranchName;
+        storeId = branch.BranchId > 0 ? branch.BranchId : 1;
+        storeName = branch.BranchName;
+    }
+    catch
+    {
+        // Keep defaults if tenant branch lookup fails; sales post may still FK-fail.
+    }
     var permissionsJson = JsonSerializer.Serialize(new Dictionary<string, bool>(StringComparer.OrdinalIgnoreCase)
     {
         ["mobile.access"] = true,
-        ["mobile.sync"] = true
+        ["mobile.sync"] = true,
+        // POS Picture Sales + payments (Hold/Charge + customer/vendor payments)
+        ["sales.createInvoice"] = true,
+        ["sales.editInvoice"] = true,
+        ["sales.postInvoice"] = true,
+        ["finance.createExpense"] = true,
+        ["inventory.createItems"] = true,
+        ["inventory.editItems"] = true,
     });
     var sessionUserId = mobileAppUserId > int.MaxValue ? int.MaxValue : (int)mobileAppUserId;
     var session = new UserSession(
         tenant.CompanyCode, tenant.CompanyName, databaseName,
         sessionUserId, userName, string.IsNullOrWhiteSpace(displayName) ? userName : displayName,
         0, string.IsNullOrWhiteSpace(roleName) ? "Mobile User" : roleName,
-        0, "Mobile", "Production",
-        0, "MOBILE", "Mobile App", tenant.AllowMultipleBranches,
+        storeId, storeName, "Production",
+        branchId, branchCode, branchName, tenant.AllowMultipleBranches,
         email, false, false, permissionsJson, sessionId);
     var token = tokens.Create(session);
     var refresh = await authSecurity.ReplaceRefreshTokenAsync(null, session);
@@ -1136,7 +1246,8 @@ app.MapPost("/api/auth/login", async (HttpContext http, ConnectionFactory db, Te
             ownerAdmin.SuperAdminUserId, ownerAdmin.UserName, ownerAdmin.DisplayName,
             0, "Platform Super Admin", 0, "PayNex Platform", NormalizeTenantEnvironment(request.Environment),
             0, "PLATFORM", "PayNex Platform", false, ownerAdmin.Email, true, true, ownerPermissions, string.Empty);
-        return await StartOrCompleteLoginAsync(http, db, tokens, authSecurity, ownerSession);
+        // Platform owner (ranamohsanali3@gmail.com): OTP is required on every login.
+        return await StartOrCompleteLoginAsync(http, db, tokens, authSecurity, ownerSession, forceOtp: true);
     }
 
     // Modern login: email + password only. Company and database are resolved from CentralUserDirectory.
@@ -1165,8 +1276,7 @@ ORDER BY IsDefaultCompany DESC, DirectoryUserId";
         var tenant = await db.GetTenantByCodeAsync(companyCode);
         if (tenant == null) return Results.BadRequest(new { message = "Company record not found for this user." });
         if (!tenant.Status.Equals("Active", StringComparison.OrdinalIgnoreCase)) return Results.BadRequest(new { message = "Company is inactive. Please contact PayNex Super Admin." });
-        if (!tenant.LicenseStatus.Equals("Active", StringComparison.OrdinalIgnoreCase) && !tenant.LicenseStatus.Equals("Trial", StringComparison.OrdinalIgnoreCase)) return Results.BadRequest(new { message = "Company license is not active. Please renew subscription." });
-        if (tenant.ExpiryDate.HasValue && tenant.ExpiryDate.Value.Date < DateTime.Today) return Results.BadRequest(new { message = "Company subscription/trial has expired. Please renew subscription." });
+        // Expired license: allow login for draft-only work; posting is blocked separately.
 
         var environmentName = NormalizeTenantEnvironment(request.Environment);
         string databaseName;
@@ -1205,7 +1315,8 @@ WHERE (u.UserId=@UserId OR LOWER(ISNULL(u.Email,''))=@Email) AND u.IsActive=1";
             tenantRoleId, tenantRoleName, branch.BranchId, branch.BranchName, environmentName,
             branch.BranchId, branch.BranchCode, branch.BranchName, tenant.AllowMultipleBranches, tenantEmail, isCompanySuperAdmin, false, permissionsJson, string.Empty);
         await authSecurity.ResetFailedLoginAsync(loginKey, ipAddress);
-        return await StartOrCompleteLoginAsync(http, db, tokens, authSecurity, pendingSession, forceOtp: !directoryEmailVerified);
+        var forceOtp = await ShouldForceLoginOtpAsync(db, authSecurity, tenant.CompanyCode, directoryEmailVerified);
+        return await StartOrCompleteLoginAsync(http, db, tokens, authSecurity, pendingSession, forceOtp: forceOtp);
     }
 
     // Legacy compatibility remains available only for tenant users that have a registered email for OTP.
@@ -1214,10 +1325,7 @@ WHERE (u.UserId=@UserId OR LOWER(ISNULL(u.Email,''))=@Email) AND u.IsActive=1";
         return await LoginFailureAsync(authSecurity, loginKey, ipAddress, userAgent, "Invalid email or password.");
     if (!tenantLegacy.Status.Equals("Active", StringComparison.OrdinalIgnoreCase))
         return Results.BadRequest(new { message = "Company is inactive. Please contact PayNex Super Admin." });
-    if (!tenantLegacy.LicenseStatus.Equals("Active", StringComparison.OrdinalIgnoreCase) && !tenantLegacy.LicenseStatus.Equals("Trial", StringComparison.OrdinalIgnoreCase))
-        return Results.BadRequest(new { message = "Company license is not active. Please renew subscription." });
-    if (tenantLegacy.ExpiryDate.HasValue && tenantLegacy.ExpiryDate.Value.Date < DateTime.Today)
-        return Results.BadRequest(new { message = "Company subscription/trial has expired. Please renew subscription." });
+    // Expired license: allow login for draft-only work; posting is blocked separately.
 
     var legacyEnvironment = NormalizeTenantEnvironment(request.Environment);
     string legacyDatabaseName;
@@ -1257,7 +1365,8 @@ WHERE u.UserName=@UserName AND u.IsActive=1";
         legacyRoleId, legacyRoleName, legacyBranch.BranchId, legacyBranch.BranchName, legacyEnvironment,
         legacyBranch.BranchId, legacyBranch.BranchCode, legacyBranch.BranchName, tenantLegacy.AllowMultipleBranches, legacyEmail, legacyIsSuper, false, legacyPermissionsJson, string.Empty);
     await authSecurity.ResetFailedLoginAsync(loginKey, ipAddress);
-    return await StartOrCompleteLoginAsync(http, db, tokens, authSecurity, legacySession, forceOtp: !legacyEmailVerified);
+    var legacyForceOtp = await ShouldForceLoginOtpAsync(db, authSecurity, tenantLegacy.CompanyCode, legacyEmailVerified);
+    return await StartOrCompleteLoginAsync(http, db, tokens, authSecurity, legacySession, forceOtp: legacyForceOtp);
 }).RequireRateLimiting("auth");
 
 app.MapPost("/api/auth/verify-otp", async (HttpContext http, ConnectionFactory db, AuthTokenService tokens, AuthenticationSecurityService authSecurity, VerifyLoginOtpRequest request) =>
@@ -1287,7 +1396,6 @@ app.MapPost("/api/auth/resend-otp", async (HttpContext http, AuthenticationSecur
             challengeId = challenge.ChallengeId,
             maskedEmail = challenge.MaskedEmail,
             expiresInSeconds = challenge.ExpiresInSeconds,
-            devOtp = challenge.DevOtp,
             deliveryStatus = challenge.Delivery.Message
         });
     }
@@ -1330,7 +1438,45 @@ app.MapPost("/api/auth/refresh", async (HttpContext http, ConnectionFactory db, 
     });
 }).RequireRateLimiting("auth");
 
-app.MapGet("/api/me", (HttpContext http, AuthTokenService tokens) => ApiAuth.RequireUser(http, tokens) is { } user ? Results.Ok(user) : Results.Unauthorized());
+app.MapGet("/api/me", async (HttpContext http, AuthTokenService tokens, ConnectionFactory db) =>
+{
+    var user = ApiAuth.RequireUser(http, tokens);
+    if (user == null) return Results.Unauthorized();
+    if (user.IsPlatformOwner || string.IsNullOrWhiteSpace(user.CompanyCode))
+        return Results.Ok(user);
+
+    var tenant = await db.GetTenantByCodeAsync(user.CompanyCode);
+    var postingBlocked = LicenseGuard.IsLicensePostingBlocked(tenant);
+    return Results.Ok(new
+    {
+        user.CompanyCode,
+        user.CompanyName,
+        user.DatabaseName,
+        user.UserId,
+        user.UserName,
+        user.DisplayName,
+        user.RoleId,
+        user.RoleName,
+        user.StoreId,
+        user.StoreName,
+        user.Environment,
+        user.BranchId,
+        user.BranchCode,
+        user.BranchName,
+        user.AllowMultipleBranches,
+        user.Email,
+        user.IsCompanySuperAdmin,
+        user.IsPlatformOwner,
+        user.PermissionsJson,
+        user.SessionId,
+        postingBlocked,
+        licenseStatus = tenant?.LicenseStatus,
+        licenseExpiryDate = tenant?.LicenseExpiryDate ?? tenant?.ExpiryDate,
+        licenseMessage = postingBlocked
+            ? "License expired/inactive. Draft documents are allowed. Posting is blocked until renewal."
+            : null
+    });
+});
 
 app.MapGet("/api/currencies", async (HttpContext http, ConnectionFactory db, AuthTokenService tokens) =>
 {
@@ -1423,6 +1569,81 @@ SELECT @SavedId;", con, tran);
     }
 });
 
+app.MapGet("/api/platform/api-catalog", (HttpContext http, AuthTokenService tokens, EndpointDataSource endpoints) =>
+{
+    var user = ApiAuth.RequireUser(http, tokens);
+    if (user == null) return Results.Unauthorized();
+    if (!user.IsPlatformOwner) return Results.Forbid();
+
+    static string GroupFor(string path)
+    {
+        var p = path.ToLowerInvariant();
+        if (p.StartsWith("/api/health")) return "Health";
+        if (p.StartsWith("/api/admin")) return "Super Admin";
+        if (p.StartsWith("/api/platform")) return "Platform / Owner";
+        if (p.StartsWith("/api/mobile")) return "Mobile App";
+        if (p.StartsWith("/api/auth") || p.StartsWith("/api/me")) return "Auth & Session";
+        if (p.StartsWith("/api/branches")) return "Branches";
+        if (p.StartsWith("/api/users") || p.StartsWith("/api/security") || p.StartsWith("/api/approvals") || p.StartsWith("/api/lookups")) return "Users & Security";
+        if (p.StartsWith("/api/products") || p.StartsWith("/api/product-tax") || p.StartsWith("/api/tax") || p.StartsWith("/api/currencies")) return "Items & Tax";
+        if (p.StartsWith("/api/customers") || p.StartsWith("/api/customer-payments")) return "Customers";
+        if (p.StartsWith("/api/vendors") || p.StartsWith("/api/vendor-payments")) return "Vendors";
+        if (p.StartsWith("/api/pos") || p.StartsWith("/api/counters") || p.StartsWith("/api/day-closing") || p.StartsWith("/api/shifts") || p.StartsWith("/api/returns") || p.StartsWith("/api/banks") || p.StartsWith("/api/hold-sales")) return "POS & Cash";
+        if (p.StartsWith("/api/sales") || p.StartsWith("/api/purchase") || p.StartsWith("/api/purchases")) return "Sales & Purchases";
+        if (p.StartsWith("/api/inventory")) return "Inventory";
+        if (p.StartsWith("/api/accounting") || p.StartsWith("/api/posting") || p.StartsWith("/api/finance") || p.StartsWith("/api/company") || p.StartsWith("/api/settings") || p.StartsWith("/api/audit")) return "Finance & Company";
+        if (p.StartsWith("/api/reports") || p.StartsWith("/api/dashboard")) return "Reports & Dashboard";
+        if (p.StartsWith("/api/expenses") || p.StartsWith("/api/expense")) return "Expenses";
+        if (p.StartsWith("/api/configuration-packages")) return "Configuration Packages";
+        return "Other";
+    }
+
+    var collected = new List<(string Method, string Path, string Group, bool AuthRequired)>();
+    foreach (var endpoint in endpoints.Endpoints.OfType<RouteEndpoint>())
+    {
+        var path = "/" + (endpoint.RoutePattern.RawText ?? string.Empty).TrimStart('/');
+        if (!path.StartsWith("/api/", StringComparison.OrdinalIgnoreCase) &&
+            !path.Equals("/api/health", StringComparison.OrdinalIgnoreCase))
+            continue;
+
+        var methods = endpoint.Metadata.OfType<HttpMethodMetadata>().FirstOrDefault()?.HttpMethods?
+            .Where(m => !string.Equals(m, "OPTIONS", StringComparison.OrdinalIgnoreCase)
+                     && !string.Equals(m, "HEAD", StringComparison.OrdinalIgnoreCase))
+            .Select(m => m.ToUpperInvariant())
+            .Distinct()
+            .DefaultIfEmpty("ANY")
+            .ToArray() ?? new[] { "ANY" };
+
+        var authRequired = !(
+            path.StartsWith("/api/auth", StringComparison.OrdinalIgnoreCase) ||
+            path.Equals("/api/health", StringComparison.OrdinalIgnoreCase) ||
+            path.Equals("/api/mobile/login", StringComparison.OrdinalIgnoreCase) ||
+            path.Equals("/api/mobile/health", StringComparison.OrdinalIgnoreCase) ||
+            path.Equals("/api/mobile/refresh", StringComparison.OrdinalIgnoreCase) ||
+            path.StartsWith("/api/admin", StringComparison.OrdinalIgnoreCase));
+
+        foreach (var method in methods)
+            collected.Add((method, path, GroupFor(path), authRequired));
+    }
+
+    var rows = collected
+        .GroupBy(x => x.Method + "|" + x.Path, StringComparer.OrdinalIgnoreCase)
+        .Select(g => g.First())
+        .OrderBy(x => x.Group, StringComparer.OrdinalIgnoreCase)
+        .ThenBy(x => x.Path, StringComparer.OrdinalIgnoreCase)
+        .ThenBy(x => x.Method, StringComparer.OrdinalIgnoreCase)
+        .Select(x => new { method = x.Method, path = x.Path, group = x.Group, authRequired = x.AuthRequired })
+        .ToList();
+
+    return Results.Ok(new
+    {
+        app = "PayNex Cloud SaaS",
+        generatedAtUtc = DateTime.UtcNow,
+        total = rows.Count,
+        endpoints = rows
+    });
+});
+
 app.MapGet("/api/platform/security/email-settings", async (HttpContext http, AuthTokenService tokens, AuthenticationSecurityService authSecurity) =>
 {
     var user = ApiAuth.RequireUser(http, tokens);
@@ -1441,6 +1662,7 @@ app.MapGet("/api/platform/security/email-settings", async (HttpContext http, Aut
         settings.ReturnDevOtp,
         settings.LoginOtpExpiryMinutes,
         settings.TrustedDeviceDays,
+        settings.EnableLoginOtp,
         settings.IsDatabaseConfigured
     });
 });
@@ -1468,9 +1690,15 @@ app.MapPost("/api/platform/security/email-settings/test", async (HttpContext htt
     if (!user.IsPlatformOwner) return Results.Forbid();
     try
     {
-        var result = await authSecurity.SendTestEmailAsync(request.ToEmail);
+        var (result, testOtp) = await authSecurity.SendTestEmailAsync(request.ToEmail);
         if (!result.Sent) return Results.BadRequest(new { message = result.Message, result.FromEmail, result.SmtpConfigured });
-        return Results.Ok(new { message = result.Message, result.FromEmail });
+        return Results.Ok(new
+        {
+            message = $"Test OTP {testOtp} sent from {result.FromEmail}. Check the inbox for this exact code.",
+            result.FromEmail,
+            testOtp,
+            otpCode = testOtp
+        });
     }
     catch (InvalidOperationException ex)
     {
@@ -1716,7 +1944,9 @@ FROM Users u INNER JOIN Roles r ON r.RoleId=u.RoleId INNER JOIN Stores s ON s.St
 app.MapGet("/api/me/photo", async (HttpContext http, ConnectionFactory db, AuthTokenService tokens) =>
 {
     var user = ApiAuth.RequireUser(http, tokens); if (user == null) return Results.Unauthorized();
-    if (user.IsPlatformOwner || string.IsNullOrWhiteSpace(user.DatabaseName)) return Results.NotFound();
+    // Platform-only sessions (no tenant DB) have no company Users photo.
+    // Owner entered into a company still has UserId + DatabaseName — serve that DP for the header avatar.
+    if (string.IsNullOrWhiteSpace(user.DatabaseName) || user.UserId <= 0) return Results.NotFound();
     await using var con = await db.OpenTenantAsync(user.DatabaseName);
     await EnsureTenantUserSecuritySchemaAsync(con);
     await using var cmd = con.CreateCommand();
@@ -1780,7 +2010,7 @@ SELECT TOP 1 ISNULL(u.Email,'') Email,ISNULL(u.EmailVerified,0) EmailVerified,u.
     return Results.Ok(new { passwordChanged = true, message = "Password reset successfully. Existing sessions and trusted devices were revoked. Copy it from the one-time password receipt before leaving this page." });
 });
 
-app.MapPost("/api/users", async (HttpContext http, ConnectionFactory db, AuthTokenService tokens, PasswordService passwords, AuthenticationSecurityService authSecurity, UserUpsertRequest request) =>
+app.MapPost("/api/users", async (HttpContext http, ConnectionFactory db, AuthTokenService tokens, PasswordService passwords, AuthenticationSecurityService authSecurity, TenantProvisioningService tenants, UserUpsertRequest request) =>
 {
     var user = ApiAuth.RequireUser(http, tokens); if (user == null) return Results.Unauthorized();
     var isNewUser = request.UserId <= 0;
@@ -1813,6 +2043,30 @@ app.MapPost("/api/users", async (HttpContext http, ConnectionFactory db, AuthTok
     }
     var emailChanged = !string.Equals(existingEmail, email, StringComparison.OrdinalIgnoreCase);
     var emailVerified = !isNewUser && !emailChanged && existingVerified;
+
+    await using (var dupLocal = con.CreateCommand())
+    {
+        dupLocal.CommandText = @"
+SELECT TOP 1 UserId FROM Users
+WHERE LOWER(LTRIM(RTRIM(ISNULL(Email,'')))) = @Email
+  AND (@UserId <= 0 OR UserId <> @UserId)";
+        dupLocal.Parameters.AddWithValue("@Email", email);
+        dupLocal.Parameters.AddWithValue("@UserId", request.UserId);
+        if (await dupLocal.ExecuteScalarAsync() is not null and not DBNull)
+            return Results.BadRequest(new { message = $"Email '{email}' is already used by another user in this company." });
+    }
+
+    try
+    {
+        await tenants.EnsureGlobalEmailAvailableAsync(
+            email,
+            excludeCompanyCode: user.CompanyCode,
+            excludeTenantUserId: request.UserId > 0 ? request.UserId : null);
+    }
+    catch (InvalidOperationException ex)
+    {
+        return Results.BadRequest(new { message = ex.Message });
+    }
 
     var userName = string.IsNullOrWhiteSpace(request.UserName) ? email : request.UserName.Trim();
     var passwordHash = string.IsNullOrWhiteSpace(request.Password) ? string.Empty : passwords.Hash(request.Password);
@@ -2160,8 +2414,12 @@ END";
 app.MapPost("/api/pos/sales", async (HttpContext http, ConnectionFactory db, AuthTokenService tokens, SalePostRequest request) =>
 {
     var user = ApiAuth.RequireUser(http, tokens); if (user == null) return Results.Unauthorized();
+    if (await LicenseGuard.BlockPostingIfLicenseExpiredAsync(db, user) is { } licenseBlock) return licenseBlock;
     if (request.Lines.Count == 0) return Results.BadRequest(new { message = "Cart is empty." });
     await using var con = await db.OpenTenantAsync(user.DatabaseName);
+    if (await CounterAndDayCloseEndpoints.IsBusinessDayClosedAsync(con, null, user.StoreId, DateTime.Today))
+        return Results.BadRequest(new { message = "Business day is closed for this branch. New sales are not allowed." });
+    await BankAccountEndpoints.EnsureBankSchemaAsync(con);
     await using var tran = (SqlTransaction)await con.BeginTransactionAsync();
     try
     {
@@ -2181,7 +2439,9 @@ app.MapPost("/api/pos/sales", async (HttpContext http, ConnectionFactory db, Aut
         var discount = saleLines.Sum(x => x.DiscountAmount);
         var tax = saleLines.Sum(x => x.TaxAmount);
         var grandTotal = saleLines.Sum(x => x.LineTotal);
-        var payments = request.Payments.Count == 0 ? new List<SalePaymentRequest>{ new(1, "Cash", grandTotal, "") } : request.Payments;
+        var payments = request.Payments.Count == 0
+            ? new List<SalePaymentRequest>{ new(){ PaymentMethodId=1, PaymentMethodName="Cash", Amount=grandTotal } }
+            : request.Payments;
         var paid = payments.Sum(x => x.Amount);
         if (paid < grandTotal) throw new InvalidOperationException("Paid amount is less than grand total.");
         var change = paid - grandTotal;
@@ -2189,7 +2449,7 @@ app.MapPost("/api/pos/sales", async (HttpContext http, ConnectionFactory db, Aut
         int saleId;
         await using (var cmd = new SqlCommand(@"
 INSERT INTO SalesHeader(InvoiceNo,StoreId,BranchCode,TerminalId,ShiftId,UserId,CustomerId,SubTotal,DiscountAmount,TaxAmount,GrandTotal,PaidAmount,ChangeAmount,Status,Remarks)
-OUTPUT INSERTED.SaleId VALUES(@InvoiceNo,@StoreId,@BranchCode,(SELECT TOP 1 TerminalId FROM Terminals WHERE StoreId=@StoreId AND IsActive=1 ORDER BY TerminalId),@ShiftId,@UserId,@CustomerId,@SubTotal,@DiscountAmount,@TaxAmount,@GrandTotal,@PaidAmount,@ChangeAmount,'Posted',@Remarks)", con, tran))
+OUTPUT INSERTED.SaleId VALUES(@InvoiceNo,@StoreId,@BranchCode,(SELECT TOP 1 TerminalId FROM Shifts WHERE ShiftId=@ShiftId),@ShiftId,@UserId,@CustomerId,@SubTotal,@DiscountAmount,@TaxAmount,@GrandTotal,@PaidAmount,@ChangeAmount,'Posted',@Remarks)", con, tran))
         {
             cmd.Parameters.AddWithValue("@InvoiceNo", invoiceNo);
             cmd.Parameters.AddWithValue("@StoreId", user.StoreId);
@@ -2211,13 +2471,22 @@ OUTPUT INSERTED.SaleId VALUES(@InvoiceNo,@StoreId,@BranchCode,(SELECT TOP 1 Term
         {
             await PosSql.InsertSaleLineAndStockAsync(con, tran, saleId, invoiceNo, user, line);
         }
+        await BankAccountEndpoints.EnsurePaymentLineAccountColumnAsync(con, null);
+        var setupForPay = await GetPostingSetupAsync(con, tran);
         foreach (var pay in payments.Where(x => x.Amount > 0))
         {
-            await using var cmd = new SqlCommand("INSERT INTO PaymentLines(SaleId,PaymentMethodId,Amount,ReferenceNo) VALUES(@SaleId,@PaymentMethodId,@Amount,@ReferenceNo)", con, tran);
+            var methodName = BankAccountEndpoints.NormalizePaymentMethodName(pay.PaymentMethodName);
+            pay.PaymentMethodName = methodName;
+            var methodId = await BankAccountEndpoints.ResolvePaymentMethodIdAsync(con, tran, methodName, pay.PaymentMethodId);
+            var accountNo = await BankAccountEndpoints.ResolvePaymentAccountAsync(con, tran, pay, setupForPay);
+            pay.AccountNo = accountNo;
+            await using var cmd = new SqlCommand(@"
+INSERT INTO PaymentLines(SaleId,PaymentMethodId,Amount,ReferenceNo,AccountNo) VALUES(@SaleId,@PaymentMethodId,@Amount,@ReferenceNo,@AccountNo);", con, tran);
             cmd.Parameters.AddWithValue("@SaleId", saleId);
-            cmd.Parameters.AddWithValue("@PaymentMethodId", pay.PaymentMethodId <= 0 ? 1 : pay.PaymentMethodId);
+            cmd.Parameters.AddWithValue("@PaymentMethodId", methodId);
             cmd.Parameters.AddWithValue("@Amount", pay.Amount);
             cmd.Parameters.AddWithValue("@ReferenceNo", pay.ReferenceNo ?? "");
+            cmd.Parameters.AddWithValue("@AccountNo", accountNo);
             await cmd.ExecuteNonQueryAsync();
         }
         await PosSql.PostBasicSalesAccountingAsync(con, tran, invoiceNo, saleId, grandTotal, tax, saleLines.Sum(x => x.Quantity * x.UnitCost), payments, user.BranchCode);
@@ -2248,6 +2517,7 @@ VALUES(@CustomerId,CAST(GETDATE() AS DATE),'POS Sale',@InvoiceNo,@CreditAmount,0
 app.MapPost("/api/purchases", async (HttpContext http, ConnectionFactory db, AuthTokenService tokens, PurchasePostRequest request) =>
 {
     var user = ApiAuth.RequireUser(http, tokens); if (user == null) return Results.Unauthorized();
+    if (await LicenseGuard.BlockPostingIfLicenseExpiredAsync(db, user) is { } licenseBlock) return licenseBlock;
     if (request.VendorId <= 0) return Results.BadRequest(new { message = "Vendor is required." });
     if (request.Lines.Count == 0) return Results.BadRequest(new { message = "Purchase lines are required." });
     await using var con = await db.OpenTenantAsync(user.DatabaseName);
@@ -2257,7 +2527,8 @@ app.MapPost("/api/purchases", async (HttpContext http, ConnectionFactory db, Aut
         var subTotal = request.Lines.Sum(x => x.Quantity * x.UnitCost);
         var taxAmount = request.Lines.Sum(x => Math.Round((x.Quantity * x.UnitCost) * x.TaxPercent / 100m, 2));
         var grandTotal = subTotal + taxAmount;
-        var paid = request.PaidAmount;
+        // Cap paid at grand so overpayment cannot unbalance purchase G/L (DR Inv+Tax vs CR Cash+AP).
+        var paid = Math.Min(Math.Max(0, request.PaidAmount), grandTotal);
         var balance = Math.Max(0, grandTotal - paid);
         var id = request.PurchaseInvoiceId;
         string invoiceNo;
@@ -2502,10 +2773,12 @@ app.MapGet("/api/shifts/current", async (HttpContext http, ConnectionFactory db,
     await using var con = await db.OpenTenantAsync(user.DatabaseName);
     await using var cmd = con.CreateCommand();
     cmd.CommandText = @"
-SELECT TOP 1 s.ShiftId,s.StoreId,s.TerminalId,s.UserId,s.OpeningCash,
+SELECT TOP 1 s.ShiftId,s.StoreId,s.TerminalId,ISNULL(t.TerminalCode,'') TerminalCode,ISNULL(t.TerminalName,'') TerminalName,s.UserId,s.OpeningCash,
 ISNULL(s.ExpectedCash, s.OpeningCash + ISNULL((SELECT SUM(pl.Amount) FROM PaymentLines pl INNER JOIN SalesHeader sh ON sh.SaleId=pl.SaleId INNER JOIN PaymentMethods pm ON pm.PaymentMethodId=pl.PaymentMethodId WHERE sh.ShiftId=s.ShiftId AND pm.PaymentMethodName='Cash'),0) + ISNULL((SELECT SUM(CASE WHEN EntryType='Cash In' THEN Amount WHEN EntryType='Cash Out' THEN -Amount ELSE 0 END) FROM CashDrawerLedger WHERE ShiftId=s.ShiftId),0)) ExpectedCash,
 ISNULL(s.ClosingCash,0) ClosingCash,ISNULL(s.DifferenceAmount,0) DifferenceAmount,s.Status,s.OpenedAt,s.ClosedAt
-FROM Shifts s WHERE s.StoreId=@StoreId AND s.UserId=@UserId AND s.Status='Open' ORDER BY s.ShiftId DESC";
+FROM Shifts s
+LEFT JOIN Terminals t ON t.TerminalId=s.TerminalId
+WHERE s.StoreId=@StoreId AND s.UserId=@UserId AND s.Status='Open' ORDER BY s.ShiftId DESC";
     cmd.Parameters.AddWithValue("@StoreId", user.StoreId);
     cmd.Parameters.AddWithValue("@UserId", user.UserId);
     var list = await SqlList.ReadAsync(cmd);
@@ -2516,13 +2789,20 @@ app.MapPost("/api/shifts/open", async (HttpContext http, ConnectionFactory db, A
 {
     var user = ApiAuth.RequireUser(http, tokens); if (user == null) return Results.Unauthorized();
     await using var con = await db.OpenTenantAsync(user.DatabaseName);
+    if (await CounterAndDayCloseEndpoints.IsBusinessDayClosedAsync(con, null, user.StoreId, DateTime.Today))
+        return Results.BadRequest(new { message = "Business day is already closed for this branch. Day Closing must be reopened by support before opening a new shift." });
+
     await using var cmd = con.CreateCommand();
     cmd.CommandText = @"
 IF EXISTS(SELECT 1 FROM Shifts WHERE StoreId=@StoreId AND UserId=@UserId AND Status='Open')
  SELECT TOP 1 ShiftId FROM Shifts WHERE StoreId=@StoreId AND UserId=@UserId AND Status='Open' ORDER BY ShiftId DESC;
 ELSE
 BEGIN
- DECLARE @ResolvedTerminalId INT=(SELECT TOP 1 TerminalId FROM Terminals WHERE StoreId=@StoreId AND IsActive=1 ORDER BY TerminalId);
+ DECLARE @ResolvedTerminalId INT = CASE
+   WHEN @TerminalId > 0 AND EXISTS(SELECT 1 FROM Terminals WHERE TerminalId=@TerminalId AND StoreId=@StoreId AND IsActive=1)
+     THEN @TerminalId
+   ELSE (SELECT TOP 1 TerminalId FROM Terminals WHERE StoreId=@StoreId AND IsActive=1 ORDER BY TerminalId)
+ END;
  IF @ResolvedTerminalId IS NULL
  BEGIN
   INSERT INTO Terminals(StoreId,TerminalCode,TerminalName,IsActive) VALUES(@StoreId,CONCAT('COUNTER-',@StoreId),'Counter 01',1);
@@ -2532,7 +2812,7 @@ BEGIN
 END;";
     cmd.Parameters.AddWithValue("@StoreId", user.StoreId);
     cmd.Parameters.AddWithValue("@BranchCode", user.BranchCode);
-    cmd.Parameters.AddWithValue("@TerminalId", request.TerminalId <= 0 ? 1 : request.TerminalId);
+    cmd.Parameters.AddWithValue("@TerminalId", request.TerminalId);
     cmd.Parameters.AddWithValue("@UserId", user.UserId);
     cmd.Parameters.AddWithValue("@OpeningCash", request.OpeningCash < 0 ? 0 : request.OpeningCash);
     var shiftId = Convert.ToInt32(await cmd.ExecuteScalarAsync());
@@ -2583,9 +2863,12 @@ ORDER BY sl.SaleLineId";
 app.MapPost("/api/returns", async (HttpContext http, ConnectionFactory db, AuthTokenService tokens, ReturnPostRequest request) =>
 {
     var user = ApiAuth.RequireUser(http, tokens); if (user == null) return Results.Unauthorized();
+    if (await LicenseGuard.BlockPostingIfLicenseExpiredAsync(db, user) is { } licenseBlock) return licenseBlock;
     if (string.IsNullOrWhiteSpace(request.OriginalInvoiceNo)) return Results.BadRequest(new { message = "Original invoice no is required." });
     if (request.Lines.Count == 0) return Results.BadRequest(new { message = "Return lines are required." });
     await using var con = await db.OpenTenantAsync(user.DatabaseName);
+    if (await CounterAndDayCloseEndpoints.IsBusinessDayClosedAsync(con, null, user.StoreId, DateTime.Today))
+        return Results.BadRequest(new { message = "Business day is closed for this branch. Returns are not allowed." });
     await using var tran = (SqlTransaction)await con.BeginTransactionAsync();
     try
     {
@@ -2593,7 +2876,7 @@ app.MapPost("/api/returns", async (HttpContext http, ConnectionFactory db, AuthT
         var returnNo = await PosSql.NextNumberAsync(con, tran, "RETURN");
         int returnId;
         await using (var hdr = new SqlCommand(@"INSERT INTO ReturnHeader(ReturnNo,OriginalInvoiceNo,StoreId,BranchCode,TerminalId,ShiftId,UserId,RefundAmount,Reason,Status)
-OUTPUT INSERTED.ReturnId VALUES(@ReturnNo,@OriginalInvoiceNo,@StoreId,@BranchCode,(SELECT TOP 1 TerminalId FROM Terminals WHERE StoreId=@StoreId AND IsActive=1 ORDER BY TerminalId),@ShiftId,@UserId,0,@Reason,'Posted')", con, tran))
+OUTPUT INSERTED.ReturnId VALUES(@ReturnNo,@OriginalInvoiceNo,@StoreId,@BranchCode,(SELECT TOP 1 TerminalId FROM Shifts WHERE ShiftId=@ShiftId),@ShiftId,@UserId,0,@Reason,'Posted')", con, tran))
         {
             hdr.Parameters.AddWithValue("@ReturnNo", returnNo);
             hdr.Parameters.AddWithValue("@OriginalInvoiceNo", request.OriginalInvoiceNo.Trim());
@@ -2674,8 +2957,18 @@ VALUES(@StoreId,@BranchCode,@ProductId,'Return',@ReturnNo,@Qty,0,@UnitCost,'POS 
             await InsertGlAsync(con, tran, setup["InventoryAccount"], DateTime.Today, "POS Return", returnNo, costTotal, 0, "Inventory returned", returnId, user.BranchCode);
             await InsertGlAsync(con, tran, setup["CogsAccount"], DateTime.Today, "POS Return", returnNo, 0, costTotal, "COGS reversed", returnId, user.BranchCode);
         }
+        await using (var cashOut = new SqlCommand(@"
+INSERT INTO CashDrawerLedger(ShiftId,EntryType,Amount,Remarks,CreatedBy)
+VALUES(@ShiftId,'Cash Out',@Amount,@Remarks,@UserId);", con, tran))
+        {
+            cashOut.Parameters.AddWithValue("@ShiftId", shiftId);
+            cashOut.Parameters.AddWithValue("@Amount", refundTotal);
+            cashOut.Parameters.AddWithValue("@Remarks", $"POS return refund {returnNo}");
+            cashOut.Parameters.AddWithValue("@UserId", user.UserId);
+            await cashOut.ExecuteNonQueryAsync();
+        }
         await tran.CommitAsync();
-        return Results.Ok(new { returnId, returnNo, refundAmount = refundTotal });
+        return Results.Ok(new { returnId, returnNo, refundAmount = refundTotal, stockUpdated = true });
     }
     catch (Exception ex)
     {
@@ -2771,6 +3064,7 @@ WHERE h.PurchaseInvoiceId=@Id AND h.StoreId=@StoreId";
 app.MapPost("/api/customer-payments", async (HttpContext http, ConnectionFactory db, AuthTokenService tokens, CustomerPaymentPostRequest request) =>
 {
     var user = ApiAuth.RequireUser(http, tokens); if (user == null) return Results.Unauthorized();
+    if (await LicenseGuard.BlockPostingIfLicenseExpiredAsync(db, user) is { } licenseBlock) return licenseBlock;
     if (request.CustomerId <= 0 || request.Amount <= 0) return Results.BadRequest(new { message = "Customer and positive amount are required." });
     await using var con = await db.OpenTenantAsync(user.DatabaseName);
     await using var tran = (SqlTransaction)await con.BeginTransactionAsync();
@@ -2798,7 +3092,8 @@ VALUES(@CustomerId,@PaymentDate,'Customer Payment',@PaymentNo,0,@Amount,@Bal,@Re
             id = Convert.ToInt32(await cmd.ExecuteScalarAsync());
         }
         var setup = await GetPostingSetupAsync(con, tran);
-        await InsertGlAsync(con, tran, setup["CashAccount"], request.PaymentDate.Date, "Customer Payment", paymentNo, request.Amount, 0, "Customer payment received", id);
+        var payAccount = PosSql.PaymentGlAccount(setup, request.PaymentMethod);
+        await InsertGlAsync(con, tran, payAccount, request.PaymentDate.Date, "Customer Payment", paymentNo, request.Amount, 0, "Customer payment received", id);
         await InsertGlAsync(con, tran, setup["ReceivableAccount"], request.PaymentDate.Date, "Customer Payment", paymentNo, 0, request.Amount, "Receivable cleared", id);
         await tran.CommitAsync();
         return Results.Ok(new { paymentId = id, paymentNo });
@@ -2813,6 +3108,7 @@ VALUES(@CustomerId,@PaymentDate,'Customer Payment',@PaymentNo,0,@Amount,@Bal,@Re
 app.MapPost("/api/vendor-payments", async (HttpContext http, ConnectionFactory db, AuthTokenService tokens, VendorPaymentPostRequest request) =>
 {
     var user = ApiAuth.RequireUser(http, tokens); if (user == null) return Results.Unauthorized();
+    if (await LicenseGuard.BlockPostingIfLicenseExpiredAsync(db, user) is { } licenseBlock) return licenseBlock;
     if (request.VendorId <= 0 || request.Amount <= 0) return Results.BadRequest(new { message = "Vendor and positive amount are required." });
     await using var con = await db.OpenTenantAsync(user.DatabaseName);
     await using var tran = (SqlTransaction)await con.BeginTransactionAsync();
@@ -2841,7 +3137,7 @@ VALUES(@VendorId,@PaymentDate,'Vendor Payment',@PaymentNo,@Amount,0,@Bal,@Remark
         }
         var setup = await GetPostingSetupAsync(con, tran);
         await InsertGlAsync(con, tran, setup["PayableAccount"], request.PaymentDate.Date, "Vendor Payment", paymentNo, request.Amount, 0, "Payable cleared", id);
-        await InsertGlAsync(con, tran, setup["CashAccount"], request.PaymentDate.Date, "Vendor Payment", paymentNo, 0, request.Amount, "Vendor payment paid", id);
+        await InsertGlAsync(con, tran, PosSql.PaymentGlAccount(setup, request.PaymentMethod), request.PaymentDate.Date, "Vendor Payment", paymentNo, 0, request.Amount, "Vendor payment paid", id);
         await tran.CommitAsync();
         return Results.Ok(new { paymentId = id, paymentNo });
     }
@@ -2908,9 +3204,15 @@ app.MapGet("/api/reports/tax", async (HttpContext http, ConnectionFactory db, Au
     await using var con = await db.OpenTenantAsync(user.DatabaseName);
     await using var cmd = con.CreateCommand();
     cmd.CommandText = @"
-SELECT 'Output Tax' TaxType, SUM(GrandTotal-TaxAmount) TaxableAmount, SUM(TaxAmount) TaxAmount FROM SalesHeader WHERE Status='Posted' AND SaleDate>=@From AND SaleDate<DATEADD(DAY,1,@To)
+SELECT 'Output Tax' TaxType, ISNULL(SUM(TaxableAmount),0) TaxableAmount, ISNULL(SUM(TaxAmount),0) TaxAmount FROM (
+  SELECT GrandTotal-TaxAmount TaxableAmount, TaxAmount FROM SalesHeader WHERE Status='Posted' AND SaleDate>=@From AND SaleDate<DATEADD(DAY,1,@To)
+  UNION ALL
+  SELECT GrandTotal-TaxAmount, TaxAmount FROM SalesInvoiceHeader WHERE Status='Posted' AND InvoiceDate>=@From AND InvoiceDate<=@To
+  UNION ALL
+  SELECT -(l.RefundAmount-l.TaxAmount), -l.TaxAmount FROM ReturnLines l INNER JOIN ReturnHeader h ON h.ReturnId=l.ReturnId WHERE h.Status='Posted' AND h.ReturnDate>=@From AND h.ReturnDate<DATEADD(DAY,1,@To)
+) o
 UNION ALL
-SELECT 'Input Tax' TaxType, SUM(GrandTotal-TaxAmount) TaxableAmount, SUM(TaxAmount) TaxAmount FROM PurchaseInvoiceHeader WHERE Status='Posted' AND InvoiceDate>=@From AND InvoiceDate<=@To";
+SELECT 'Input Tax' TaxType, ISNULL(SUM(GrandTotal-TaxAmount),0) TaxableAmount, ISNULL(SUM(TaxAmount),0) TaxAmount FROM PurchaseInvoiceHeader WHERE Status='Posted' AND InvoiceDate>=@From AND InvoiceDate<=@To";
     cmd.Parameters.AddWithValue("@From", (from ?? DateTime.Today.AddDays(-30)).Date);
     cmd.Parameters.AddWithValue("@To", (to ?? DateTime.Today).Date);
     return Results.Ok(await SqlList.ReadAsync(cmd));
@@ -2921,10 +3223,22 @@ app.MapGet("/api/reports/daily-profit", async (HttpContext http, ConnectionFacto
     var user = ApiAuth.RequireUser(http, tokens); if (user == null) return Results.Unauthorized();
     await using var con = await db.OpenTenantAsync(user.DatabaseName);
     await using var cmd = con.CreateCommand();
-    cmd.CommandText = @"SELECT CAST(sh.SaleDate AS DATE) PostingDate,SUM(sh.GrandTotal) Sales,SUM(sh.TaxAmount) Tax,SUM(sl.Quantity*sl.UnitCost) Cost,SUM(sh.GrandTotal)-SUM(sh.TaxAmount)-SUM(sl.Quantity*sl.UnitCost) GrossProfit
-FROM SalesHeader sh INNER JOIN SalesLines sl ON sl.SaleId=sh.SaleId
-WHERE sh.Status='Posted' AND sh.SaleDate>=@From AND sh.SaleDate<DATEADD(DAY,1,@To)
-GROUP BY CAST(sh.SaleDate AS DATE) ORDER BY PostingDate";
+    cmd.CommandText = @"
+SELECT PostingDate, SUM(Sales) Sales, SUM(Tax) Tax, SUM(Cost) Cost, SUM(GrossProfit) GrossProfit FROM (
+  SELECT CAST(sh.SaleDate AS DATE) PostingDate, SUM(sh.GrandTotal) Sales, SUM(sh.TaxAmount) Tax, SUM(sl.Quantity*sl.UnitCost) Cost,
+         SUM(sh.GrandTotal)-SUM(sh.TaxAmount)-SUM(sl.Quantity*sl.UnitCost) GrossProfit
+  FROM SalesHeader sh INNER JOIN SalesLines sl ON sl.SaleId=sh.SaleId
+  WHERE sh.Status='Posted' AND sh.SaleDate>=@From AND sh.SaleDate<DATEADD(DAY,1,@To)
+  GROUP BY CAST(sh.SaleDate AS DATE)
+  UNION ALL
+  SELECT CAST(h.ReturnDate AS DATE), -SUM(l.RefundAmount), -SUM(l.TaxAmount), -SUM(l.ReturnQuantity*l.UnitCost),
+         -(SUM(l.RefundAmount)-SUM(l.TaxAmount)-SUM(l.ReturnQuantity*l.UnitCost))
+  FROM ReturnHeader h INNER JOIN ReturnLines l ON l.ReturnId=h.ReturnId
+  WHERE h.Status='Posted' AND h.ReturnDate>=@From AND h.ReturnDate<DATEADD(DAY,1,@To)
+  GROUP BY CAST(h.ReturnDate AS DATE)
+) x
+GROUP BY PostingDate
+ORDER BY PostingDate";
     cmd.Parameters.AddWithValue("@From", (from ?? DateTime.Today.AddDays(-30)).Date);
     cmd.Parameters.AddWithValue("@To", (to ?? DateTime.Today).Date);
     return Results.Ok(await SqlList.ReadAsync(cmd));
@@ -2992,7 +3306,16 @@ app.MapGet("/api/accounting/report/balance-sheet", async (HttpContext http, Conn
 CASE WHEN a.AccountType IN('Liability','Equity') THEN ISNULL(SUM(g.CreditAmount-g.DebitAmount),0) ELSE ISNULL(SUM(g.DebitAmount-g.CreditAmount),0) END Balance
 FROM ChartOfAccounts a LEFT JOIN GLEntries g ON g.AccountId=a.AccountId AND g.PostingDate<=@AsOf
 WHERE a.AccountType IN('Asset','Liability','Equity') AND a.IsActive=1
-GROUP BY a.AccountNo,a.AccountName,a.AccountType ORDER BY a.AccountType,a.AccountNo";
+GROUP BY a.AccountNo,a.AccountName,a.AccountType
+UNION ALL
+SELECT '3999','Current Year Earnings','Equity',0,0,
+ISNULL((
+  SELECT SUM(CASE WHEN a2.AccountType IN('Income','Expense') THEN ISNULL(g2.CreditAmount-g2.DebitAmount,0) ELSE 0 END)
+  FROM ChartOfAccounts a2
+  LEFT JOIN GLEntries g2 ON g2.AccountId=a2.AccountId AND g2.PostingDate<=@AsOf
+  WHERE a2.AccountType IN('Income','Expense') AND a2.IsActive=1
+),0)
+ORDER BY AccountType,AccountNo";
     cmd.Parameters.AddWithValue("@AsOf", (asOf ?? DateTime.Today).Date);
     return Results.Ok(await SqlList.ReadAsync(cmd));
 });
@@ -3486,6 +3809,7 @@ app.MapPost("/api/settings/restore", async (HttpContext http, AuthTokenService t
 app.MapPost("/api/sales-invoices/post", async (HttpContext http, ConnectionFactory db, AuthTokenService tokens, SalesInvoicePostRequest request) =>
 {
     var user = ApiAuth.RequireUser(http, tokens); if (user == null) return Results.Unauthorized();
+    if (await LicenseGuard.BlockPostingIfLicenseExpiredAsync(db, user) is { } licenseBlock) return licenseBlock;
     if (request.CustomerId <= 0 || request.Lines.Count == 0) return Results.BadRequest(new { message = "Customer and invoice lines are required." });
     await using var con = await db.OpenTenantAsync(user.DatabaseName);
     await using var tran = (SqlTransaction)await con.BeginTransactionAsync();
@@ -3501,7 +3825,8 @@ app.MapPost("/api/sales-invoices/post", async (HttpContext http, ConnectionFacto
             var calc = PosSql.CalculateLine(effective, lineReq.Quantity, lineReq.DiscountPercent);
             computed.Add((lineReq,p,calc)); subTotal += calc.Gross; discount += calc.DiscountAmount; tax += calc.TaxAmount; grand += calc.LineTotal; costTotal += calc.Quantity * calc.UnitCost;
         }
-        var balance = Math.Max(0, grand - request.PaidAmount);
+        var paidOnInvoice = Math.Min(Math.Max(0, request.PaidAmount), grand);
+        var balance = Math.Max(0, grand - paidOnInvoice);
         var invoiceId = request.SalesInvoiceId;
         string invoiceNo;
         if (invoiceId > 0)
@@ -3516,7 +3841,7 @@ app.MapPost("/api/sales-invoices/post", async (HttpContext http, ConnectionFacto
             }
             await using var update = new SqlCommand(@"UPDATE SalesInvoiceHeader SET CustomerId=@CustomerId,InvoiceDate=@Date,UserId=@UserId,SubTotal=@SubTotal,DiscountAmount=@Discount,TaxAmount=@Tax,GrandTotal=@Grand,PaidAmount=@Paid,BalanceAmount=@Balance,Status='Posted',Remarks=@Remarks,PostedAt=SYSUTCDATETIME() WHERE SalesInvoiceId=@Id AND StoreId=@StoreId AND Status='Open';
 DELETE FROM SalesInvoiceLines WHERE SalesInvoiceId=@Id;", con, tran);
-            update.Parameters.AddWithValue("@Id", invoiceId); update.Parameters.AddWithValue("@CustomerId", request.CustomerId); update.Parameters.AddWithValue("@Date", request.InvoiceDate.Date); update.Parameters.AddWithValue("@StoreId", user.StoreId); update.Parameters.AddWithValue("@UserId", user.UserId); update.Parameters.AddWithValue("@SubTotal", subTotal); update.Parameters.AddWithValue("@Discount", discount); update.Parameters.AddWithValue("@Tax", tax); update.Parameters.AddWithValue("@Grand", grand); update.Parameters.AddWithValue("@Paid", request.PaidAmount); update.Parameters.AddWithValue("@Balance", balance); update.Parameters.AddWithValue("@Remarks", request.Remarks ?? "");
+            update.Parameters.AddWithValue("@Id", invoiceId); update.Parameters.AddWithValue("@CustomerId", request.CustomerId); update.Parameters.AddWithValue("@Date", request.InvoiceDate.Date); update.Parameters.AddWithValue("@StoreId", user.StoreId); update.Parameters.AddWithValue("@UserId", user.UserId); update.Parameters.AddWithValue("@SubTotal", subTotal); update.Parameters.AddWithValue("@Discount", discount); update.Parameters.AddWithValue("@Tax", tax); update.Parameters.AddWithValue("@Grand", grand); update.Parameters.AddWithValue("@Paid", paidOnInvoice); update.Parameters.AddWithValue("@Balance", balance); update.Parameters.AddWithValue("@Remarks", request.Remarks ?? "");
             await update.ExecuteNonQueryAsync();
         }
         else
@@ -3524,7 +3849,7 @@ DELETE FROM SalesInvoiceLines WHERE SalesInvoiceId=@Id;", con, tran);
             invoiceNo = await PosSql.NextNumberAsync(con, tran, "SALES_INVOICE");
             await using var insert = new SqlCommand(@"INSERT INTO SalesInvoiceHeader(InvoiceNo,CustomerId,InvoiceDate,StoreId,BranchCode,UserId,SubTotal,DiscountAmount,TaxAmount,GrandTotal,PaidAmount,BalanceAmount,Status,Remarks)
 OUTPUT INSERTED.SalesInvoiceId VALUES(@No,@CustomerId,@Date,@StoreId,@BranchCode,@UserId,@SubTotal,@Discount,@Tax,@Grand,@Paid,@Balance,'Posted',@Remarks)", con, tran);
-            insert.Parameters.AddWithValue("@No", invoiceNo); insert.Parameters.AddWithValue("@CustomerId", request.CustomerId); insert.Parameters.AddWithValue("@Date", request.InvoiceDate.Date); insert.Parameters.AddWithValue("@StoreId", user.StoreId); insert.Parameters.AddWithValue("@BranchCode", user.BranchCode); insert.Parameters.AddWithValue("@UserId", user.UserId); insert.Parameters.AddWithValue("@SubTotal", subTotal); insert.Parameters.AddWithValue("@Discount", discount); insert.Parameters.AddWithValue("@Tax", tax); insert.Parameters.AddWithValue("@Grand", grand); insert.Parameters.AddWithValue("@Paid", request.PaidAmount); insert.Parameters.AddWithValue("@Balance", balance); insert.Parameters.AddWithValue("@Remarks", request.Remarks ?? "");
+            insert.Parameters.AddWithValue("@No", invoiceNo); insert.Parameters.AddWithValue("@CustomerId", request.CustomerId); insert.Parameters.AddWithValue("@Date", request.InvoiceDate.Date); insert.Parameters.AddWithValue("@StoreId", user.StoreId); insert.Parameters.AddWithValue("@BranchCode", user.BranchCode); insert.Parameters.AddWithValue("@UserId", user.UserId); insert.Parameters.AddWithValue("@SubTotal", subTotal); insert.Parameters.AddWithValue("@Discount", discount); insert.Parameters.AddWithValue("@Tax", tax); insert.Parameters.AddWithValue("@Grand", grand); insert.Parameters.AddWithValue("@Paid", paidOnInvoice); insert.Parameters.AddWithValue("@Balance", balance); insert.Parameters.AddWithValue("@Remarks", request.Remarks ?? "");
             invoiceId = Convert.ToInt32(await insert.ExecuteScalarAsync());
         }
         foreach(var item in computed)
@@ -3542,18 +3867,23 @@ INSERT INTO InventoryLedger(StoreId,BranchCode,ProductId,MovementType,SourceDocu
         }
         await using(var bal = new SqlCommand(@"UPDATE Customers SET CurrentBalance=CurrentBalance+@Balance WHERE CustomerId=@CustomerId;
 DECLARE @Bal DECIMAL(18,2)=(SELECT CurrentBalance FROM Customers WHERE CustomerId=@CustomerId);
-INSERT INTO CustomerLedgerEntries(CustomerId,PostingDate,DocumentType,DocumentNo,DebitAmount,CreditAmount,BalanceAfter,Description,SourceId) VALUES(@CustomerId,@Date,'Sales Invoice',@No,@Grand,0,@Bal,'Posted sales invoice',@Id);", con, tran))
+INSERT INTO CustomerLedgerEntries(CustomerId,PostingDate,DocumentType,DocumentNo,DebitAmount,CreditAmount,BalanceAfter,Description,SourceId) VALUES(@CustomerId,@Date,'Sales Invoice',@No,@Balance,0,@Bal,'Posted sales invoice',@Id);", con, tran))
         {
-            bal.Parameters.AddWithValue("@CustomerId", request.CustomerId); bal.Parameters.AddWithValue("@Balance", balance); bal.Parameters.AddWithValue("@Date", request.InvoiceDate.Date); bal.Parameters.AddWithValue("@No", invoiceNo); bal.Parameters.AddWithValue("@Grand", grand); bal.Parameters.AddWithValue("@Id", invoiceId); await bal.ExecuteNonQueryAsync();
+            bal.Parameters.AddWithValue("@CustomerId", request.CustomerId); bal.Parameters.AddWithValue("@Balance", balance); bal.Parameters.AddWithValue("@Date", request.InvoiceDate.Date); bal.Parameters.AddWithValue("@No", invoiceNo); bal.Parameters.AddWithValue("@Id", invoiceId); await bal.ExecuteNonQueryAsync();
         }
         var setup = await GetPostingSetupAsync(con, tran);
-        await InsertGlAsync(con, tran, setup["ReceivableAccount"], request.InvoiceDate.Date, "Sales Invoice", invoiceNo, grand, 0, "Accounts receivable", invoiceId, user.BranchCode);
+        // Split receipt: Cash for amount paid at post, AR only for unpaid balance (avoids phantom AR).
+        if (paidOnInvoice > 0) await InsertGlAsync(con, tran, setup["CashAccount"], request.InvoiceDate.Date, "Sales Invoice", invoiceNo, paidOnInvoice, 0, "Cash received on invoice", invoiceId, user.BranchCode);
+        if (balance > 0) await InsertGlAsync(con, tran, setup["ReceivableAccount"], request.InvoiceDate.Date, "Sales Invoice", invoiceNo, balance, 0, "Accounts receivable", invoiceId, user.BranchCode);
         await InsertGlAsync(con, tran, setup["SalesAccount"], request.InvoiceDate.Date, "Sales Invoice", invoiceNo, 0, grand-tax, "Sales revenue", invoiceId, user.BranchCode);
-        await InsertGlAsync(con, tran, setup["OutputTaxAccount"], request.InvoiceDate.Date, "Sales Invoice", invoiceNo, 0, tax, "Output tax", invoiceId, user.BranchCode);
-        await InsertGlAsync(con, tran, setup["CogsAccount"], request.InvoiceDate.Date, "Sales Invoice", invoiceNo, costTotal, 0, "COGS", invoiceId, user.BranchCode);
-        await InsertGlAsync(con, tran, setup["InventoryAccount"], request.InvoiceDate.Date, "Sales Invoice", invoiceNo, 0, costTotal, "Inventory issued", invoiceId, user.BranchCode);
+        if (tax > 0) await InsertGlAsync(con, tran, setup["OutputTaxAccount"], request.InvoiceDate.Date, "Sales Invoice", invoiceNo, 0, tax, "Output tax", invoiceId, user.BranchCode);
+        if (costTotal > 0)
+        {
+            await InsertGlAsync(con, tran, setup["CogsAccount"], request.InvoiceDate.Date, "Sales Invoice", invoiceNo, costTotal, 0, "COGS", invoiceId, user.BranchCode);
+            await InsertGlAsync(con, tran, setup["InventoryAccount"], request.InvoiceDate.Date, "Sales Invoice", invoiceNo, 0, costTotal, "Inventory issued", invoiceId, user.BranchCode);
+        }
         await tran.CommitAsync();
-        return Results.Ok(new { salesInvoiceId=invoiceId, invoiceNo, grandTotal=grand, paidAmount=request.PaidAmount, balanceAmount=balance, message="Sales invoice posted." });
+        return Results.Ok(new { salesInvoiceId=invoiceId, invoiceNo, grandTotal=grand, paidAmount=paidOnInvoice, balanceAmount=balance, message="Sales invoice posted." });
     }
     catch(Exception ex){ await tran.RollbackAsync(); return Results.BadRequest(new { message = ex.Message }); }
 });
@@ -3917,11 +4247,16 @@ app.MapGet("/api/shifts/z-report", async (HttpContext http, ConnectionFactory db
     await using var con = await db.OpenTenantAsync(user.DatabaseName);
     await using var cmd = con.CreateCommand();
     cmd.CommandText = @"SELECT TOP 1 s.ShiftId,s.OpeningCash,ISNULL(s.ExpectedCash,0) ExpectedCash,ISNULL(s.ClosingCash,0) ClosingCash,ISNULL(s.DifferenceAmount,0) DifferenceAmount,s.Status,s.OpenedAt,s.ClosedAt,
+ISNULL(t.TerminalName,t.TerminalCode) CounterName,
 ISNULL((SELECT SUM(pl.Amount) FROM PaymentLines pl JOIN SalesHeader h ON h.SaleId=pl.SaleId JOIN PaymentMethods pm ON pm.PaymentMethodId=pl.PaymentMethodId WHERE h.ShiftId=s.ShiftId AND pm.PaymentMethodName='Cash'),0) CashSales,
 ISNULL((SELECT SUM(GrandTotal) FROM SalesHeader WHERE ShiftId=s.ShiftId AND Status='Posted'),0) TotalSales,
+ISNULL((SELECT SUM(TaxAmount) FROM SalesHeader WHERE ShiftId=s.ShiftId AND Status='Posted'),0) TotalTax,
+ISNULL((SELECT SUM(sl.UnitCost*sl.Quantity) FROM SalesLines sl JOIN SalesHeader h ON h.SaleId=sl.SaleId WHERE h.ShiftId=s.ShiftId AND h.Status='Posted'),0) TotalCost,
 ISNULL((SELECT COUNT(1) FROM SalesHeader WHERE ShiftId=s.ShiftId AND Status='Posted'),0) InvoiceCount,
 ISNULL((SELECT SUM(RefundAmount) FROM ReturnHeader WHERE ShiftId=s.ShiftId AND Status='Posted'),0) Refunds
-FROM Shifts s WHERE (@ShiftId=0 OR s.ShiftId=@ShiftId) AND s.StoreId=@StoreId AND s.UserId=@UserId ORDER BY s.ShiftId DESC";
+FROM Shifts s
+LEFT JOIN Terminals t ON t.TerminalId=s.TerminalId
+WHERE (@ShiftId=0 OR s.ShiftId=@ShiftId) AND s.StoreId=@StoreId AND s.UserId=@UserId ORDER BY s.ShiftId DESC";
     cmd.Parameters.AddWithValue("@ShiftId", shiftId ?? 0); cmd.Parameters.AddWithValue("@StoreId", user.StoreId); cmd.Parameters.AddWithValue("@UserId", user.UserId);
     return Results.Ok(await SqlList.ReadSingleAsync(cmd));
 });
@@ -4327,6 +4662,22 @@ static async Task<IResult> LoginFailureAsync(AuthenticationSecurityService authS
     return Results.BadRequest(new { message = "Invalid email or password." });
 }
 
+static async Task<bool> ShouldForceLoginOtpAsync(ConnectionFactory db, AuthenticationSecurityService authSecurity, string companyCode, bool emailVerified)
+{
+    // First-time / unverified email: OTP is always mandatory.
+    if (!emailVerified) return true;
+
+    var settings = await authSecurity.GetEffectiveEmailSettingsAsync();
+    if (!settings.EnableLoginOtp) return false;
+
+    await EnsureMasterUserDirectorySchemaAsync(db);
+    await using var con = await db.OpenMasterAsync();
+    await using var cmd = con.CreateCommand();
+    cmd.CommandText = "SELECT TOP 1 ISNULL(RequireOtpEveryLogin,0) FROM Tenants WHERE CompanyCode=@CompanyCode";
+    cmd.Parameters.AddWithValue("@CompanyCode", companyCode ?? string.Empty);
+    return Convert.ToBoolean(await cmd.ExecuteScalarAsync() ?? false);
+}
+
 static async Task<IResult> StartOrCompleteLoginAsync(HttpContext http, ConnectionFactory db, AuthTokenService tokens, AuthenticationSecurityService authSecurity, UserSession pendingSession, bool forceOtp = false)
 {
     var trustedToken = http.Request.Cookies["paynex_trusted_device"];
@@ -4352,7 +4703,6 @@ static async Task<IResult> StartOrCompleteLoginAsync(HttpContext http, Connectio
             challengeId = challenge.ChallengeId,
             maskedEmail = challenge.MaskedEmail,
             expiresInSeconds = challenge.ExpiresInSeconds,
-            devOtp = challenge.DevOtp,
             fromEmail = challenge.Delivery.FromEmail,
             deliveryStatus = challenge.Delivery.Message
         });
@@ -4654,7 +5004,16 @@ IF EXISTS (SELECT 1 FROM sys.key_constraints WHERE name = 'UQ_CompanyMobileAppUs
 IF OBJECT_ID('CompanyMobileAppUsers') IS NOT NULL
    AND NOT EXISTS (SELECT 1 FROM sys.key_constraints WHERE name = 'UQ_CompanyMobileAppUsers_UserName' AND parent_object_id = OBJECT_ID('CompanyMobileAppUsers'))
    AND NOT EXISTS (SELECT 1 FROM CompanyMobileAppUsers GROUP BY UserName HAVING COUNT(1) > 1)
-    ALTER TABLE CompanyMobileAppUsers ADD CONSTRAINT UQ_CompanyMobileAppUsers_UserName UNIQUE(UserName);";
+    ALTER TABLE CompanyMobileAppUsers ADD CONSTRAINT UQ_CompanyMobileAppUsers_UserName UNIQUE(UserName);
+IF OBJECT_ID('CompanyMobileAppUsers') IS NOT NULL
+   AND NOT EXISTS (SELECT 1 FROM sys.indexes WHERE name = 'UX_CompanyMobileAppUsers_Email' AND object_id = OBJECT_ID('CompanyMobileAppUsers'))
+   AND NOT EXISTS (
+        SELECT 1 FROM CompanyMobileAppUsers
+        WHERE Email IS NOT NULL AND Email <> ''
+        GROUP BY Email HAVING COUNT(1) > 1)
+    CREATE UNIQUE INDEX UX_CompanyMobileAppUsers_Email
+    ON CompanyMobileAppUsers(Email)
+    WHERE Email IS NOT NULL AND Email <> '';";
     await cmd.ExecuteNonQueryAsync();
 }
 
@@ -4704,6 +5063,17 @@ IF COL_LENGTH('CentralUserDirectory','IsCompanySuperAdmin') IS NULL ALTER TABLE 
 IF COL_LENGTH('CentralUserDirectory','IsDefaultCompany') IS NULL ALTER TABLE CentralUserDirectory ADD IsDefaultCompany BIT NOT NULL CONSTRAINT DF_CUD_IsDefaultCompany DEFAULT 1;
 IF COL_LENGTH('CentralUserDirectory','LastLoginAt') IS NULL ALTER TABLE CentralUserDirectory ADD LastLoginAt DATETIME2 NULL;
 IF COL_LENGTH('CentralUserDirectory','UpdatedAt') IS NULL ALTER TABLE CentralUserDirectory ADD UpdatedAt DATETIME2 NULL;
+IF COL_LENGTH('CentralUserDirectory','OwnerVisiblePassword') IS NULL ALTER TABLE CentralUserDirectory ADD OwnerVisiblePassword NVARCHAR(200) NULL;
+IF COL_LENGTH('Tenants','RequireOtpEveryLogin') IS NULL ALTER TABLE Tenants ADD RequireOtpEveryLogin BIT NOT NULL CONSTRAINT DF_Tenants_RequireOtpEveryLogin DEFAULT 0;
+IF OBJECT_ID('CentralUserDirectory') IS NOT NULL
+   AND NOT EXISTS (SELECT 1 FROM sys.indexes WHERE name = 'UX_CentralUserDirectory_Email' AND object_id = OBJECT_ID('CentralUserDirectory'))
+   AND NOT EXISTS (
+        SELECT 1 FROM CentralUserDirectory
+        WHERE Email IS NOT NULL AND Email <> ''
+        GROUP BY Email HAVING COUNT(1) > 1)
+    CREATE UNIQUE INDEX UX_CentralUserDirectory_Email
+    ON CentralUserDirectory(Email)
+    WHERE Email IS NOT NULL AND Email <> '';
 IF OBJECT_ID('AuthSessionAudit') IS NULL
 BEGIN
 CREATE TABLE AuthSessionAudit(
@@ -4792,6 +5162,24 @@ static async Task UpsertCentralUserDirectoryAsync(ConnectionFactory db, UserSess
     await EnsureMasterUserDirectorySchemaAsync(db);
     var tenant = await db.GetTenantByCodeAsync(actor.CompanyCode) ?? throw new InvalidOperationException("Company code not found.");
     await using var con = await db.OpenMasterAsync();
+
+    // Final guard: never allow the same email on two company identities.
+    await using (var conflict = con.CreateCommand())
+    {
+        conflict.CommandText = @"
+SELECT TOP 1 CompanyCode
+FROM CentralUserDirectory
+WHERE LOWER(LTRIM(RTRIM(Email))) = LOWER(LTRIM(RTRIM(@Email)))
+  AND NOT (CompanyCode=@CompanyCode AND UserId=@UserId)
+ORDER BY DirectoryUserId;";
+        conflict.Parameters.AddWithValue("@Email", email ?? string.Empty);
+        conflict.Parameters.AddWithValue("@CompanyCode", actor.CompanyCode);
+        conflict.Parameters.AddWithValue("@UserId", tenantUserId);
+        var otherCompany = Convert.ToString(await conflict.ExecuteScalarAsync());
+        if (!string.IsNullOrWhiteSpace(otherCompany))
+            throw new InvalidOperationException($"Email '{email}' is already registered for company {otherCompany}. One email can be used for only one company user.");
+    }
+
     await using var cmd = con.CreateCommand();
     cmd.CommandText = @"
 IF EXISTS(SELECT 1 FROM CentralUserDirectory WHERE UserId=@UserId AND CompanyCode=@CompanyCode)

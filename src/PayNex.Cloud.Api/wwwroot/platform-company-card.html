@@ -3,7 +3,7 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width,initial-scale=1">
-  <link rel="stylesheet" href="/css/app.css?v=final-fixes-20260715">
+  <link rel="stylesheet" href="/css/app.css?v=api-catalog-20260731">
   <title>PayNex Company Card</title>
 </head>
 <body>
@@ -31,6 +31,7 @@
       <span class="bc-command-separator"></span>
       <button id="openProductionBtn" class="secondary" type="button"><span>↗</span> Open Production</button>
       <button id="createSandboxBtn" class="secondary" type="button"><span>◫</span> Create / Repair Sandbox</button>
+      <button id="deleteSandboxBtn" class="danger" type="button"><span>✕</span> Delete Sandbox</button>
       <button id="mobileAppBtn" class="secondary" type="button"><span>▣</span> Mobile App Detail</button>
       <button id="refreshBtn" class="secondary" type="button"><span>↻</span> Refresh</button>
     </section>
@@ -99,6 +100,7 @@
             <label class="bc-check-field"><input id="fAllowMultiBranch" type="checkbox"> Allow Multiple Branches</label>
             <label class="bc-check-field"><input id="fAllowSandbox" type="checkbox"> Allow Sandbox</label>
             <label id="createSandboxNowField" class="bc-check-field"><input id="fCreateSandbox" type="checkbox"> Create Sandbox Now</label>
+            <label class="bc-check-field span-2"><input id="fRequireOtpEveryLogin" type="checkbox"> OTP on every login (first login OTP is always required)</label>
             <label class="span-2">Production Database
               <input id="fProductionDb" readonly placeholder="Created automatically">
             </label>
@@ -236,7 +238,7 @@
   </main>
 
   <script src="/js/api.js?v=bc-owner-company-pages-20260710"></script>
-  <script src="/js/platform-company-card.js?v=first-login-otp-20260714"></script>
-  <script src="/js/app-shell.js?v=final-fixes-20260715"></script>
+  <script src="/js/platform-company-card.js?v=company-card-otp-sandbox-20260727"></script>
+  <script src="/js/app-shell.js?v=otp-nav-20260731"></script>
 </body>
 </html>

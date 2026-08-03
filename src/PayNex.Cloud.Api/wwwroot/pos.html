@@ -4,14 +4,14 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width,initial-scale=1">
   <title>PayNex Web POS</title>
-  <link rel="stylesheet" href="/css/app.css?v=final-fixes-20260715">
+  <link rel="stylesheet" href="/css/app.css?v=pos-tight-space-20260801">
 </head>
-<body>
-  <div class="shell">
+<body class="pos-page">
+  <div class="shell pos-shell">
     <div class="top">
       <div>
         <h1>Counter Sales / POS Billing</h1>
-        <p id="who" class="muted">Compact cashier screen with larger cart, product lookup, split payment and thermal receipt print.</p>
+        <p id="who" class="muted">Scan barcode into cart, search products, then post payment.</p>
       </div>
       <div class="nav">
         <a href="/workspace.html">Workspace</a>
@@ -33,15 +33,18 @@
         </div>
         <table class="table">
           <thead>
-            <tr><th>Product</th><th>Price</th><th>Stock</th><th>Action</th></tr>
+            <tr><th>Product</th><th class="pos-num">Price</th><th class="pos-num">Stock</th><th class="pos-action">Action</th></tr>
           </thead>
           <tbody id="products"></tbody>
         </table>
-        <div class="shortcuts">Shortcuts: Scan barcode to search - product selection - Pay/Post Sale generates A4 invoice and thermal receipt.</div>
+        <div class="shortcuts">Tip: Use the Cart barcode field for scanner auto-add. Search here for browse / manual Add.</div>
       </div>
       <div class="panel pos-cart-panel">
-        <div class="setup-section-title">
+        <div class="setup-section-title pos-cart-head">
           <h2>Cart & Payment</h2>
+          <input id="cartBarcode" class="pos-scan-input" type="text" autocomplete="off" spellcheck="false"
+                 placeholder="Scan / type barcode — auto add"
+                 title="Scan or type barcode then Enter. Matching item is added to cart automatically.">
           <span class="lookup-chip">Counter Sale</span>
         </div>
         <div id="cart" class="cart-list"></div>
@@ -51,17 +54,22 @@
         </div>
         <div class="row">
           <label>Paid Amount<input id="paid" type="number" placeholder="Paid Amount"></label>
-          <label>Payment Method
-            <select id="payMethod" data-lookup-title="Payment Method">
+          <label>Payment
+            <select id="payMethod" data-no-lookup="1" onchange="PayNexPayment.toggleBankRow('payMethod','bankPickWrap')">
               <option value="Cash">Cash</option>
-              <option value="Card">Card</option>
+              <option value="Bank">Bank</option>
               <option value="Credit">Credit</option>
             </select>
           </label>
         </div>
+        <div class="row" id="bankPickWrap" style="display:none">
+          <label>Bank Account
+            <select id="payBank" data-no-lookup="1"></select>
+          </label>
+        </div>
         <div class="actions">
           <button class="success" onclick="postSale()">Pay / Post Sale</button>
-          <button class="secondary" onclick="cart=[];renderCart()">New Sale</button>
+          <button class="secondary" onclick="cart=[];renderCart();focusScan()">New Sale</button>
           <button class="secondary" onclick="printLastReceipt()">Print Last Receipt</button>
           <button class="secondary" onclick="alert('Hold sale ready for workflow')">Hold</button>
           <button class="secondary" onclick="alert('Recall hold ready for workflow')">Recall</button>
@@ -103,7 +111,8 @@
   </div>
 
   <script src="/js/api.js"></script>
-  <script src="/js/pos.js"></script>
-  <script src="/js/app-shell.js?v=final-fixes-20260715"></script>
+  <script src="/js/payment-options.js?v=pay-20260729"></script>
+  <script src="/js/pos.js?v=pos-col-align-20260801"></script>
+  <script src="/js/app-shell.js?v=api-nav-20260731"></script>
 </body>
 </html>

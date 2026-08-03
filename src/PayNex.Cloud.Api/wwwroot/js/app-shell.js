@@ -9,6 +9,8 @@
       ['/dashboard.html','DASH','Dashboard'],
       ['/pos.html','POS','POS'],
       ['/company.html','COM','Company Information'],
+      ['/api.html','API','API'],
+      ['/email-setup.html','OTP','OTP Setup'],
       ['/branches.html','BR','Branches']
     ]}
   ];
@@ -16,6 +18,8 @@
   function isActive(path){
     const cleanPath = String(path || '').split('#')[0];
     if(cleanPath === '/swagger') return location.pathname.startsWith('/swagger');
+    if(cleanPath === '/api.html') return location.pathname.endsWith('/api.html');
+    if(cleanPath === '/email-setup.html') return location.pathname.endsWith('/email-setup.html') || location.pathname.endsWith('/owner-email-security.html');
     if(cleanPath === '/sales.html' && location.pathname.endsWith('/sales-invoice-card.html')) return true;
     if(cleanPath === '/purchases.html' && location.pathname.endsWith('/purchase-invoice-card.html')) return true;
     if(cleanPath === '/items.html' && location.pathname.endsWith('/item-card.html')) return true;
@@ -39,7 +43,7 @@
   sidebar.innerHTML = `
     <div class="brand">
       <div class="brand-logo" aria-hidden="true"></div>
-      <div><h2>PayNex Cloud</h2><p>Cloud SaaS ERP</p></div>
+      <div><h2>PayNex</h2><p>SaaS ERP</p></div>
     </div>
     <div class="side-user">
       <b id="sideUser">Signed in user</b>
@@ -59,7 +63,6 @@
       <div class="page-title">${title}</div>
     </div>
     <div class="command-area">
-      <div class="command-box">Search menu, customer, item, account, report...</div>
       <select id="paynexBranchSelector" class="branch-selector" hidden></select>
     </div>
     <div class="header-right">
@@ -92,7 +95,6 @@
           <div class="environment-panel-note">Switching refreshes the ERP workspace and applies the selected environment to your session.</div>
         </section>
       </div>
-      <div class="clock" id="paynexClock"></div>
       <div class="app-user-menu" id="paynexUserMenu">
         <button type="button" class="app-user-trigger" id="paynexUserTrigger" aria-haspopup="dialog" aria-expanded="false" aria-controls="paynexUserPanel" title="Signed-in user">
           <span class="app-user-avatar">
@@ -140,30 +142,76 @@
     userTrigger.setAttribute('aria-expanded',open?'true':'false');
   }
 
-  let currentAvatarObjectUrl='';
-  async function refreshCurrentUserAvatar(){
+  let currentAvatarRequest = 0;
+  function refreshCurrentUserAvatar(explicitUserId){
+    // Event listeners may pass an Event object — only accept numeric ids.
+    const explicitId = (typeof explicitUserId === 'number' || (typeof explicitUserId === 'string' && /^\d+$/.test(explicitUserId)))
+      ? Number(explicitUserId)
+      : (explicitUserId && typeof explicitUserId === 'object' && explicitUserId.detail
+          ? Number(explicitUserId.detail.userId || explicitUserId.detail.UserId || 0)
+          : 0);
     const pairs=[
       [document.getElementById('paynexUserAvatarImage'),document.getElementById('paynexUserAvatarFallback')],
       [document.getElementById('paynexUserPanelImage'),document.getElementById('paynexUserPanelFallback')]
     ];
-    pairs.forEach(([img,fallback])=>{
-      if(!img||!fallback) return;
-      img.hidden=true; fallback.hidden=false;
-      img.onload=()=>{img.hidden=false;fallback.hidden=true};
-      img.onerror=()=>{img.hidden=true;fallback.hidden=false};
-    });
-    if(currentAvatarObjectUrl){URL.revokeObjectURL(currentAvatarObjectUrl);currentAvatarObjectUrl='';}
-    if(!window.api?.fetchWithRefresh)return;
-    try{
-      // Fetch through the authenticated API helper so an expired access cookie
-      // can be refreshed before the picture from the signed-in user's card loads.
-      const response=await api.fetchWithRefresh('/api/me/photo?v='+Date.now(),{method:'GET',cache:'no-store'});
-      if(!response.ok)return;
-      const blob=await response.blob();
-      if(!blob.size||!String(blob.type||'').startsWith('image/'))return;
-      currentAvatarObjectUrl=URL.createObjectURL(blob);
-      pairs.forEach(([img])=>{if(img)img.src=currentAvatarObjectUrl;});
-    }catch{}
+    let userId=explicitId;
+    if(!userId){
+      try{
+        const me=JSON.parse(localStorage.getItem('paynex_last_user')||'{}');
+        userId=Number(me.userId||me.UserId||0);
+      }catch{}
+    }
+
+    const detailUrl = explicitUserId && typeof explicitUserId === 'object' && explicitUserId.detail
+      ? String(explicitUserId.detail.photoUrl || '')
+      : '';
+    const urls=[];
+    if(detailUrl) urls.push(detailUrl);
+    if(userId>0) urls.push(`/api/users/${userId}/photo?v=${Date.now()}`);
+    urls.push(`/api/me/photo?v=${Date.now()}`);
+
+    const requestId=++currentAvatarRequest;
+    const showFallback=()=>{
+      pairs.forEach(([img,fallback])=>{
+        if(!img||!fallback) return;
+        img.hidden=true;
+        img.removeAttribute('src');
+        fallback.hidden=false;
+        img.parentElement?.classList.remove('has-photo');
+      });
+    };
+    const showPhoto=(url)=>{
+      pairs.forEach(([img,fallback])=>{
+        if(!img||!fallback) return;
+        img.onload=()=>{
+          img.removeAttribute('hidden');
+          img.hidden=false;
+          fallback.hidden=true;
+          img.parentElement?.classList.add('has-photo');
+        };
+        img.onerror=()=>{
+          img.hidden=true;
+          fallback.hidden=false;
+          img.parentElement?.classList.remove('has-photo');
+        };
+        img.removeAttribute('hidden');
+        img.src=url;
+        img.hidden=false;
+        fallback.hidden=true;
+        img.parentElement?.classList.add('has-photo');
+      });
+    };
+    const tryUrl=(index)=>{
+      if(requestId!==currentAvatarRequest) return;
+      if(index>=urls.length){ showFallback(); return; }
+      const url=urls[index];
+      const probe=new Image();
+      probe.onload=()=>{ if(requestId===currentAvatarRequest) showPhoto(url); };
+      probe.onerror=()=>tryUrl(index+1);
+      probe.src=url;
+    };
+    showFallback();
+    tryUrl(0);
   }
 
   function applyCachedUserIdentity(){
@@ -271,8 +319,7 @@
     });
   });
 
-  function tick(){ const el = document.getElementById('paynexClock'); if(el) el.textContent = new Date().toLocaleString(); }
-  tick(); setInterval(tick, 1000);
+  function tick(){ /* clock removed from header */ }
 
   function ensureBranchMenuVisible(){
     const menu=document.querySelector('.side-menu');
@@ -285,8 +332,33 @@
     menu.appendChild(link);
   }
 
+  function ensureOtpSetupNavVisible(show){
+    const menu=document.querySelector('.side-menu');
+    if(!menu) return;
+    let link=document.getElementById('otpSetupMenuLink') || [...menu.querySelectorAll('a')].find(a=>a.getAttribute('href')==='/email-setup.html');
+    if(!show){
+      if(link) link.remove();
+      return;
+    }
+    if(!link){
+      const emailActive = isActive('/email-setup.html') ? 'active' : '';
+      const apiNav=[...menu.querySelectorAll('a')].find(a=>a.getAttribute('href')==='/api.html');
+      const html=`<a id="otpSetupMenuLink" href="/email-setup.html" class="${emailActive}"><span class="micon">OTP</span><span>OTP Setup</span></a>`;
+      if(apiNav) apiNav.insertAdjacentHTML('afterend', html);
+      else menu.insertAdjacentHTML('beforeend', html);
+      link=document.getElementById('otpSetupMenuLink');
+    }else{
+      link.id='otpSetupMenuLink';
+      const label=link.querySelector('span:last-child');
+      if(label) label.textContent='OTP Setup';
+      const apiNav=[...menu.querySelectorAll('a')].find(a=>a.getAttribute('href')==='/api.html');
+      if(apiNav && link.previousElementSibling !== apiNav) apiNav.insertAdjacentElement('afterend', link);
+    }
+  }
+
   function applyPermissionVisibility(me){
     try{
+      if(!(me.isPlatformOwner||me.IsPlatformOwner)) ensureOtpSetupNavVisible(false);
       const userLink=[...document.querySelectorAll('.side-menu a')].find(a=>a.getAttribute('href')==='/users.html');
       if(userLink && !(hasPermission(me,'users.createUser')||hasPermission(me,'users.editUser')||hasPermission(me,'users.assignPermissions'))) userLink.remove();
       const companyLink=[...document.querySelectorAll('.side-menu a')].find(a=>a.getAttribute('href')==='/company.html');
@@ -299,6 +371,30 @@
       if(expenseLink && !(hasPermission(me,'expenses.view')||hasPermission(me,'expenses.create')||hasPermission(me,'finance.createExpense')||hasPermission(me,'expenses.edit')||hasPermission(me,'expenses.delete'))) expenseLink.remove();
       const expenseReportLink=[...document.querySelectorAll('.side-menu a')].find(a=>a.getAttribute('href')==='/expense-report.html');
       if(expenseReportLink && !(hasPermission(me,'expenses.viewReport')||hasPermission(me,'expenses.printReport'))) expenseReportLink.remove();
+    }catch{}
+  }
+
+  function applyLicensePostingGuard(me){
+    try{
+      const blocked = !!(me.postingBlocked || me.PostingBlocked);
+      window.__paynexPostingBlocked = blocked;
+      window.__paynexLicenseMessage = me.licenseMessage || me.LicenseMessage || 'License expired. Documents can be saved as Draft/Open only; posting is blocked.';
+      if(!blocked) return;
+      const bar=document.querySelector('.bc-command-bar') || document.querySelector('main.shell') || document.body;
+      if(bar && !document.getElementById('paynexLicenseBanner')){
+        const note=document.createElement('div');
+        note.id='paynexLicenseBanner';
+        note.className='amber-note';
+        note.style.margin='8px 0';
+        note.textContent=window.__paynexLicenseMessage;
+        bar.prepend(note);
+      }
+      ['postBtn','completeSaleBtn','payBtn','postPaymentBtn'].forEach(id=>{
+        const el=document.getElementById(id);
+        if(!el) return;
+        el.disabled=true;
+        el.title=window.__paynexLicenseMessage;
+      });
     }catch{}
   }
 
@@ -367,7 +463,7 @@
         ['paynexUserAvatarFallback','paynexUserPanelFallback'].forEach(id=>setText(id,initials));
         const cardLink=document.getElementById('paynexMyUserCardLink');
         if(cardLink) cardLink.href=userId?`/user-card.html?id=${userId}`:'/users.html';
-        if(!isOwner) refreshCurrentUserAvatar();
+        refreshCurrentUserAvatar(userId);
         if(su) su.textContent = user;
         if(sr) sr.textContent = isOwner ? 'Platform Super Admin • PayNex Cloud ERP' : ([role,company].filter(Boolean).join(' • ') || 'Company workspace');
         if(badge) badge.textContent = isOwner ? 'PayNex Owner' : (env + ' SaaS');
@@ -377,9 +473,10 @@
           const platformOnly = (me.companyCode || me.CompanyCode || '') === 'PAYNEX' || !(me.databaseName || me.DatabaseName);
           if(menu && !document.getElementById('ownerPortalMenuLink')){
             const active = isActive('/platform-portal.html') ? 'active' : '';
-            const emailActive = isActive('/owner-email-security.html') ? 'active' : '';
-            menu.insertAdjacentHTML('afterbegin', `<div class="side-section owner-section">Owner</div><a id="ownerPortalMenuLink" href="/platform-portal.html" class="${active}"><span class="micon">PN</span><span>Owner Portal</span></a><a id="ownerEmailSecurityMenuLink" href="/owner-email-security.html" class="${emailActive}"><span class="micon">OTP</span><span>Email & OTP Setup</span></a>`);
+            menu.insertAdjacentHTML('afterbegin', `<div class="side-section owner-section">Owner</div><a id="ownerPortalMenuLink" href="/platform-portal.html" class="${active}"><span class="micon">PN</span><span>Owner Portal</span></a>`);
           }
+          // Keep OTP Setup visible right after API for Platform Owner.
+          ensureOtpSetupNavVisible(true);
           const envLauncher=document.getElementById('paynexEnvLauncher');
           const envMenu=document.getElementById('paynexEnvMenu');
           const environmentSwitcher=document.getElementById('paynexEnvironmentSwitcher');
@@ -394,14 +491,18 @@
             const ownerPortalPath = location.pathname.endsWith('/platform-portal.html')
               || location.pathname.endsWith('/platform-company-card.html')
               || location.pathname.endsWith('/platform-mobile-app.html')
-              || location.pathname.endsWith('/owner-email-security.html');
+              || location.pathname.endsWith('/owner-email-security.html')
+              || location.pathname.endsWith('/email-setup.html')
+              || location.pathname.endsWith('/api.html');
             if(!ownerPortalPath && !location.pathname.endsWith('/login.html') && !location.pathname.endsWith('/admin.html')){
               location.href='/platform-portal.html';
               return;
             }
           }
         }
+        if(!isOwner) ensureOtpSetupNavVisible(false);
         applyPermissionVisibility(me);
+        applyLicensePostingGuard(me);
         const ownerPlatformOnly = !!(me.isPlatformOwner||me.IsPlatformOwner) && (((me.companyCode || me.CompanyCode || '') === 'PAYNEX') || !(me.databaseName || me.DatabaseName));
         if(!ownerPlatformOnly) loadBranchContext(me);
       }).catch(()=>{});

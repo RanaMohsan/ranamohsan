@@ -3,7 +3,7 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width,initial-scale=1">
-  <link rel="stylesheet" href="/css/app.css?v=final-fixes-20260715">
+  <link rel="stylesheet" href="/css/app.css?v=api-catalog-20260731">
   <title>Picture Sales</title>
 </head>
 <body class="sidebar-collapsed picture-sales-body">
@@ -17,14 +17,29 @@
         <div id="cards" class="picture-grid"></div>
       </div>
       <div class="panel picture-cart-panel">
-        <div class="setup-section-title"><h2>Cart</h2><span class="lookup-chip">Counter Sale</span></div>
+        <div class="setup-section-title pos-cart-head">
+          <h2>Cart</h2>
+          <input id="cartBarcode" class="pos-scan-input" type="text" autocomplete="off" spellcheck="false"
+                 placeholder="Scan / type barcode — auto add"
+                 title="Scan or type barcode then Enter. Matching item is added to cart automatically.">
+          <span class="lookup-chip">Counter Sale</span>
+        </div>
         <select id="customer" data-no-lookup="1" disabled title="Picture Sales uses Walk-in Customer only."></select>
         <div id="cartBox" class="picture-cart-list"></div>
         <div class="total-box picture-total-box"><div>Total</div><div class="amount" id="total">Rs. 0.00</div></div>
         <label>Paid Amount<input id="paid" type="number" placeholder="Paid Amount"></label>
+        <label>Payment
+          <select id="payMethod" data-no-lookup="1" onchange="PayNexPayment.toggleBankRow('payMethod','bankPickWrap')">
+            <option value="Cash">Cash</option>
+            <option value="Bank">Bank</option>
+          </select>
+        </label>
+        <label id="bankPickWrap" style="display:none">Bank Account
+          <select id="payBank" data-no-lookup="1"></select>
+        </label>
         <div class="actions">
           <button class="success" onclick="postSale()">Pay / Post Payment</button>
-          <button class="secondary" onclick="cart=[];renderCart()">Clear Cart</button>
+          <button class="secondary" onclick="cart=[];renderCart();focusScan()">Clear Cart</button>
         </div>
         <p id="status"></p>
       </div>
@@ -54,7 +69,8 @@
   </div>
 
   <script src="/js/api.js?v=picture-sales-layout-final-20260713"></script>
-  <script src="/js/picture-sales.js?v=picture-sales-layout-final-20260713"></script>
-  <script src="/js/app-shell.js?v=final-fixes-20260715"></script>
+  <script src="/js/payment-options.js?v=pay-20260729"></script>
+  <script src="/js/picture-sales.js?v=pic-scan-20260729"></script>
+  <script src="/js/app-shell.js?v=api-nav-20260731"></script>
 </body>
 </html>

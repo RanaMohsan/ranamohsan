@@ -44,9 +44,102 @@ async function init(){
   }catch{ location.href='/login.html'; return; }
   const look = await api.get('/api/lookups');
   lockCustomerToWalkIn(look.customers || []);
+  await PayNexPayment.load();
+  PayNexPayment.fillBankSelect(document.getElementById('payBank'));
+  PayNexPayment.toggleBankRow('payMethod','bankPickWrap');
   wireLineModalKeys();
+  wireBarcodeScan();
   renderCart();
   await loadProducts();
+  focusScan();
+}
+
+function focusScan(){
+  const el = document.getElementById('cartBarcode');
+  if(el){ el.focus(); el.select(); }
+}
+
+function wireBarcodeScan(){
+  const el = document.getElementById('cartBarcode');
+  if(!el) return;
+  el.addEventListener('keydown', async ev => {
+    if(ev.key !== 'Enter') return;
+    ev.preventDefault();
+    const code = String(el.value || '').trim();
+    el.value = '';
+    if(!code) return;
+    await autoAddByBarcode(code);
+    focusScan();
+  });
+}
+
+function productBarcodeOf(p){ return String(v(p,'barcode','Barcode') || '').trim(); }
+
+function productMatchKey(p, code){
+  const q = String(code || '').trim().toLowerCase();
+  if(!q) return false;
+  return productBarcodeOf(p).toLowerCase() === q || String(productCodeOf(p)).trim().toLowerCase() === q;
+}
+
+async function findProductByCode(code){
+  const q = String(code || '').trim();
+  if(!q) return null;
+  let p = (products || []).find(x => productMatchKey(x, q));
+  if(p) return p;
+  try{
+    const list = await api.get('/api/products?term=' + encodeURIComponent(q));
+    const rows = list || [];
+    p = rows.find(x => productMatchKey(x, q)) || null;
+    if(p && !(products || []).some(x => productIdOf(x) === productIdOf(p))){
+      products = [p, ...(products || [])];
+    }
+    return p;
+  }catch{
+    return null;
+  }
+}
+
+function addProductToCartDirect(p, qty = 1){
+  const addQty = Math.max(1, Number(qty || 1));
+  const stock = productStockOf(p);
+  const pid = productIdOf(p);
+  const price = productPriceOf(p);
+  const taxPercent = productTaxPercentOf(p);
+  const taxInclusive = productTaxInclusiveOf(p);
+  const existing = cart.find(x => x.productId === pid && x.price === price && x.taxPercent === taxPercent && x.taxInclusive === taxInclusive);
+  const finalQty = addQty + Number(existing?.quantity || 0);
+  if(finalQty > stock){
+    msg('status', `Stock not enough for ${productNameOf(p)}. Available: ${stock}`, false);
+    return false;
+  }
+  if(existing) existing.quantity = finalQty;
+  else cart.push({
+    productId: pid,
+    productCode: productCodeOf(p),
+    productName: productNameOf(p),
+    quantity: addQty,
+    price,
+    taxPercent,
+    taxInclusive,
+    discountPercent: Number(v(p,'productDiscountPercent','ProductDiscountPercent') || 0)
+  });
+  renderCart();
+  return true;
+}
+
+async function autoAddByBarcode(code){
+  try{
+    const p = await findProductByCode(code);
+    if(!p){
+      msg('status', `No item found for barcode/code: ${code}`, false);
+      return;
+    }
+    if(addProductToCartDirect(p, 1)){
+      msg('status', `Added: ${productNameOf(p)}`, true);
+    }
+  }catch(e){
+    msg('status', e.message || 'Scan failed.', false);
+  }
 }
 
 async function loadProducts(){
@@ -180,6 +273,7 @@ function confirmLineModal(){
   });
   closeLineModal();
   renderCart();
+  focusScan();
 }
 
 function renderCart(){
@@ -221,16 +315,18 @@ async function postSale(){
       return;
     }
     const cashId = 1;
+    const payment = PayNexPayment.buildPayment('payMethod', 'payBank', round2(paidAmount));
     const r = await api.post('/api/pos/sales',{
       customerId: 0,
       remarks: 'Picture sale',
       lines: cart.map(l=>({productId:l.productId, quantity:l.quantity, unitPrice:l.price, discountPercent:l.discountPercent || 0})),
-      payments: [{paymentMethodId:cashId, paymentMethodName:'Cash', amount:round2(paidAmount), referenceNo:''}]
+      payments: [payment]
     });
     msg('status',`Posted ${r.invoiceNo || r.InvoiceNo}`,true);
     cart = [];
     renderCart();
     await loadProducts();
+    focusScan();
     if(r.saleId || r.SaleId) await api.openReport('/api/reports/pos-receipt/' + (r.saleId || r.SaleId) + '/html?layout=receipt');
   }catch(e){ msg('status',e.message,false); }
 }

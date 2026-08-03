@@ -13,6 +13,14 @@
       "PackagePath": "staticwebassets\\admin.html"
     },
     {
+      "Id": "C:\\Users\\Hamid\\Documents\\POS\\owner_portal_work_BC_list___After__filters\\owner_portal_work\\src\\PayNex.Cloud.Api\\wwwroot\\api.html",
+      "PackagePath": "staticwebassets\\api.html"
+    },
+    {
+      "Id": "C:\\Users\\Hamid\\Documents\\POS\\owner_portal_work_BC_list___After__filters\\owner_portal_work\\src\\PayNex.Cloud.Api\\wwwroot\\banks.html",
+      "PackagePath": "staticwebassets\\banks.html"
+    },
+    {
       "Id": "C:\\Users\\Hamid\\Documents\\POS\\owner_portal_work_BC_list___After__filters\\owner_portal_work\\src\\PayNex.Cloud.Api\\wwwroot\\branches.html",
       "PackagePath": "staticwebassets\\branches.html"
     },
@@ -31,6 +39,10 @@
     {
       "Id": "C:\\Users\\Hamid\\Documents\\POS\\owner_portal_work_BC_list___After__filters\\owner_portal_work\\src\\PayNex.Cloud.Api\\wwwroot\\css\\app.css",
       "PackagePath": "staticwebassets\\css\\app.css"
+    },
+    {
+      "Id": "C:\\Users\\Hamid\\Documents\\POS\\owner_portal_work_BC_list___After__filters\\owner_portal_work\\src\\PayNex.Cloud.Api\\wwwroot\\css\\dashboard-pbi.css",
+      "PackagePath": "staticwebassets\\css\\dashboard-pbi.css"
     },
     {
       "Id": "C:\\Users\\Hamid\\Documents\\POS\\owner_portal_work_BC_list___After__filters\\owner_portal_work\\src\\PayNex.Cloud.Api\\wwwroot\\currency-setup.html",
@@ -57,12 +69,20 @@
       "PackagePath": "staticwebassets\\dashboard.html"
     },
     {
+      "Id": "C:\\Users\\Hamid\\Documents\\POS\\owner_portal_work_BC_list___After__filters\\owner_portal_work\\src\\PayNex.Cloud.Api\\wwwroot\\day-closing.html",
+      "PackagePath": "staticwebassets\\day-closing.html"
+    },
+    {
       "Id": "C:\\Users\\Hamid\\Documents\\POS\\owner_portal_work_BC_list___After__filters\\owner_portal_work\\src\\PayNex.Cloud.Api\\wwwroot\\draft-purchase-invoices.html",
       "PackagePath": "staticwebassets\\draft-purchase-invoices.html"
     },
     {
       "Id": "C:\\Users\\Hamid\\Documents\\POS\\owner_portal_work_BC_list___After__filters\\owner_portal_work\\src\\PayNex.Cloud.Api\\wwwroot\\draft-sales-invoices.html",
       "PackagePath": "staticwebassets\\draft-sales-invoices.html"
+    },
+    {
+      "Id": "C:\\Users\\Hamid\\Documents\\POS\\owner_portal_work_BC_list___After__filters\\owner_portal_work\\src\\PayNex.Cloud.Api\\wwwroot\\email-setup.html",
+      "PackagePath": "staticwebassets\\email-setup.html"
     },
     {
       "Id": "C:\\Users\\Hamid\\Documents\\POS\\owner_portal_work_BC_list___After__filters\\owner_portal_work\\src\\PayNex.Cloud.Api\\wwwroot\\expense-card.html",
@@ -117,12 +137,20 @@
       "PackagePath": "staticwebassets\\js\\admin.js"
     },
     {
+      "Id": "C:\\Users\\Hamid\\Documents\\POS\\owner_portal_work_BC_list___After__filters\\owner_portal_work\\src\\PayNex.Cloud.Api\\wwwroot\\js\\api-catalog.js",
+      "PackagePath": "staticwebassets\\js\\api-catalog.js"
+    },
+    {
       "Id": "C:\\Users\\Hamid\\Documents\\POS\\owner_portal_work_BC_list___After__filters\\owner_portal_work\\src\\PayNex.Cloud.Api\\wwwroot\\js\\api.js",
       "PackagePath": "staticwebassets\\js\\api.js"
     },
     {
       "Id": "C:\\Users\\Hamid\\Documents\\POS\\owner_portal_work_BC_list___After__filters\\owner_portal_work\\src\\PayNex.Cloud.Api\\wwwroot\\js\\app-shell.js",
       "PackagePath": "staticwebassets\\js\\app-shell.js"
+    },
+    {
+      "Id": "C:\\Users\\Hamid\\Documents\\POS\\owner_portal_work_BC_list___After__filters\\owner_portal_work\\src\\PayNex.Cloud.Api\\wwwroot\\js\\banks.js",
+      "PackagePath": "staticwebassets\\js\\banks.js"
     },
     {
       "Id": "C:\\Users\\Hamid\\Documents\\POS\\owner_portal_work_BC_list___After__filters\\owner_portal_work\\src\\PayNex.Cloud.Api\\wwwroot\\js\\bc-list-filter.js",
@@ -169,6 +197,10 @@
       "PackagePath": "staticwebassets\\js\\dashboard.js"
     },
     {
+      "Id": "C:\\Users\\Hamid\\Documents\\POS\\owner_portal_work_BC_list___After__filters\\owner_portal_work\\src\\PayNex.Cloud.Api\\wwwroot\\js\\day-closing.js",
+      "PackagePath": "staticwebassets\\js\\day-closing.js"
+    },
+    {
       "Id": "C:\\Users\\Hamid\\Documents\\POS\\owner_portal_work_BC_list___After__filters\\owner_portal_work\\src\\PayNex.Cloud.Api\\wwwroot\\js\\expense-card.js",
       "PackagePath": "staticwebassets\\js\\expense-card.js"
     },
@@ -211,6 +243,10 @@
     {
       "Id": "C:\\Users\\Hamid\\Documents\\POS\\owner_portal_work_BC_list___After__filters\\owner_portal_work\\src\\PayNex.Cloud.Api\\wwwroot\\js\\owner-email-security.js",
       "PackagePath": "staticwebassets\\js\\owner-email-security.js"
+    },
+    {
+      "Id": "C:\\Users\\Hamid\\Documents\\POS\\owner_portal_work_BC_list___After__filters\\owner_portal_work\\src\\PayNex.Cloud.Api\\wwwroot\\js\\payment-options.js",
+      "PackagePath": "staticwebassets\\js\\payment-options.js"
     },
     {
       "Id": "C:\\Users\\Hamid\\Documents\\POS\\owner_portal_work_BC_list___After__filters\\owner_portal_work\\src\\PayNex.Cloud.Api\\wwwroot\\js\\picture-sales.js",
@@ -259,6 +295,10 @@
     {
       "Id": "C:\\Users\\Hamid\\Documents\\POS\\owner_portal_work_BC_list___After__filters\\owner_portal_work\\src\\PayNex.Cloud.Api\\wwwroot\\js\\reports.js",
       "PackagePath": "staticwebassets\\js\\reports.js"
+    },
+    {
+      "Id": "C:\\Users\\Hamid\\Documents\\POS\\owner_portal_work_BC_list___After__filters\\owner_portal_work\\src\\PayNex.Cloud.Api\\wwwroot\\js\\returns.js",
+      "PackagePath": "staticwebassets\\js\\returns.js"
     },
     {
       "Id": "C:\\Users\\Hamid\\Documents\\POS\\owner_portal_work_BC_list___After__filters\\owner_portal_work\\src\\PayNex.Cloud.Api\\wwwroot\\js\\sales-invoice-card.js",
@@ -379,6 +419,10 @@
     {
       "Id": "C:\\Users\\Hamid\\Documents\\POS\\owner_portal_work_BC_list___After__filters\\owner_portal_work\\src\\PayNex.Cloud.Api\\wwwroot\\retail-products.html",
       "PackagePath": "staticwebassets\\retail-products.html"
+    },
+    {
+      "Id": "C:\\Users\\Hamid\\Documents\\POS\\owner_portal_work_BC_list___After__filters\\owner_portal_work\\src\\PayNex.Cloud.Api\\wwwroot\\returns.html",
+      "PackagePath": "staticwebassets\\returns.html"
     },
     {
       "Id": "C:\\Users\\Hamid\\Documents\\POS\\owner_portal_work_BC_list___After__filters\\owner_portal_work\\src\\PayNex.Cloud.Api\\wwwroot\\saas-flow.html",

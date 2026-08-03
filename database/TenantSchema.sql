@@ -1048,3 +1048,32 @@ MERGE ExpenseCategories AS t USING(VALUES
 ) s(CategoryCode,CategoryName) ON t.CategoryCode=s.CategoryCode
 WHEN NOT MATCHED THEN INSERT(CategoryCode,CategoryName,IsActive) VALUES(s.CategoryCode,s.CategoryName,1);
 GO
+
+-- Day Closing: one summary row per branch per business date (no duplicate invoice storage).
+IF OBJECT_ID('DayClosings') IS NULL
+BEGIN
+CREATE TABLE DayClosings(
+    DayClosingId BIGINT IDENTITY(1,1) PRIMARY KEY,
+    StoreId INT NOT NULL,
+    BranchCode NVARCHAR(30) NULL,
+    BusinessDate DATE NOT NULL,
+    ClosedAt DATETIME2 NOT NULL DEFAULT SYSUTCDATETIME(),
+    ClosedByUserId INT NOT NULL,
+    ClosedByName NVARCHAR(150) NULL,
+    Remarks NVARCHAR(500) NULL,
+    Status NVARCHAR(20) NOT NULL DEFAULT 'Closed',
+    ShiftCount INT NOT NULL DEFAULT 0,
+    InvoiceCount INT NOT NULL DEFAULT 0,
+    ReturnCount INT NOT NULL DEFAULT 0,
+    TotalSales DECIMAL(18,2) NOT NULL DEFAULT 0,
+    TotalTax DECIMAL(18,2) NOT NULL DEFAULT 0,
+    TotalDiscount DECIMAL(18,2) NOT NULL DEFAULT 0,
+    TotalCost DECIMAL(18,2) NOT NULL DEFAULT 0,
+    TotalProfit DECIMAL(18,2) NOT NULL DEFAULT 0,
+    TotalRefunds DECIMAL(18,2) NOT NULL DEFAULT 0,
+    CashSales DECIMAL(18,2) NOT NULL DEFAULT 0,
+    NonCashSales DECIMAL(18,2) NOT NULL DEFAULT 0,
+    CONSTRAINT UQ_DayClosings_StoreDate UNIQUE(StoreId, BusinessDate)
+);
+END;
+GO

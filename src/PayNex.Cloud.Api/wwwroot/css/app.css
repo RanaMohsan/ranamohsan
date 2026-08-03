@@ -1902,7 +1902,11 @@ button:disabled{opacity:.55;cursor:not-allowed;filter:grayscale(.2)}
 .app-user-trigger:focus-visible{outline:2px solid #67b7f7!important;outline-offset:1px!important}
 .app-user-avatar{width:30px;height:30px;flex:0 0 30px;border-radius:50%;display:grid;place-items:center;overflow:hidden;background:linear-gradient(145deg,#187bcd,#005a9e);color:#fff;font-size:11px;font-weight:800;border:1px solid rgba(255,255,255,.35);box-shadow:0 0 0 2px rgba(0,120,212,.16)}
 .app-user-avatar.large{width:52px;height:52px;flex-basis:52px;font-size:17px;border-color:#d7e7f5;box-shadow:none}
-.app-user-avatar img{width:100%;height:100%;object-fit:cover;display:block}
+.app-user-avatar img{width:100%;height:100%;object-fit:cover;display:block;grid-area:1/1;position:relative;z-index:1}
+.app-user-avatar > span{grid-area:1/1}
+.app-user-avatar.has-photo{background:#0b5cab}
+.app-user-avatar.has-photo > img{display:block!important}
+.app-user-avatar.has-photo > span{display:none!important}
 .app-user-copy{display:flex;min-width:0;flex-direction:column;line-height:1.14}
 .app-user-copy b{max-width:118px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;color:#fff;font-size:11.5px;font-weight:700}
 .app-user-copy small{max-width:126px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;color:#bfc7d1;font-size:9.5px;margin-top:2px}
@@ -2717,4 +2721,286 @@ button:disabled{opacity:.55;cursor:not-allowed;filter:grayscale(.2)}
     font-size:9px;
     line-height:1.35;
   }
+}
+
+/* =========================================================
+   Home + Picture Sales compact scale (~Chrome 80% at 100% zoom)
+   Size-only; no redesign. Scoped to these two pages.
+   ========================================================= */
+.fo-home-page .fo-workspace-title{margin-bottom:10px!important;padding-top:0!important}
+.fo-home-page .fo-workspace-title h1{font-size:18px!important;line-height:1.2!important}
+.fo-home-page .fo-workspace-title .muted,
+.fo-home-page .fo-workspace-title p{font-size:12px!important;line-height:1.4!important;margin-top:4px!important}
+.fo-home-page .fo-dashboard-layout{grid-template-columns:168px minmax(0,1fr)!important;gap:12px!important}
+.fo-home-page .fo-home-left-card{max-width:168px!important}
+.fo-home-page .fo-company-avatar-wrap{
+  display:flex;
+  flex-direction:column;
+  align-items:center;
+  gap:6px;
+  padding:12px 10px 8px;
+  border-bottom:1px solid #e8edf3;
+  background:#fff;
+}
+.fo-home-page .fo-company-avatar{
+  width:52px;
+  height:52px;
+  border-radius:50%;
+  overflow:hidden;
+  display:grid;
+  place-items:center;
+  background:linear-gradient(145deg,#dceeff,#eef5fb);
+  border:2px solid #c7ddf5;
+  color:#0b5cab;
+  font-size:15px;
+  font-weight:800;
+  letter-spacing:.02em;
+  box-shadow:0 1px 3px rgba(16,24,40,.08);
+  position:relative;
+}
+.fo-home-page .fo-company-avatar img{
+  width:100%;
+  height:100%;
+  object-fit:cover;
+  display:block;
+}
+.fo-home-page .fo-company-avatar.has-photo span{display:none}
+.fo-home-page .fo-company-avatar-meta{
+  text-align:center;
+  max-width:100%;
+  padding:0 4px;
+}
+.fo-home-page .fo-company-avatar-meta strong{
+  display:block;
+  font-size:11px;
+  font-weight:700;
+  color:#111827;
+  line-height:1.25;
+  white-space:nowrap;
+  overflow:hidden;
+  text-overflow:ellipsis;
+  max-width:148px;
+}
+.fo-home-page .fo-calendar-card{padding:8px 8px 6px!important}
+.fo-home-page .fo-calendar-head{margin-bottom:4px!important;grid-template-columns:20px 1fr 20px!important}
+.fo-home-page .fo-calendar-head strong{font-size:10px!important;font-weight:700!important}
+.fo-home-page .fo-calendar-nav{width:20px!important;height:18px!important;min-height:18px!important;font-size:14px!important}
+.fo-home-page .fo-calendar-weekdays,
+.fo-home-page .fo-calendar-grid{gap:2px 2px!important}
+.fo-home-page .fo-calendar-grid span{
+  width:18px!important;
+  height:18px!important;
+  line-height:18px!important;
+  margin:0 auto 2px!important;
+  font-size:9px!important;
+}
+.fo-home-page .fo-calendar-weekdays span{font-size:8px!important;padding-bottom:4px!important}
+.fo-home-page .fo-workitems-card{padding:8px 10px 10px!important;min-height:0!important}
+.fo-home-page .fo-workitems-head{margin-bottom:4px!important}
+.fo-home-page .fo-workitems-card h2{font-size:11px!important;font-weight:650!important}
+.fo-home-page .fo-workitems-card p{font-size:10px!important;line-height:1.3!important;color:#6b7280!important}
+.fo-home-page .fo-module-grid{grid-template-columns:repeat(5,minmax(120px,1fr))!important;gap:8px!important}
+.fo-home-page .fo-module-tile{
+  min-height:74px!important;
+  padding:10px 12px!important;
+  gap:10px!important;
+  margin:0!important;
+  box-shadow:0 1px 2px rgba(16,24,40,.05)!important;
+}
+.fo-home-page .fo-module-icon{width:40px!important;height:40px!important;min-width:40px!important}
+.fo-home-page .fo-module-icon svg{width:20px!important;height:20px!important}
+.fo-home-page .fo-module-label{font-size:11.5px!important;line-height:1.2!important;font-weight:600!important}
+@media(max-width:1600px){.fo-home-page .fo-module-grid{grid-template-columns:repeat(5,minmax(110px,1fr))!important}}
+@media(max-width:1360px){
+  .fo-home-page .fo-module-grid{grid-template-columns:repeat(4,minmax(120px,1fr))!important}
+  .fo-home-page .fo-dashboard-layout{grid-template-columns:156px minmax(0,1fr)!important}
+  .fo-home-page .fo-home-left-card{max-width:156px!important}
+}
+@media(max-width:1120px){
+  .fo-home-page .fo-module-grid{grid-template-columns:repeat(3,minmax(120px,1fr))!important}
+  .fo-home-page .fo-dashboard-layout{grid-template-columns:1fr!important}
+  .fo-home-page .fo-home-left-card{display:none!important}
+}
+@media(max-width:760px){
+  .fo-home-page .fo-module-grid{grid-template-columns:1fr!important}
+  .fo-home-page .fo-module-tile{min-height:68px!important}
+}
+
+/* Picture Sales ~80% compact controls/cards */
+.picture-sales-page{
+  padding-top:calc(var(--fo-topbar-height) + 10px)!important;
+  padding-right:12px!important;
+  padding-bottom:12px!important;
+  padding-left:12px!important;
+}
+.picture-sales-page .picture-sales-layout{grid-template-columns:minmax(0,1fr) 416px!important;gap:10px!important}
+.picture-sales-page .picture-item-panel,
+.picture-sales-page .picture-cart-panel{padding:12px!important}
+.picture-sales-page .picture-search-row{grid-template-columns:minmax(200px,1fr) 140px!important;gap:8px!important}
+.picture-sales-page .picture-search-row input,
+.picture-sales-page .picture-search-row button,
+.picture-sales-page .picture-cart-panel select,
+.picture-sales-page .picture-cart-panel input,
+.picture-sales-page .picture-cart-panel button{
+  height:30px!important;
+  min-height:30px!important;
+  font-size:12px!important;
+}
+.picture-sales-page .setup-section-title h2{font-size:14px!important}
+.picture-sales-page .lookup-chip{font-size:10px!important;padding:2px 7px!important}
+.picture-sales-page .pos-cart-head{gap:8px!important}
+.picture-sales-page .pos-scan-input{
+  height:30px!important;
+  min-height:30px!important;
+  font-size:12px!important;
+}
+.picture-sales-page .picture-grid{grid-template-columns:repeat(auto-fill,minmax(152px,1fr))!important;gap:9px!important}
+.picture-sales-page .picture-cube{min-height:196px!important;padding:7px!important;gap:5px!important;border-radius:7px!important}
+.picture-sales-page .picture-cube .product-image-area{height:124px!important;border-radius:6px!important}
+.picture-sales-page .picture-cube .product-image-area.no-img span{width:46px!important;height:46px!important;border-radius:12px!important;font-size:14px!important}
+.picture-sales-page .picture-cube h2{font-size:12px!important;min-height:30px!important}
+.picture-sales-page .picture-cube .tile-price{font-size:13px!important}
+.picture-sales-page .picture-cube .stock-badge{padding:3px 6px!important;font-size:9px!important}
+.picture-sales-page .picture-grid.picture-grid-compact{grid-template-columns:repeat(auto-fill,minmax(132px,1fr))!important;gap:7px!important}
+.picture-sales-page .picture-grid.picture-grid-compact .picture-cube{min-height:174px!important;padding:6px!important}
+.picture-sales-page .picture-grid.picture-grid-compact .picture-cube .product-image-area{height:104px!important}
+.picture-sales-page .picture-grid.picture-grid-compact .picture-cube h2{font-size:11px!important;min-height:26px!important}
+.picture-sales-page .picture-grid.picture-grid-compact .picture-cube .tile-price{font-size:12px!important}
+.picture-sales-page .picture-cart-list{min-height:164px!important;max-height:304px!important;margin-top:8px!important}
+.picture-sales-page .picture-cart-table th,
+.picture-sales-page .picture-cart-table td{padding:5px 6px!important;font-size:11px!important}
+.picture-sales-page .picture-cart-table .cart-cell-input{height:24px!important;min-height:24px!important;font-size:11px!important}
+.picture-sales-page .picture-cart-table .slim-btn{height:24px!important;min-height:24px!important;padding:2px 6px!important;font-size:10px!important}
+.picture-sales-page .picture-total-box{margin-top:8px!important;padding:8px 10px!important}
+.picture-sales-page .picture-total-box .amount{font-size:18px!important}
+.picture-sales-page .picture-cart-panel .actions{gap:8px!important;margin-top:8px!important}
+.picture-sales-page .picture-cart-panel label{font-size:11px!important}
+.picture-sales-page .picture-line-modal{width:min(416px,92vw)!important}
+.picture-sales-page .picture-line-modal .line-entry-grid{gap:9px!important}
+@media(max-width:1280px){
+  .picture-sales-page .picture-sales-layout{grid-template-columns:1fr!important}
+}
+@media(max-width:720px){
+  .picture-sales-page .picture-grid{grid-template-columns:repeat(auto-fill,minmax(120px,1fr))!important}
+  .picture-sales-page .picture-cube .product-image-area{height:100px!important}
+}
+
+/* Owner API catalog page */
+.api-catalog-toolbar{grid-template-columns:minmax(220px,1.4fr) minmax(160px,.7fr) 140px!important;gap:8px!important;margin-bottom:12px}
+.api-catalog-groups{display:grid;gap:14px}
+.api-group-card{border:1px solid var(--bc-border);border-radius:8px;background:#fff;overflow:hidden;box-shadow:var(--bc-shadow)}
+.api-group-head{display:flex;align-items:center;justify-content:space-between;gap:10px;padding:10px 12px;background:linear-gradient(180deg,#f7fbff,#eef5fb);border-bottom:1px solid var(--bc-border)}
+.api-group-head h3{margin:0;font-size:13px;color:#0f4c81}
+.api-catalog-table{margin:0!important;border:0!important;border-radius:0!important}
+.api-catalog-table th{position:static!important}
+.api-method{display:inline-flex;min-width:62px;justify-content:center;padding:3px 8px;border-radius:4px;font-size:10.5px;font-weight:800;letter-spacing:.03em}
+.api-method.get{background:#e8f5e9;color:#1b5e20;border:1px solid #c8e6c9}
+.api-method.post{background:#e3f2fd;color:#0d47a1;border:1px solid #bbdefb}
+.api-method.put{background:#fff8e1;color:#e65100;border:1px solid #ffe0b2}
+.api-method.delete{background:#ffebee;color:#b71c1c;border:1px solid #ffcdd2}
+.api-method.other{background:#f3f4f6;color:#374151;border:1px solid #e5e7eb}
+.api-path{font-size:12px;color:#111827;word-break:break-all}
+.api-auth{font-size:11px;font-weight:700}
+.api-auth.yes{color:#027a48}
+.api-auth.no{color:#667085}
+
+/* POS cart barcode scan field */
+.pos-cart-head{
+  display:flex;
+  align-items:center;
+  gap:8px;
+  flex-wrap:wrap;
+}
+.pos-cart-head h2{flex:0 0 auto;margin:0}
+.pos-scan-input{
+  flex:1 1 160px;
+  min-width:140px;
+  max-width:100%;
+  height:32px;
+  min-height:32px;
+  margin:0;
+  border:1px solid #7aa7d9;
+  border-radius:6px;
+  background:#f4f9ff;
+  font-size:13px;
+  font-weight:600;
+  letter-spacing:.02em;
+  padding:0 10px;
+}
+.pos-scan-input:focus{
+  outline:none;
+  border-color:var(--bc-blue,#0b5cab);
+  box-shadow:0 0 0 3px rgba(11,92,171,.15);
+  background:#fff;
+}
+.pos-cart-head .lookup-chip{flex:0 0 auto;margin-left:auto}
+
+/* Counter Sales / POS — tight layout, no double top/left gap */
+.pos-page{
+  padding:0!important;
+}
+body.pos-page .shell.pos-shell,
+.pos-page .pos-shell{
+  padding:calc(var(--fo-topbar-height) + 4px) 8px 8px 6px!important;
+}
+.pos-page .pos-shell .top{margin-bottom:6px!important;padding:8px 10px!important}
+.pos-page .pos-shell .top h1{font-size:18px!important;line-height:1.25!important;margin:0!important}
+.pos-page .pos-shell .top .muted{font-size:12px!important;margin-top:4px!important}
+.pos-page .pos-layout{grid-template-columns:minmax(0,1fr) 416px!important;gap:10px!important}
+.pos-page .pos-layout > .panel{padding:12px!important}
+.pos-page .setup-section-title{padding-bottom:6px!important;margin-bottom:8px!important}
+.pos-page .setup-section-title h2{font-size:14px!important}
+.pos-page .lookup-chip{font-size:10px!important;padding:2px 7px!important}
+.pos-page .product-search-row{grid-template-columns:minmax(180px,1fr) minmax(160px,.7fr) 80px!important;gap:8px!important}
+.pos-page .product-search-row input,
+.pos-page .product-search-row select,
+.pos-page .product-search-row button,
+.pos-page .pos-cart-panel select,
+.pos-page .pos-cart-panel input,
+.pos-page .pos-cart-panel button{
+  height:30px!important;
+  min-height:30px!important;
+  font-size:12px!important;
+}
+.pos-page .pos-scan-input{
+  height:30px!important;
+  min-height:30px!important;
+  font-size:12px!important;
+}
+.pos-page .table th,
+.pos-page .table td{padding:6px 8px!important;font-size:12px!important}
+.pos-page .table th.pos-num,
+.pos-page .table td.pos-num{
+  text-align:right!important;
+  font-variant-numeric:tabular-nums;
+}
+.pos-page .table th.pos-action,
+.pos-page .table td.pos-action{text-align:center!important}
+.pos-page .table td.pos-num .stock-badge{justify-content:flex-end}
+.pos-page .table .accent{height:26px!important;min-height:26px!important;padding:2px 10px!important;font-size:11px!important}
+.pos-page .shortcuts{font-size:11px!important;padding:7px 8px!important}
+.pos-page .pos-cart-panel{min-height:calc(100vh - 130px)!important}
+.pos-page .cart-list{min-height:200px!important;padding:6px!important}
+.pos-page .cart-item{padding:6px 0!important;gap:6px!important}
+.pos-page .cart-item b{font-size:12px!important}
+.pos-page .cart-item .muted,
+.pos-page .cart-item .mini{font-size:10px!important}
+.pos-page .cart-item input{height:26px!important;min-height:26px!important;font-size:11px!important}
+.pos-page .pos-total-box{padding:8px 10px!important;margin:8px 0!important}
+.pos-page .pos-total-box .amount{font-size:18px!important}
+.pos-page .pos-cart-panel .row{gap:8px!important}
+.pos-page .pos-cart-panel label{font-size:11px!important}
+.pos-page .pos-cart-panel .actions{gap:8px!important;margin-top:8px!important;flex-wrap:wrap}
+.pos-page .pos-cart-panel .actions button{padding:0 10px!important}
+.pos-page #status{font-size:12px!important}
+.pos-page .modal{max-width:min(400px,92vw)!important}
+.pos-page .modal input,
+.pos-page .modal button{height:30px!important;min-height:30px!important;font-size:12px!important}
+@media(max-width:1280px){
+  .pos-page .pos-layout{grid-template-columns:1fr!important}
+  .pos-page .pos-cart-panel{min-height:auto!important}
+}
+@media(max-width:840px){
+  .pos-page .product-search-row{grid-template-columns:1fr!important}
+  .pos-page .pos-cart-head .lookup-chip{margin-left:0}
 }

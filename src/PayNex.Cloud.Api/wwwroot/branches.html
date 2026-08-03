@@ -4,23 +4,24 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width,initial-scale=1">
   <title>PayNex Branches</title>
-  <link rel="stylesheet" href="/css/app.css?v=final-fixes-20260715">
+  <link rel="stylesheet" href="/css/app.css?v=api-catalog-20260731">
 </head>
 <body>
   <main class="shell">
     <section class="top">
       <div>
-        <h1>Branches</h1>
-        <p class="muted">Create and manage client branches. Each branch is used as the transaction context for sales, purchases, inventory, receipts, shifts and transfers.</p>
+        <h1>Branches &amp; Counters</h1>
+        <p class="muted">Manage branches and POS counters (terminals) inside each branch.</p>
       </div>
       <div class="nav">
         <a href="/workspace.html">Workspace</a>
+        <a href="/shift.html">Shift</a>
         <a href="/inventory.html">Inventory</a>
       </div>
     </section>
 
     <section class="panel" id="branchDisabled" style="display:none">
-      <div class="branch-disabled-note">Multiple branches are not enabled for this company. Enable <b>Allow Multiple Branches</b> from the Super Admin company card first.</div>
+      <div class="branch-disabled-note">Multiple branches are not enabled. You can still manage POS counters for the current branch below. Enable <b>Allow Multiple Branches</b> from the company card to add more branches.</div>
     </section>
 
     <section class="branch-grid" id="branchWorkspace" style="display:none">
@@ -28,7 +29,7 @@
         <div class="branch-toolbar">
           <div>
             <h2>Branch List</h2>
-            <p class="muted">Main Branch is selected by default on login. Users can switch branch from the top selector.</p>
+            <p class="muted">Select a branch to manage its POS counters.</p>
           </div>
           <div class="actions"><button class="secondary" onclick="loadBranches()">Refresh</button><button class="success" onclick="newBranch()">New Branch</button></div>
         </div>
@@ -48,9 +49,30 @@
         </div>
       </div>
     </section>
+
+    <section class="panel" id="counterPanel" style="margin-top:16px">
+      <div class="branch-toolbar">
+        <div>
+          <h2>POS Counters</h2>
+          <p class="muted" id="counterHint">Counters / POS terminals for the selected branch. Example: Counter 01, Counter 02.</p>
+        </div>
+        <div class="actions"><button class="secondary" onclick="loadCounters()">Refresh</button><button class="success" onclick="newCounter()">New Counter</button></div>
+      </div>
+      <div class="branch-grid" style="margin-top:12px">
+        <div class="branch-table-wrap"><table class="branch-table"><thead><tr><th>Code</th><th>Name</th><th>Status</th></tr></thead><tbody id="counterRows"></tbody></table></div>
+        <div class="branch-form">
+          <input type="hidden" id="terminalId" value="0">
+          <div class="form-field"><label>Counter Code</label><input id="terminalCode" placeholder="COUNTER-01"></div>
+          <div class="form-field"><label>Counter Name</label><input id="terminalName" placeholder="Counter 01 / POS 1"></div>
+          <label class="check-field"><input id="terminalActive" type="checkbox" checked> Active</label>
+          <div class="actions"><button class="success" onclick="saveCounter()">Save Counter</button><button class="secondary" onclick="newCounter()">Clear</button></div>
+          <p id="counterMsg"></p>
+        </div>
+      </div>
+    </section>
   </main>
   <script src="/js/api.js"></script>
-  <script src="/js/branches.js"></script>
-  <script src="/js/app-shell.js?v=final-fixes-20260715"></script>
+  <script src="/js/branches.js?v=counters-20260728"></script>
+  <script src="/js/app-shell.js?v=api-nav-20260731"></script>
 </body>
 </html>
