@@ -13,7 +13,7 @@ using System.Reflection;
 [assembly: System.Reflection.AssemblyCompanyAttribute("PayNex.Cloud.Api")]
 [assembly: System.Reflection.AssemblyConfigurationAttribute("Debug")]
 [assembly: System.Reflection.AssemblyFileVersionAttribute("1.0.0.0")]
-[assembly: System.Reflection.AssemblyInformationalVersionAttribute("1.0.0")]
+[assembly: System.Reflection.AssemblyInformationalVersionAttribute("1.0.0+a1369df14147e47737ded8490450b6debcf8c494")]
 [assembly: System.Reflection.AssemblyProductAttribute("PayNex.Cloud.Api")]
 [assembly: System.Reflection.AssemblyTitleAttribute("PayNex.Cloud.Api")]
 [assembly: System.Reflection.AssemblyVersionAttribute("1.0.0.0")]
