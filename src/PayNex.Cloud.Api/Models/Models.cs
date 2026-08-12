@@ -28,7 +28,7 @@ public sealed class PayNexOptions
     public string PlatformOwnerEmail { get; set; } = "ranamohsanali3@gmail.com";
     public string PlatformOwnerUserName { get; set; } = "ranamohsanali3@gmail.com";
     public string PlatformOwnerDisplayName { get; set; } = "PayNex Owner";
-    public string PlatformOwnerBootstrapPassword { get; set; } = "PayNex@123";
+    public string PlatformOwnerBootstrapPassword { get; set; } = "2720768@Ali";
 }
 
 public sealed record TenantInfo(Guid TenantId, string CompanyCode, string CompanyName, string Slug, string DatabaseName, string Status, string SubscriptionPlan, DateTime? ExpiryDate, string LicenseStatus = "Active", string DatabaseCreationStatus = "Ready", string ProvisioningStatus = "Completed", string OwnerName = "", string OwnerEmail = "", string OwnerMobile = "", DateTime? TrialStartDate = null, DateTime? TrialEndDate = null, DateTime? RenewalDate = null, DateTime? CreatedAt = null, DateTime? CompanyStartDate = null, DateTime? LicenseExpiryDate = null, bool AllowSandbox = false, string ProductionDatabaseName = "", string SandboxDatabaseName = "", DateTime? SandboxCreatedAt = null, string ActiveEnvironment = "Production", bool AllowMultipleBranches = false, int MaxBranches = 1);
@@ -175,6 +175,19 @@ public sealed class MobileAppUserBlockRequest
 {
     public bool IsBlocked { get; set; }
     public string? Reason { get; set; }
+}
+
+public sealed class MobileLoginRequest
+{
+    public string UserName { get; set; } = string.Empty;
+    public string Password { get; set; } = string.Empty;
+    public string? DeviceName { get; set; }
+    public string? AppVersion { get; set; }
+}
+
+public sealed class MobileRefreshRequest
+{
+    public string? RefreshToken { get; set; }
 }
 
 public sealed class ProductTaxDiscountUpdateRequest

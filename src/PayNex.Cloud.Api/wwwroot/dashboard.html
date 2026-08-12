@@ -3,20 +3,22 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width,initial-scale=1">
-  <title>Business Dashboard</title>
-  <link rel="stylesheet" href="/css/app.css?v=dashboard-hourly-20260721">
+  <title>Executive Dashboard</title>
+  <link rel="stylesheet" href="/css/app.css?v=kpi-first-20260812">
 </head>
-<body class="business-dashboard-page">
+<body class="business-dashboard-page powerbi-dashboard">
   <main class="shell dashboard-shell">
     <section class="executive-dashboard-heading">
       <div>
-        <div class="dashboard-eyebrow">Executive intelligence</div>
-        <h1>Business Dashboard</h1>
+        <h1>Executive Dashboard</h1>
         <p id="who" class="muted">Loading company performance...</p>
       </div>
-      <div class="dashboard-filter-bar">
-        <a class="dashboard-currency-link" href="/currency-setup.html" title="Open Currency Setup"><span>Base currency</span><strong id="dashboardCurrencyBadge">Loading...</strong></a>
-        <label>Analysis period
+      <div class="dashboard-filter-bar pbi-filter-bar">
+        <a class="dashboard-currency-link" href="/currency-setup.html" title="Open Currency Setup">
+          <span>Currency</span>
+          <strong id="dashboardCurrencyBadge">Loading...</strong>
+        </a>
+        <label>Period
           <select id="months" data-no-lookup="1">
             <option value="3">Last 3 months</option>
             <option value="6">Last 6 months</option>
@@ -25,110 +27,230 @@
             <option value="24">Last 24 months</option>
           </select>
         </label>
-        <button id="refreshDashboardBtn" class="dashboard-refresh" type="button">Refresh analysis</button>
+        <button id="refreshDashboardBtn" class="dashboard-refresh" type="button">Refresh</button>
       </div>
     </section>
 
     <section id="dashboardStatus" class="dashboard-status" aria-live="polite">Loading live ERP analytics...</section>
-    <section id="dashboardInsightStrip" class="dashboard-insight-strip" aria-label="Executive analysis summary"></section>
-    <section id="dashboardKpis" class="dashboard-kpi-grid" aria-label="Business performance metrics"></section>
 
-    <section class="dashboard-layout dashboard-primary-grid">
+    <section id="dashboardKpis" class="dashboard-kpi-grid pbi-kpi-grid" aria-label="Business performance metrics"></section>
+
+    <!-- Compact analytics gallery — after KPI cubes -->
+    <section class="dash-mini-gallery" aria-label="Executive analytics gallery">
+      <div class="dash-mini-row dash-mini-3">
+        <article class="dash-mini-card">
+          <header class="dash-mini-head">
+            <div><h3>Revenue vs Gross Profit</h3><span>BY MONTH</span></div>
+            <button type="button" class="dash-mini-menu" aria-hidden="true">⋮</button>
+          </header>
+          <div id="miniRevGpChart" class="dash-mini-body"></div>
+        </article>
+        <article class="dash-mini-card dash-mini-donut-card">
+          <header class="dash-mini-head">
+            <div><h3>% of Revenue Target</h3><span>PERIOD GOAL</span></div>
+            <button type="button" class="dash-mini-menu" aria-hidden="true">⋮</button>
+          </header>
+          <div id="miniRevenueTarget" class="dash-mini-body dash-mini-donut-wrap"></div>
+        </article>
+        <article class="dash-mini-card dash-mini-donut-card">
+          <header class="dash-mini-head">
+            <div><h3>% of Gross Profit Target</h3><span>PERIOD GOAL</span></div>
+            <button type="button" class="dash-mini-menu" aria-hidden="true">⋮</button>
+          </header>
+          <div id="miniGrossTarget" class="dash-mini-body dash-mini-donut-wrap"></div>
+        </article>
+      </div>
+
+      <div class="dash-mini-row dash-mini-2">
+        <article class="dash-mini-card">
+          <header class="dash-mini-head">
+            <div><h3>Profit Quality Trend</h3><span>AVERAGE MARGIN SCORE</span></div>
+            <button type="button" class="dash-mini-menu" aria-hidden="true">⋮</button>
+          </header>
+          <div id="miniMarginTrend" class="dash-mini-body"></div>
+        </article>
+        <article class="dash-mini-card">
+          <header class="dash-mini-head">
+            <div><h3>Variance to Prior Month</h3><span>BY MONTH</span></div>
+            <button type="button" class="dash-mini-menu" aria-hidden="true">⋮</button>
+          </header>
+          <div id="miniVarianceChart" class="dash-mini-body"></div>
+          <div class="dash-mini-legend">
+            <span class="up">Increase</span>
+            <span class="down">Decrease</span>
+            <span class="total">Total</span>
+          </div>
+        </article>
+      </div>
+
+      <div class="dash-mini-row dash-mini-2">
+        <article class="dash-mini-card">
+          <header class="dash-mini-head">
+            <div><h3>Sales Mix by Category</h3><span>BY SOURCE STATUS</span></div>
+            <button type="button" class="dash-mini-menu" aria-hidden="true">⋮</button>
+          </header>
+          <div id="miniCategoryBars" class="dash-mini-body"></div>
+          <div class="dash-mini-legend">
+            <span class="teal">Sales</span>
+            <span class="ink">Cost</span>
+            <span class="coral">Profit</span>
+          </div>
+        </article>
+        <article class="dash-mini-card">
+          <header class="dash-mini-head">
+            <div><h3>Sales Composition</h3><span>BY MONTH</span></div>
+            <button type="button" class="dash-mini-menu" aria-hidden="true">⋮</button>
+          </header>
+          <div id="miniStackedSales" class="dash-mini-body"></div>
+          <div class="dash-mini-legend">
+            <span class="teal">Gross profit</span>
+            <span class="ink">Cost of sales</span>
+          </div>
+        </article>
+      </div>
+
+      <div class="dash-mini-row dash-mini-2">
+        <article class="dash-mini-card">
+          <header class="dash-mini-head">
+            <div><h3>Top Products</h3><span>BY PRODUCT</span></div>
+            <button type="button" class="dash-mini-menu" aria-hidden="true">⋮</button>
+          </header>
+          <div id="miniTopProductsBars" class="dash-mini-body"></div>
+        </article>
+        <article class="dash-mini-card">
+          <header class="dash-mini-head">
+            <div><h3>Sales Momentum</h3><span>BY MONTH</span></div>
+            <button type="button" class="dash-mini-menu" aria-hidden="true">⋮</button>
+          </header>
+          <div id="miniSalesLine" class="dash-mini-body"></div>
+        </article>
+      </div>
+    </section>
+
+    <section class="dashboard-layout pbi-primary-grid">
       <article class="dashboard-card dashboard-card-wide">
         <header class="dashboard-card-head">
-          <div><span class="dashboard-card-kicker">Sales market trend</span><h2>Sales Candlestick Analysis</h2></div>
-          <span id="trendPeriod" class="dashboard-period-chip">60 min | Last 24 hours</span>
+          <div>
+            <span class="dashboard-card-kicker">Trend</span>
+            <h2>Revenue &amp; Profit Trend</h2>
+          </div>
+          <span id="trendPeriod" class="dashboard-period-chip">Monthly</span>
         </header>
         <div id="revenueProfitChart" class="dashboard-chart dashboard-line-chart"></div>
-        <div class="dashboard-chart-legend"><span class="sales-candle">60 min sales candle</span><span class="fast">3-hour trend</span><span class="slow">6-hour trend</span><span class="reference">9-hour average</span></div>
+        <div class="dashboard-chart-legend">
+          <span class="sales">Sales</span>
+          <span class="gross">Gross profit</span>
+          <span class="net">Net profit</span>
+        </div>
       </article>
 
       <article class="dashboard-card">
         <header class="dashboard-card-head">
-          <div><span class="dashboard-card-kicker">Sales composition</span><h2>Sales by Category</h2></div>
+          <div>
+            <span class="dashboard-card-kicker">Composition</span>
+            <h2>Sales by Category</h2>
+          </div>
         </header>
         <div id="salesCategoryChart" class="dashboard-donut-layout"></div>
       </article>
-
-      <article class="dashboard-card dashboard-health-card">
-        <header class="dashboard-card-head"><div><span class="dashboard-card-kicker">Overall position</span><h2>Business Health</h2></div></header>
-        <div id="businessHealthGauge" class="business-health-gauge"></div>
-        <div id="businessHealthFacts" class="business-health-facts"></div>
-      </article>
     </section>
 
-    <section class="dashboard-layout dashboard-secondary-grid">
-      <article class="dashboard-card dashboard-card-span-2">
-        <header class="dashboard-card-head"><div><span class="dashboard-card-kicker">Operating comparison</span><h2>Sales, Purchases &amp; Expenses</h2></div></header>
+    <section class="dashboard-layout pbi-secondary-grid">
+      <article class="dashboard-card">
+        <header class="dashboard-card-head">
+          <div>
+            <span class="dashboard-card-kicker">Operations</span>
+            <h2>Sales vs Purchases vs Expenses</h2>
+          </div>
+        </header>
         <div id="operatingChart" class="dashboard-chart dashboard-bar-chart"></div>
-        <div class="dashboard-chart-legend"><span class="sales">Sales</span><span class="purchase">Purchases</span><span class="expense">Expenses</span></div>
+        <div class="dashboard-chart-legend">
+          <span class="sales">Sales</span>
+          <span class="purchase">Purchases</span>
+          <span class="expense">Expenses</span>
+        </div>
       </article>
 
       <article class="dashboard-card">
-        <header class="dashboard-card-head"><div><span class="dashboard-card-kicker">Liquidity</span><h2>Cash Flow</h2></div></header>
+        <header class="dashboard-card-head">
+          <div>
+            <span class="dashboard-card-kicker">Liquidity</span>
+            <h2>Cash In vs Cash Out</h2>
+          </div>
+        </header>
         <div id="cashFlowChart" class="dashboard-chart dashboard-cash-chart"></div>
-        <div class="dashboard-chart-legend"><span class="cash-in">Cash in</span><span class="cash-out">Cash out</span></div>
+        <div class="dashboard-chart-legend">
+          <span class="cash-in">Cash in</span>
+          <span class="cash-out">Cash out</span>
+        </div>
       </article>
 
       <article class="dashboard-card">
-        <header class="dashboard-card-head"><div><span class="dashboard-card-kicker">Cost control</span><h2>Expenses by Category</h2></div><a href="/expense-report.html">Open report</a></header>
-        <div id="expenseCategoryList" class="dashboard-ranked-bars"></div>
-      </article>
-    </section>
-
-    <section class="dashboard-layout dashboard-insight-grid">
-      <article class="dashboard-card">
-        <header class="dashboard-card-head"><div><span class="dashboard-card-kicker">Receipts</span><h2>Payment Methods</h2></div></header>
+        <header class="dashboard-card-head">
+          <div>
+            <span class="dashboard-card-kicker">Receipts</span>
+            <h2>Payment Methods</h2>
+          </div>
+        </header>
         <div id="paymentMethodsList" class="dashboard-ranked-bars compact"></div>
       </article>
-
-      <article class="dashboard-card dashboard-profit-card">
-        <header class="dashboard-card-head"><div><span class="dashboard-card-kicker">Profitability</span><h2>Profit Analysis</h2></div></header>
-        <div id="profitabilityPanel" class="dashboard-profitability"></div>
-      </article>
-
-      <article class="dashboard-card">
-        <header class="dashboard-card-head"><div><span class="dashboard-card-kicker">Inventory control</span><h2>Low Stock Alerts</h2></div><a href="/inventory.html">View inventory</a></header>
-        <div id="lowStockList" class="dashboard-alert-list"></div>
-      </article>
     </section>
 
-    <section class="dashboard-layout dashboard-table-grid">
-      <article class="dashboard-card dashboard-table-card dashboard-card-span-2">
-        <header class="dashboard-card-head"><div><span class="dashboard-card-kicker">Latest activity</span><h2>Recent Sales Invoices</h2></div><a href="/sales.html">View all</a></header>
+    <section class="dashboard-layout pbi-detail-grid">
+      <article class="dashboard-card dashboard-table-card">
+        <header class="dashboard-card-head">
+          <div>
+            <span class="dashboard-card-kicker">Latest activity</span>
+            <h2>Recent Sales Invoices</h2>
+          </div>
+          <a href="/sales.html">View all</a>
+        </header>
         <div class="dashboard-table-wrap">
           <table class="dashboard-table">
-            <thead><tr><th>Invoice</th><th>Customer</th><th>Date</th><th>Type</th><th class="number">Amount</th><th>Status</th></tr></thead>
+            <thead>
+              <tr>
+                <th>Invoice</th>
+                <th>Customer</th>
+                <th>Date</th>
+                <th class="number">Amount</th>
+                <th>Status</th>
+              </tr>
+            </thead>
             <tbody id="recentInvoiceBody"></tbody>
           </table>
         </div>
       </article>
 
-      <article class="dashboard-card dashboard-table-card">
-        <header class="dashboard-card-head"><div><span class="dashboard-card-kicker">Product performance</span><h2>Top Selling Products</h2></div><a href="/items.html">Items</a></header>
+      <article class="dashboard-card">
+        <header class="dashboard-card-head">
+          <div>
+            <span class="dashboard-card-kicker">Products</span>
+            <h2>Top Selling Products</h2>
+          </div>
+          <a href="/items.html">Items</a>
+        </header>
         <div id="topProductsList" class="dashboard-product-list"></div>
       </article>
 
-      <article class="dashboard-card dashboard-table-card">
-        <header class="dashboard-card-head"><div><span class="dashboard-card-kicker">Customer value</span><h2>Top Customers</h2></div><a href="/customers.html">Customers</a></header>
+      <article class="dashboard-card">
+        <header class="dashboard-card-head">
+          <div>
+            <span class="dashboard-card-kicker">Customers</span>
+            <h2>Top Customers</h2>
+          </div>
+          <a href="/customers.html">Customers</a>
+        </header>
         <div id="topCustomersList" class="dashboard-customer-list"></div>
       </article>
     </section>
 
-    <section class="dashboard-card dashboard-monthly-card">
-      <header class="dashboard-card-head"><div><span class="dashboard-card-kicker">Detailed performance</span><h2>Monthly Analysis Matrix</h2></div><span class="dashboard-period-chip">Posted transactions</span></header>
-      <div class="dashboard-table-wrap">
-        <table class="dashboard-table monthly-analysis-table">
-          <thead><tr><th>Month</th><th class="number">Sales</th><th class="number">Purchases</th><th class="number">Gross Profit</th><th class="number">Expenses</th><th class="number">Net Profit</th><th class="number">Margin</th><th class="number">Documents</th></tr></thead>
-          <tbody id="monthlyBody"></tbody>
-        </table>
-      </div>
-    </section>
-
-    <footer class="dashboard-footer"><span id="dashboardCurrencyNote">Financial amounts use the configured base currency and posted ERP transactions.</span><span id="dashboardUpdatedAt">Not refreshed yet</span></footer>
+    <footer class="dashboard-footer">
+      <span id="dashboardCurrencyNote">Financial amounts use the configured base currency and posted ERP transactions.</span>
+      <span id="dashboardUpdatedAt">Not refreshed yet</span>
+    </footer>
   </main>
-  <script src="/js/api.js"></script>
-  <script src="/js/dashboard.js?v=dashboard-hourly-20260721"></script>
-  <script src="/js/app-shell.js?v=final-fixes-20260715"></script>
+  <script src="/js/api.js?v=avatar-fix-20260812d"></script>
+  <script src="/js/dashboard.js?v=mini-gallery-20260812"></script>
+  <script src="/js/app-shell.js?v=avatar-fix-20260812d"></script>
 </body>
 </html>

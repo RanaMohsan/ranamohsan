@@ -122,6 +122,8 @@ const api = {
   }
 };
 
+window.api = api;
+
 function normalizeKeys(value){
   if(Array.isArray(value)) return value.map(normalizeKeys);
   if(value&&typeof value==='object'){

@@ -138,10 +138,17 @@ async function saveUser(){
     if(r.userId){ userId.value=r.userId; cardMode.textContent='Edit User'; history.replaceState(null,'','/user-card.html?id='+r.userId); }
     password.value=''; password.type='password'; togglePasswordBtn.textContent='Show';
     const savedId=Number(userId.value||0);
-    if(removeProfileImage) showProfileFallback(displayName.value); else if(profileImageBase64) showProfilePreview(`/api/users/${savedId}/photo?v=${Date.now()}`);
+    if(removeProfileImage) showProfileFallback(displayName.value); else if(profileImageBase64 || !!document.getElementById('profilePreviewImage')?.getAttribute('src')) showProfilePreview(`/api/users/${savedId}/photo?v=${Date.now()}`);
     profileImageBase64=null; removeProfileImage=false; profileImageInput.value='';
     profileImageHelp.textContent='PNG, JPG, WEBP or GIF. Maximum file size: 2 MB.';
-    if(profileWasChanged&&savedId===currentUserId) window.dispatchEvent(new CustomEvent('paynex-profile-updated'));
+    const meCached=(()=>{try{return JSON.parse(localStorage.getItem('paynex_last_user')||'{}');}catch{return {};}})();
+    const meId=Number(meCached.userId||meCached.UserId||currentUserId||0);
+    const meEmail=String(meCached.email||meCached.Email||'').trim().toLowerCase();
+    const savedEmail=String(email.value||'').trim().toLowerCase();
+    const isSelf=savedId>0 && (savedId===meId || (meEmail && savedEmail && meEmail===savedEmail));
+    if(profileWasChanged && isSelf){
+      window.dispatchEvent(new CustomEvent('paynex-profile-updated',{detail:{userId:savedId,photoUrl:`/api/users/${savedId}/photo?v=${Date.now()}`}}));
+    }
     if(submittedPassword && (r.passwordChanged!==false)) showPasswordReceipt(submittedPassword,(r.message||'User saved.')+' Password is ready in the one-time receipt.');
     else msg('userStatus',r.message||'User saved.',true);
   }catch(e){msg('userStatus',e.message,false)}

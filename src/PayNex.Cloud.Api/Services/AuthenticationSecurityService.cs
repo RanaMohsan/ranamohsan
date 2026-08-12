@@ -207,8 +207,17 @@ VALUES(1,@FromEmail,@FromName,@SmtpHost,@SmtpPort,@SmtpUser,@SmtpPasswordProtect
         var expiry = purpose.Equals("LOGIN_MFA", StringComparison.OrdinalIgnoreCase)
             ? settings.LoginOtpExpiryMinutes
             : 15;
-        var body = $"Your PayNex Cloud ERP verification code is {code}.\r\n\r\nCompany: {companyName}\r\nRequested by: {requestedBy}\r\nThis code expires in {expiry} minutes.\r\n\r\nIf you did not request this code, do not share it and contact your administrator.";
-        return await SendEmailAsync(settings, toEmail, subject, body);
+        var safeCompany = System.Net.WebUtility.HtmlEncode(companyName ?? "PayNex");
+        var safeCode = System.Net.WebUtility.HtmlEncode(code ?? string.Empty);
+        var html = $@"<!DOCTYPE html><html><body style=""margin:0;padding:24px;background:#f4f6f8;font-family:Segoe UI,Arial,sans-serif;color:#1b2430"">
+<div style=""max-width:480px;margin:0 auto;background:#fff;border-radius:12px;padding:28px 24px;border:1px solid #e5eaf0"">
+  <div style=""text-align:center;font-size:14px;color:#5b6b7c;margin-bottom:8px"">PayNex Cloud ERP</div>
+  <div style=""text-align:center;font-size:18px;font-weight:700;margin-bottom:18px"">Verification code</div>
+  <div style=""text-align:center;font-size:42px;font-weight:800;letter-spacing:10px;line-height:1.2;color:#0b5cab;padding:18px 8px;background:#f3f8fd;border-radius:10px;margin:0 0 16px"">{safeCode}</div>
+  <p style=""text-align:center;font-size:14px;margin:0 0 8px""><b>Don't share this code</b> with anyone.</p>
+  <p style=""text-align:center;font-size:13px;color:#5b6b7c;margin:0"">Company: {safeCompany}<br>Expires in {expiry} minutes.</p>
+</div></body></html>";
+        return await SendEmailAsync(settings, toEmail, subject, html, isHtml: true);
     }
 
     public async Task<EmailDeliveryResult> SendNewUserCredentialsEmailAsync(
@@ -682,7 +691,7 @@ VALUES(@TokenHash,@SessionId,@Email,@CompanyCode,@UserId,@ProtectedSessionJson,@
         return new RefreshTokenIssue(plain, expires);
     }
 
-    private async Task<EmailDeliveryResult> SendEmailAsync(EffectiveEmailSecuritySettings settings, string toEmail, string subject, string body)
+    private async Task<EmailDeliveryResult> SendEmailAsync(EffectiveEmailSecuritySettings settings, string toEmail, string subject, string body, bool isHtml = false)
     {
         if (string.IsNullOrWhiteSpace(settings.SmtpHost))
             return new EmailDeliveryResult(false, false, settings.ReturnDevOtp, settings.FromEmail, "SMTP host is not configured.");
@@ -693,7 +702,7 @@ VALUES(@TokenHash,@SessionId,@Email,@CompanyCode,@UserId,@ProtectedSessionJson,@
                 From = new MailAddress(settings.FromEmail, settings.FromName),
                 Subject = subject,
                 Body = body,
-                IsBodyHtml = false
+                IsBodyHtml = isHtml
             };
             message.To.Add(toEmail);
             using var smtp = new SmtpClient(settings.SmtpHost, settings.SmtpPort)

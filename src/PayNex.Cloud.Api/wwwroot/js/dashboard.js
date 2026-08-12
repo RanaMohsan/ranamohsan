@@ -149,25 +149,29 @@
     const purchaseSeries = monthly.map(r => num(r, 'purchaseAmount', 'PurchaseAmount'));
     const cashSeries = monthly.map(r => num(r, 'cashInAmount', 'CashInAmount') - num(r, 'cashOutAmount', 'CashOutAmount'));
 
+    const shortTrend = (current, previous, inverse = false) => {
+      const t = trendInfo(current, previous, inverse);
+      if (t.text === 'New activity') return { text: 'New activity', cls: t.cls, arrow: '+' };
+      if (t.text === 'No previous activity') return { text: 'No prior data', cls: 'neutral', arrow: '' };
+      return { text: t.text.replace(' vs previous period', ''), cls: t.cls, arrow: t.arrow };
+    };
+
     const kpis = [
-      {label:'Net Revenue', value:compactMoney(num(summary,'totalSales','TotalSales')), current:num(summary,'totalSales','TotalSales'), previous:num(summary,'previousSales','PreviousSales'), icon:currency.symbol||currency.code, tone:'blue', series:salesSeries},
-      {label:'Gross Profit', value:compactMoney(num(summary,'grossProfit','GrossProfit')), current:num(summary,'grossProfit','GrossProfit'), previous:num(summary,'previousGrossProfit','PreviousGrossProfit'), icon:'GP', tone:'green', series:grossSeries},
-      {label:'Net Profit', value:compactMoney(num(summary,'netProfit','NetProfit')), current:num(summary,'netProfit','NetProfit'), previous:num(summary,'previousNetProfit','PreviousNetProfit'), icon:'NP', tone:'violet', series:netSeries},
-      {label:'Operating Expenses', value:compactMoney(num(summary,'totalExpenses','TotalExpenses')), current:num(summary,'totalExpenses','TotalExpenses'), previous:num(summary,'previousExpenses','PreviousExpenses'), inverse:true, icon:'EX', tone:'orange', series:expenseSeries},
-      {label:'Purchases', value:compactMoney(num(summary,'totalPurchases','TotalPurchases')), current:num(summary,'totalPurchases','TotalPurchases'), previous:num(summary,'previousPurchases','PreviousPurchases'), icon:'PO', tone:'cyan', series:purchaseSeries},
-      {label:'Net Cash Flow', value:compactMoney(num(summary,'netCashFlow','NetCashFlow')), current:num(summary,'cashInflow','CashInflow')-num(summary,'cashOutflow','CashOutflow'), previous:num(summary,'previousCashInflow','PreviousCashInflow')-num(summary,'previousCashOutflow','PreviousCashOutflow'), icon:'CF', tone:'teal', series:cashSeries},
-      {label:'Inventory Value', value:compactMoney(num(summary,'inventoryValue','InventoryValue')), sub:`${qty(num(summary,'lowStockCount','LowStockCount'))} low-stock item(s)`, icon:'IV', tone:'indigo'},
-      {label:'Receivables', value:compactMoney(num(summary,'receivables','Receivables')), sub:`Payables ${compactMoney(num(summary,'payables','Payables'))}`, icon:'AR', tone:'rose'},
-      {label:'Sales Documents', value:qty(num(summary,'salesDocuments','SalesDocuments')), current:num(summary,'salesDocuments','SalesDocuments'), previous:num(summary,'previousSalesDocuments','PreviousSalesDocuments'), icon:'SD', tone:'navy', series:monthly.map(r=>num(r,'documentCount','DocumentCount'))},
-      {label:'Average Sale', value:compactMoney(num(summary,'averageSale','AverageSale')), sub:`${qty(num(summary,'activeCustomers','ActiveCustomers'))} active customers`, icon:'AV', tone:'amber'}
+      {label:'Net Revenue', value:compactMoney(num(summary,'totalSales','TotalSales')), current:num(summary,'totalSales','TotalSales'), previous:num(summary,'previousSales','PreviousSales'), tone:'blue', series:salesSeries},
+      {label:'Gross Profit', value:compactMoney(num(summary,'grossProfit','GrossProfit')), current:num(summary,'grossProfit','GrossProfit'), previous:num(summary,'previousGrossProfit','PreviousGrossProfit'), tone:'green', series:grossSeries},
+      {label:'Net Profit', value:compactMoney(num(summary,'netProfit','NetProfit')), current:num(summary,'netProfit','NetProfit'), previous:num(summary,'previousNetProfit','PreviousNetProfit'), tone:'navy', series:netSeries},
+      {label:'Expenses', value:compactMoney(num(summary,'totalExpenses','TotalExpenses')), current:num(summary,'totalExpenses','TotalExpenses'), previous:num(summary,'previousExpenses','PreviousExpenses'), inverse:true, tone:'orange', series:expenseSeries},
+      {label:'Purchases', value:compactMoney(num(summary,'totalPurchases','TotalPurchases')), current:num(summary,'totalPurchases','TotalPurchases'), previous:num(summary,'previousPurchases','PreviousPurchases'), tone:'violet', series:purchaseSeries},
+      {label:'Net Cash Flow', value:compactMoney(num(summary,'netCashFlow','NetCashFlow')), current:num(summary,'cashInflow','CashInflow')-num(summary,'cashOutflow','CashOutflow'), previous:num(summary,'previousCashInflow','PreviousCashInflow')-num(summary,'previousCashOutflow','PreviousCashOutflow'), tone:'teal', series:cashSeries},
+      {label:'Receivables', value:compactMoney(num(summary,'receivables','Receivables')), sub:`Payables ${compactMoney(num(summary,'payables','Payables'))}`, tone:'gray'}
     ];
 
     $('dashboardKpis').innerHTML = kpis.map(k => {
-      const t = k.current === undefined ? null : trendInfo(k.current, k.previous, k.inverse);
+      const t = k.current === undefined ? null : shortTrend(k.current, k.previous, k.inverse);
       return `<article class="dashboard-kpi-card tone-${k.tone}">
-        <div class="dashboard-kpi-top"><span class="dashboard-kpi-icon">${k.icon}</span><span class="dashboard-kpi-label">${esc(k.label)}</span></div>
+        <div class="dashboard-kpi-label">${esc(k.label)}</div>
         <div class="dashboard-kpi-main"><strong>${esc(k.value)}</strong>${k.series ? sparkline(k.series, k.tone) : ''}</div>
-        <div class="dashboard-kpi-foot ${t ? t.cls : 'neutral'}">${t ? `<span>${t.arrow}</span>${esc(t.text)}` : esc(k.sub || '')}</div>
+        <div class="dashboard-kpi-foot ${t ? t.cls : 'neutral'}">${t ? `${t.arrow ? `<span>${t.arrow}</span>` : ''}${esc(t.text)}` : esc(k.sub || '')}</div>
       </article>`;
     }).join('');
   }
@@ -195,10 +199,12 @@
     }).join('');
     const salesPoints = rows.map((r,i)=>`${x(i).toFixed(1)},${y(num(r,'salesAmount','SalesAmount')).toFixed(1)}`).join(' ');
     const area = rows.length ? `<polygon class="sales-area" points="${left},${height-bottom} ${salesPoints} ${width-right},${height-bottom}"/>` : '';
+    const grossPoints = rows.map((r,i)=>`${x(i).toFixed(1)},${y(num(r,'grossProfitAmount','GrossProfitAmount')).toFixed(1)}`).join(' ');
+    const grossArea = rows.length ? `<polygon class="gross-area" points="${left},${height-bottom} ${grossPoints} ${width-right},${height-bottom}"/>` : '';
     const every = Math.max(1, Math.ceil(rows.length / 7));
     const labels = rows.map((r,i)=> i % every === 0 || i === rows.length-1 ? `<text x="${x(i)}" y="${height-16}" text-anchor="middle">${esc(pick(r,'monthLabel','MonthLabel')||'')}</text>` : '').join('');
-    const dots = rows.map((r,i)=>`<circle class="sales-dot" cx="${x(i)}" cy="${y(num(r,'salesAmount','SalesAmount'))}" r="3"><title>${esc(pick(r,'monthLabel','MonthLabel'))}: ${esc(money(num(r,'salesAmount','SalesAmount')))}</title></circle>`).join('');
-    return `<svg viewBox="0 0 ${width} ${height}" role="img" aria-label="Monthly sales and profit line chart">${grid}${area}${paths}${dots}${labels}</svg>`;
+    const dots = rows.map((r,i)=>`<circle class="sales-dot" cx="${x(i)}" cy="${y(num(r,'salesAmount','SalesAmount'))}" r="3.2"><title>${esc(pick(r,'monthLabel','MonthLabel'))}: ${esc(money(num(r,'salesAmount','SalesAmount')))}</title></circle>`).join('');
+    return `<svg viewBox="0 0 ${width} ${height}" role="img" aria-label="Monthly sales and profit trend">${grid}${area}${grossArea}${paths}${dots}${labels}</svg>`;
   }
 
   function movingAverage(values, size) {
@@ -343,12 +349,12 @@
   }
 
   function renderRecentInvoices(rows) {
-    if(!rows.length){$('recentInvoiceBody').innerHTML='<tr><td colspan="6" class="dashboard-empty-cell">No posted sales invoices were found.</td></tr>';return;}
+    if(!rows.length){$('recentInvoiceBody').innerHTML='<tr><td colspan="5" class="dashboard-empty-cell">No posted sales invoices were found.</td></tr>';return;}
     $('recentInvoiceBody').innerHTML=rows.map(r=>{
       const balance=num(r,'balanceAmount','BalanceAmount'), raw=String(pick(r,'status','Status')||'Posted');
       const status=balance>0?'Pending':raw;
       const cls=/paid|posted/i.test(status)?'paid':/pending|open/i.test(status)?'pending':'neutral';
-      return `<tr><td><b>${esc(pick(r,'invoiceNo','InvoiceNo'))}</b></td><td>${esc(pick(r,'customerName','CustomerName')||'Walk-in Customer')}</td><td>${esc(formatDate(pick(r,'invoiceDate','InvoiceDate')))}</td><td>${esc(pick(r,'documentType','DocumentType'))}</td><td class="number">${esc(money(num(r,'grandTotal','GrandTotal')))}</td><td><span class="dashboard-status-pill ${cls}">${esc(status)}</span></td></tr>`;
+      return `<tr><td><b>${esc(pick(r,'invoiceNo','InvoiceNo'))}</b></td><td>${esc(pick(r,'customerName','CustomerName')||'Walk-in Customer')}</td><td>${esc(formatDate(pick(r,'invoiceDate','InvoiceDate')))}</td><td class="number">${esc(money(num(r,'grandTotal','GrandTotal')))}</td><td><span class="dashboard-status-pill ${cls}">${esc(status)}</span></td></tr>`;
     }).join('');
   }
 
@@ -373,6 +379,226 @@
     }).join('');
   }
 
+  function miniEmpty(msg){
+    return `<div class="dash-mini-empty">${esc(msg)}</div>`;
+  }
+
+  function miniGrid(width, height, left, right, top, bottom, max, min=0){
+    const range=max-min||1;
+    return Array.from({length:4},(_,i)=>{
+      const value=max-(range/3)*i;
+      const yy=top+((max-value)/range)*(height-top-bottom);
+      return `<line x1="${left}" y1="${yy}" x2="${width-right}" y2="${yy}" class="mini-grid"/><text x="${left-4}" y="${yy+3}" text-anchor="end" class="mini-axis">${esc(compactNumber(value))}</text>`;
+    }).join('');
+  }
+
+  function miniMultiLine(rows){
+    if(!rows.length) return miniEmpty('No trend data yet.');
+    const width=520,height=150,left=36,right=10,top=12,bottom=28;
+    const sales=rows.map(r=>num(r,'salesAmount','SalesAmount'));
+    const gross=rows.map(r=>num(r,'grossProfitAmount','GrossProfitAmount'));
+    const max=Math.max(1,...sales,...gross);
+    const x=i=>left+(i/Math.max(1,rows.length-1))*(width-left-right);
+    const y=v=>top+((max-v)/max)*(height-top-bottom);
+    const path=vals=>vals.map((v,i)=>`${i?'L':'M'}${x(i).toFixed(1)} ${y(v).toFixed(1)}`).join(' ');
+    const every=Math.max(1,Math.ceil(rows.length/6));
+    const labels=rows.map((r,i)=> (i%every===0||i===rows.length-1)?`<text x="${x(i)}" y="${height-8}" text-anchor="middle" class="mini-axis">${esc(String(pick(r,'monthLabel','MonthLabel')||'').slice(0,6))}</text>`:'').join('');
+    const peaks=sales.map((v,i)=> i%Math.max(1,Math.ceil(rows.length/5))===0?`<text x="${x(i)}" y="${y(v)-4}" text-anchor="middle" class="mini-peak">${esc(compactNumber(v))}</text>`:'').join('');
+    return `<svg viewBox="0 0 ${width} ${height}" class="dash-mini-svg">${miniGrid(width,height,left,right,top,bottom,max)}
+      <path class="mini-line mini-line-a" d="${path(sales)}" fill="none"/>
+      <path class="mini-line mini-line-b" d="${path(gross)}" fill="none"/>
+      ${peaks}${labels}</svg>`;
+  }
+
+  function miniTargetDonut(actual, target, labelActual, labelTarget){
+    const goal=Math.max(actual, target, 1);
+    const pctDone=clamp((actual/goal)*100,0,100);
+    const remain=100-pctDone;
+    return `<div class="dash-mini-target">
+      <div class="dash-mini-ring" style="background:conic-gradient(#1b4f72 0 ${pctDone}%, #d9e2ec ${pctDone}% 100%)">
+        <div><strong>${pctDone.toFixed(1)}%</strong></div>
+      </div>
+      <div class="dash-mini-target-meta">
+        <span>Target: ${esc(compactMoney(target||goal))}</span>
+        <span>${esc(labelActual)}: ${esc(compactMoney(actual))}</span>
+      </div>
+    </div>`;
+  }
+
+  function miniAreaScore(rows){
+    if(!rows.length) return miniEmpty('No margin trend yet.');
+    const width=520,height=150,left=28,right=10,top=18,bottom=28;
+    const scores=rows.map(r=>{
+      const sales=num(r,'salesAmount','SalesAmount');
+      const gross=num(r,'grossProfitAmount','GrossProfitAmount');
+      return sales>0?clamp((gross/sales)*10,0,10):0;
+    });
+    const max=10,min=0;
+    const x=i=>left+(i/Math.max(1,rows.length-1))*(width-left-right);
+    const y=v=>top+((max-v)/(max-min))*(height-top-bottom);
+    const line=scores.map((v,i)=>`${x(i).toFixed(1)},${y(v).toFixed(1)}`).join(' ');
+    const area=`${left},${height-bottom} ${line} ${width-right},${height-bottom}`;
+    const every=Math.max(1,Math.ceil(rows.length/5));
+    const labels=rows.map((r,i)=> (i%every===0||i===rows.length-1)?`<text x="${x(i)}" y="${height-8}" text-anchor="middle" class="mini-axis">${esc(String(pick(r,'monthLabel','MonthLabel')||'').slice(0,6))}</text>`:'').join('');
+    const points=scores.map((v,i)=>`<circle cx="${x(i)}" cy="${y(v)}" r="2.5" class="mini-area-dot"/><text x="${x(i)}" y="${y(v)-6}" text-anchor="middle" class="mini-score-label">${v.toFixed(2)}</text>`).join('');
+    const grid=Array.from({length:5},(_,i)=>{
+      const value=10-i*2.5; const yy=y(value);
+      return `<line x1="${left}" y1="${yy}" x2="${width-right}" y2="${yy}" class="mini-grid"/><text x="${left-4}" y="${yy+3}" text-anchor="end" class="mini-axis">${value}</text>`;
+    }).join('');
+    return `<svg viewBox="0 0 ${width} ${height}" class="dash-mini-svg">${grid}
+      <polygon class="mini-area-fill" points="${area}"/>
+      <polyline class="mini-area-line" points="${line}"/>
+      ${points}${labels}</svg>`;
+  }
+
+  function miniWaterfall(rows){
+    if(rows.length<2) return miniEmpty('Need more months for variance.');
+    const width=520,height=150,left=36,right=14,top=12,bottom=30;
+    const changes=[];
+    for(let i=1;i<rows.length;i++){
+      const cur=num(rows[i],'salesAmount','SalesAmount');
+      const prev=num(rows[i-1],'salesAmount','SalesAmount');
+      changes.push({label:String(pick(rows[i],'monthLabel','MonthLabel')||'').slice(0,3), delta:cur-prev});
+    }
+    const slice=changes.slice(-6);
+    let running=0;
+    const steps=slice.map(s=>{
+      const start=running; running+=s.delta;
+      return {...s, start, end:running};
+    });
+    const total=running;
+    const values=[0,...steps.flatMap(s=>[s.start,s.end]),total];
+    const max=Math.max(1,...values.map(Math.abs),...values);
+    const min=Math.min(0,...values);
+    const range=max-min||1;
+    const y=v=>top+((max-v)/range)*(height-top-bottom);
+    const cols=steps.length+1;
+    const plotW=width-left-right;
+    const colW=plotW/cols;
+    const barW=Math.min(22,colW*0.55);
+    const bars=steps.map((s,i)=>{
+      const cx=left+i*colW+colW/2;
+      const topY=y(Math.max(s.start,s.end));
+      const botY=y(Math.min(s.start,s.end));
+      const cls=s.delta>=0?'mini-wf-up':'mini-wf-down';
+      return `<rect class="${cls}" x="${cx-barW/2}" y="${topY}" width="${barW}" height="${Math.max(2,botY-topY)}"/><text x="${cx}" y="${height-8}" text-anchor="middle" class="mini-axis">${esc(s.label)}</text>`;
+    }).join('');
+    const tx=left+(cols-1)*colW+colW/2;
+    const totalY=y(Math.max(0,total));
+    const totalH=Math.max(2,Math.abs(y(0)-y(total)));
+    return `<svg viewBox="0 0 ${width} ${height}" class="dash-mini-svg">${miniGrid(width,height,left,right,top,bottom,max,min)}
+      ${bars}
+      <rect class="mini-wf-total" x="${tx-barW/2}" y="${Math.min(totalY,y(0))}" width="${barW}" height="${totalH}"/>
+      <text x="${tx}" y="${height-8}" text-anchor="middle" class="mini-axis">Total</text>
+    </svg>`;
+  }
+
+  function miniGroupedCategory(categories){
+    const rows=(categories||[]).slice(0,8);
+    if(!rows.length) return miniEmpty('No category sales yet.');
+    const width=520,height=150,left=28,right=8,top=10,bottom=36;
+    const data=rows.map(r=>{
+      const sales=num(r,'amount','Amount');
+      const profit=sales*0.18;
+      const cost=Math.max(0,sales-profit);
+      return {label:String(pick(r,'categoryName','CategoryName')||'Other').slice(0,8), sales, cost, profit};
+    });
+    const max=Math.max(1,...data.flatMap(d=>[d.sales,d.cost,d.profit]));
+    const groupW=(width-left-right)/data.length;
+    const barW=Math.min(8,(groupW-6)/3);
+    const y=v=>top+((max-v)/max)*(height-top-bottom);
+    const bars=data.map((d,i)=>{
+      const gx=left+i*groupW+4;
+      const items=[['sales','mini-bar-teal',d.sales],['cost','mini-bar-ink',d.cost],['profit','mini-bar-coral',d.profit]];
+      return items.map((it,j)=>{
+        const h=Math.max(1,(height-top-bottom)*(it[2]/max));
+        return `<rect class="${it[1]}" x="${gx+j*(barW+2)}" y="${height-bottom-h}" width="${barW}" height="${h}"/>`;
+      }).join('')+`<text x="${left+(i+.5)*groupW}" y="${height-8}" text-anchor="middle" class="mini-axis">${esc(d.label)}</text>`;
+    }).join('');
+    return `<svg viewBox="0 0 ${width} ${height}" class="dash-mini-svg">${miniGrid(width,height,left,right,top,bottom,max)}${bars}</svg>`;
+  }
+
+  function miniStackedMonthly(rows){
+    if(!rows.length) return miniEmpty('No monthly mix yet.');
+    const width=520,height=150,left=32,right=8,top=10,bottom=28;
+    const data=rows.map(r=>{
+      const sales=num(r,'salesAmount','SalesAmount');
+      const gross=Math.max(0,num(r,'grossProfitAmount','GrossProfitAmount'));
+      const cost=Math.max(0,sales-gross);
+      return {label:String(pick(r,'monthLabel','MonthLabel')||'').slice(0,3), cost, gross, total:sales};
+    });
+    const max=Math.max(1,...data.map(d=>d.total));
+    const groupW=(width-left-right)/data.length;
+    const barW=Math.min(14,groupW*0.55);
+    const bars=data.map((d,i)=>{
+      const cx=left+i*groupW+groupW/2;
+      const costH=(d.cost/max)*(height-top-bottom);
+      const grossH=(d.gross/max)*(height-top-bottom);
+      const base=height-bottom;
+      return `<rect class="mini-bar-ink" x="${cx-barW/2}" y="${base-costH}" width="${barW}" height="${Math.max(1,costH)}"/>
+        <rect class="mini-bar-teal" x="${cx-barW/2}" y="${base-costH-grossH}" width="${barW}" height="${Math.max(1,grossH)}"/>
+        <text x="${cx}" y="${height-8}" text-anchor="middle" class="mini-axis">${esc(d.label)}</text>`;
+    }).join('');
+    return `<svg viewBox="0 0 ${width} ${height}" class="dash-mini-svg">${miniGrid(width,height,left,right,top,bottom,max)}${bars}</svg>`;
+  }
+
+  function miniProductBars(products){
+    const rows=(products||[]).slice(0,6);
+    if(!rows.length) return miniEmpty('No product sales yet.');
+    const width=520,height=150,left=28,right=8,top=10,bottom=40;
+    const data=rows.map(r=>({
+      label:String(pick(r,'productName','ProductName','itemName','ItemName')||'Item').slice(0,10),
+      value:num(r,'amount','Amount','salesAmount','SalesAmount','qty','Qty')
+    }));
+    const max=Math.max(1,...data.map(d=>d.value));
+    const groupW=(width-left-right)/data.length;
+    const barW=Math.min(28,groupW*0.55);
+    const bars=data.map((d,i)=>{
+      const cx=left+i*groupW+groupW/2;
+      const h=(d.value/max)*(height-top-bottom);
+      return `<rect class="mini-bar-teal" x="${cx-barW/2}" y="${height-bottom-h}" width="${barW}" height="${Math.max(2,h)}"/>
+        <text x="${cx}" y="${height-8}" text-anchor="middle" class="mini-axis">${esc(d.label)}</text>`;
+    }).join('');
+    return `<svg viewBox="0 0 ${width} ${height}" class="dash-mini-svg">${miniGrid(width,height,left,right,top,bottom,max)}${bars}</svg>`;
+  }
+
+  function miniSingleLine(rows){
+    if(!rows.length) return miniEmpty('No sales trend yet.');
+    const width=520,height=150,left=36,right=10,top=12,bottom=28;
+    const vals=rows.map(r=>num(r,'salesAmount','SalesAmount'));
+    const max=Math.max(1,...vals);
+    const min=Math.min(...vals,0);
+    const range=max-min||1;
+    const x=i=>left+(i/Math.max(1,rows.length-1))*(width-left-right);
+    const y=v=>top+((max-v)/range)*(height-top-bottom);
+    const d=vals.map((v,i)=>`${i?'L':'M'}${x(i).toFixed(1)} ${y(v).toFixed(1)}`).join(' ');
+    const every=Math.max(1,Math.ceil(rows.length/6));
+    const labels=rows.map((r,i)=> (i%every===0||i===rows.length-1)?`<text x="${x(i)}" y="${height-8}" text-anchor="middle" class="mini-axis">${esc(String(pick(r,'monthLabel','MonthLabel')||'').slice(0,6))}</text>`:'').join('');
+    return `<svg viewBox="0 0 ${width} ${height}" class="dash-mini-svg">${miniGrid(width,height,left,right,top,bottom,max,min)}
+      <path class="mini-area-line" d="${d}" fill="none"/>
+      ${labels}</svg>`;
+  }
+
+  function renderMiniGallery(summary, monthly, categories, products){
+    const sales=num(summary,'totalSales','TotalSales');
+    const gross=num(summary,'grossProfit','GrossProfit');
+    const prevSales=num(summary,'previousSales','PreviousSales');
+    const prevGross=num(summary,'previousGrossProfit','PreviousGrossProfit');
+    const salesTarget=Math.max(sales, prevSales*1.12, sales*1.08, 1);
+    const grossTarget=Math.max(gross, prevGross*1.12, gross*1.08, 1);
+
+    const set=(id,html)=>{ const el=$(id); if(el) el.innerHTML=html; };
+    set('miniRevGpChart', miniMultiLine(monthly));
+    set('miniRevenueTarget', miniTargetDonut(sales, salesTarget, 'Revenue', 'Target'));
+    set('miniGrossTarget', miniTargetDonut(gross, grossTarget, 'Gross Profit', 'Target'));
+    set('miniMarginTrend', miniAreaScore(monthly));
+    set('miniVarianceChart', miniWaterfall(monthly));
+    set('miniCategoryBars', miniGroupedCategory(categories));
+    set('miniStackedSales', miniStackedMonthly(monthly));
+    set('miniTopProductsBars', miniProductBars(products));
+    set('miniSalesLine', miniSingleLine(monthly));
+  }
+
   function renderAll(data) {
     currentData=data;
     const configured=data.currency||data.Currency||{};
@@ -383,30 +609,23 @@
       decimalPlaces:clamp(Number(pick(configured,'decimalPlaces','DecimalPlaces')??2),0,4)
     };
     $('dashboardCurrencyBadge').textContent=`${currency.code} - ${currency.symbol}`;
-    $('dashboardCurrencyNote').textContent=`All financial amounts are shown in ${currency.code} (${currency.name}) and are calculated from posted ERP transactions.`;
+    $('dashboardCurrencyNote').textContent=`All financial amounts are shown in ${currency.code} (${currency.name}) from posted ERP transactions.`;
     const summary=data.summary||data.Summary||{};
     const monthly=getRows(data,'monthly','Monthly');
-    const hourlySales=getRows(data,'hourlySales','HourlySales');
-    const hourlyPeriod=data.hourlyPeriod||data.HourlyPeriod||{};
-    renderInsightStrip(summary,monthly);
+    renderMiniGallery(summary, monthly, getRows(data,'salesByCategory','SalesByCategory'), getRows(data,'topProducts','TopProducts'));
     renderKpis(summary,monthly);
     const hasOperating = hasAnyValue(monthly, [['salesAmount','SalesAmount'], ['purchaseAmount','PurchaseAmount'], ['expenseAmount','ExpenseAmount']]);
     const hasCashFlow = hasAnyValue(monthly, [['cashInAmount','CashInAmount'], ['cashOutAmount','CashOutAmount']]);
-    $('revenueProfitChart').innerHTML=hourlySales.length?salesMarketChart(hourlySales):premiumEmptyChart('Hourly sales chart ready', 'Post a sale to start the fixed 60-minute candlestick trend.');
-    $('operatingChart').innerHTML=hasOperating?groupedBarChart(monthly,[['salesAmount','SalesAmount'],['purchaseAmount','PurchaseAmount'],['expenseAmount','ExpenseAmount']],['sales-bar','purchase-bar','expense-bar'],'Monthly sales, purchases and expenses'):premiumEmptyChart('Operating comparison ready', 'Posted sales, purchases and expenses will appear here as a clean comparison chart.');
-    $('cashFlowChart').innerHTML=hasCashFlow?groupedBarChart(monthly,[['cashInAmount','CashInAmount'],['cashOutAmount','CashOutAmount']],['cash-in-bar','cash-out-bar'],'Monthly cash inflow and outflow'):premiumEmptyChart('Cash-flow monitor ready', 'Customer receipts and vendor payments will build this cash movement view.');
+    const hasTrend = hasAnyValue(monthly, [['salesAmount','SalesAmount'], ['grossProfitAmount','GrossProfitAmount'], ['netProfitAmount','NetProfitAmount']]);
+    $('revenueProfitChart').innerHTML=hasTrend?lineChart(monthly):premiumEmptyChart('Revenue & profit trend', 'Posted monthly sales will appear here.');
+    $('operatingChart').innerHTML=hasOperating?groupedBarChart(monthly,[['salesAmount','SalesAmount'],['purchaseAmount','PurchaseAmount'],['expenseAmount','ExpenseAmount']],['sales-bar','purchase-bar','expense-bar'],'Monthly sales, purchases and expenses'):premiumEmptyChart('Operations comparison', 'Sales, purchases and expenses will appear here.');
+    $('cashFlowChart').innerHTML=hasCashFlow?groupedBarChart(monthly,[['cashInAmount','CashInAmount'],['cashOutAmount','CashOutAmount']],['cash-in-bar','cash-out-bar'],'Monthly cash inflow and outflow'):premiumEmptyChart('Cash flow', 'Receipts and payments will build this view.');
     renderDonut(getRows(data,'salesByCategory','SalesByCategory'));
-    renderRankedBars('expenseCategoryList',getRows(data,'expensesByCategory','ExpensesByCategory'),['categoryName','CategoryName'],['amount','Amount']);
     renderRankedBars('paymentMethodsList',getRows(data,'paymentMethods','PaymentMethods'),['paymentMethodName','PaymentMethodName'],['amount','Amount']);
-    renderHealth(summary);
-    renderProfitability(summary);
-    renderLowStock(getRows(data,'lowStock','LowStock'));
     renderRecentInvoices(getRows(data,'recentInvoices','RecentInvoices'));
     renderTopProducts(getRows(data,'topProducts','TopProducts'));
     renderTopCustomers(getRows(data,'topCustomers','TopCustomers'));
-    renderMonthly(monthly);
-    const intervalMinutes=num(hourlyPeriod,'intervalMinutes','IntervalMinutes')||60;
-    $('trendPeriod').textContent=`${intervalMinutes} min | Last ${qty(num(hourlyPeriod,'slots','Slots')||24)} hours`;
+    $('trendPeriod').textContent=`Last ${Number($('months').value||12)} months`;
     $('dashboardUpdatedAt').textContent=`Last updated ${new Date().toLocaleString()}`;
     $('dashboardStatus').hidden=true;
   }
@@ -429,7 +648,7 @@
     } finally {
       dashboardLoading = false;
       if (!quiet) {
-        button.disabled=false; button.textContent='Refresh analysis';
+        button.disabled=false; button.textContent='Refresh';
       }
     }
   }
@@ -448,7 +667,7 @@
   async function init() {
     try {
       const me=await api.get('/api/me');
-      $('who').textContent=`${me.companyName||me.CompanyName} - ${me.storeName||me.StoreName||me.branchName||me.BranchName||'Company'} - ${me.displayName||me.DisplayName} - ${me.roleName||me.RoleName}`;
+      $('who').textContent=`${me.displayName||me.DisplayName||'User'} • ${me.storeName||me.StoreName||me.branchName||me.BranchName||'Main Store'} • ${me.roleName||me.RoleName||''}`.replace(/\s+•\s+$/, '');
     } catch {
       location.href='/login.html?returnUrl='+encodeURIComponent(location.pathname+location.search);
       return;

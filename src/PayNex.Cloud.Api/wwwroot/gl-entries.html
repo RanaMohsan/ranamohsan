@@ -4,7 +4,7 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width,initial-scale=1">
   <title>G/L Entries</title>
-  <link rel="stylesheet" href="/css/app.css?v=final-fixes-20260715">
+  <link rel="stylesheet" href="/css/app.css?v=avatar-fix-20260812d">
 </head>
 <body>
   <div class="shell">
@@ -36,14 +36,14 @@
         <button class="secondary" onclick="printGlEntries()">Print List</button>
       </div>
       <table class="table">
-        <thead><tr><th></th><th>Date</th><th>Account</th><th>Document Type</th><th>Document No</th><th>Debit</th><th>Credit</th><th>Description</th></tr></thead>
+        <thead><tr><th></th><th>Date</th><th>Account</th><th>Document Type</th><th>Document No</th><th>Debit (Dr)</th><th>Credit (Cr)</th><th>Description</th></tr></thead>
         <tbody id="glBody"></tbody>
       </table>
       <p id="glStatus"></p>
     </div>
   </div>
-  <script src="/js/api.js"></script>
+  <script src="/js/api.js?v=avatar-fix-20260812d"></script>
   <script src="/js/gl-entries.js"></script>
-  <script src="/js/app-shell.js?v=final-fixes-20260715"></script>
+  <script src="/js/app-shell.js?v=avatar-fix-20260812d"></script>
 </body>
 </html>

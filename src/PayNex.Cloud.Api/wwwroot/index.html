@@ -4,7 +4,7 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width,initial-scale=1">
   <title>PayNex Cloud ERP</title>
-  <link rel="stylesheet" href="/css/app.css?v=final-fixes-20260715">
+  <link rel="stylesheet" href="/css/app.css?v=avatar-fix-20260812d">
 </head>
 <body class="fo-home-page">
   <main class="shell fo-home-shell">
@@ -13,9 +13,13 @@
       <p class="muted">Core SMB ERP actions: master data, invoices, payments and ledger entries.</p>
     </section>
 
-    <section class="fo-dashboard-layout">
+    <section class="fo-dashboard-layout fo-home-compact">
       <aside class="fo-home-left-card">
-        <div class="fo-calendar-card">
+        <div class="fo-company-avatar" id="foCompanyAvatar" title="Company">
+          <img id="foCompanyAvatarImg" alt="" hidden>
+          <span id="foCompanyAvatarFallback">PN</span>
+        </div>
+        <div class="fo-calendar-card fo-calendar-compact">
           <div class="fo-calendar-head">
             <button type="button" class="fo-calendar-nav" aria-label="Previous month">‹</button>
             <strong id="foCalendarMonth">July&nbsp;&nbsp;2027</strong>
@@ -26,13 +30,11 @@
           </div>
           <div class="fo-calendar-grid" id="foCalendarGrid"></div>
         </div>
-
-        <div class="fo-workitems-card">
+        <div class="fo-workitems-card fo-workitems-compact">
           <div class="fo-workitems-head">
-            <h2>Work items assigned to me</h2>
-            <span>⌃</span>
+            <h2>Work items</h2>
           </div>
-          <p>Work items will be displayed here after they are assigned to you.</p>
+          <p class="muted">Assigned items appear here.</p>
         </div>
       </aside>
 
@@ -40,8 +42,8 @@
     </section>
   </main>
 
-  <script src="/js/api.js"></script>
-  <script src="/js/workspace.js?v=final-fixes-20260715"></script>
-  <script src="/js/app-shell.js?v=final-fixes-20260715"></script>
+  <script src="/js/api.js?v=avatar-fix-20260812d"></script>
+  <script src="/js/workspace.js?v=company-logo-20260812"></script>
+  <script src="/js/app-shell.js?v=avatar-fix-20260812d"></script>
 </body>
 </html>

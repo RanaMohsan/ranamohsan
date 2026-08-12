@@ -45,8 +45,42 @@ async function init(){
   const look = await api.get('/api/lookups');
   lockCustomerToWalkIn(look.customers || []);
   wireLineModalKeys();
+  const payMethodEl = document.getElementById('payMethod');
+  const bankRow = document.getElementById('bankRow');
+  if(payMethodEl && bankRow){
+    const syncBank = () => { bankRow.hidden = payMethodEl.value !== 'Bank'; };
+    payMethodEl.addEventListener('change', syncBank);
+    syncBank();
+  }
+  const cartBarcode = document.getElementById('cartBarcode');
+  if(cartBarcode){
+    cartBarcode.addEventListener('keydown', async event => {
+      if(event.key !== 'Enter' || event.repeat) return;
+      event.preventDefault();
+      await autoAddByBarcode(cartBarcode.value.trim());
+      cartBarcode.value = '';
+      cartBarcode.focus();
+    });
+  }
   renderCart();
   await loadProducts();
+}
+
+async function autoAddByBarcode(code){
+  if(!code) return;
+  try{
+    let match = products.find(p => String(v(p,'barcode','Barcode')).trim() === code
+      || String(v(p,'productCode','ProductCode')).trim().toLowerCase() === code.toLowerCase());
+    if(!match){
+      const found = await api.get('/api/products?term=' + encodeURIComponent(code));
+      match = (found || []).find(p => String(v(p,'barcode','Barcode')).trim() === code
+        || String(v(p,'productCode','ProductCode')).trim().toLowerCase() === code.toLowerCase())
+        || (found || [])[0];
+      if(found?.length) products = found;
+    }
+    if(!match){ msg('status', `No item matched barcode ${code}.`, false); return; }
+    openLineModal(productIdOf(match));
+  }catch(e){ msg('status', e.message, false); }
 }
 
 async function loadProducts(){
@@ -220,12 +254,19 @@ async function postSale(){
       msg('status',`Paid amount was less than grand total. It has been corrected to ${money(s.grandTotal)}.`,false);
       return;
     }
-    const cashId = 1;
+    const method = document.getElementById('payMethod')?.value || 'Cash';
+    const bankCode = method === 'Bank' ? (document.getElementById('bankAccount')?.value || '') : '';
+    if(method === 'Bank' && !bankCode){ msg('status','Select a bank account for Bank payment.',false); return; }
     const r = await api.post('/api/pos/sales',{
       customerId: 0,
-      remarks: 'Picture sale',
+      remarks: method === 'Bank' ? `Picture sale | Bank ${bankCode}` : 'Picture sale | Cash',
       lines: cart.map(l=>({productId:l.productId, quantity:l.quantity, unitPrice:l.price, discountPercent:l.discountPercent || 0})),
-      payments: [{paymentMethodId:cashId, paymentMethodName:'Cash', amount:round2(paidAmount), referenceNo:''}]
+      payments: [{
+        paymentMethodId: method === 'Bank' ? 4 : 1,
+        paymentMethodName: method === 'Bank' ? 'Bank Transfer' : 'Cash',
+        amount:round2(paidAmount),
+        referenceNo: bankCode
+      }]
     });
     msg('status',`Posted ${r.invoiceNo || r.InvoiceNo}`,true);
     cart = [];

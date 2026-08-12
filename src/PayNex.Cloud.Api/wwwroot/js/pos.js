@@ -25,9 +25,90 @@ async function init(){
     document.getElementById('who').textContent = `${me.companyName || me.CompanyName} | ${me.displayName || me.DisplayName} | ${me.roleName || me.RoleName}`;
     const look = await api.get('/api/lookups');
     lockCustomerToWalkIn(look.customers || []);
+    await loadBankAccounts();
     await loadProducts();
+    const payMethodEl = document.getElementById('payMethod');
+    const bankRow = document.getElementById('bankRow');
+    if(payMethodEl && bankRow){
+      const syncBank = () => { bankRow.hidden = payMethodEl.value !== 'Bank'; };
+      payMethodEl.addEventListener('change', syncBank);
+      syncBank();
+    }
+    const cartBarcode = document.getElementById('cartBarcode');
+    if(cartBarcode){
+      cartBarcode.addEventListener('keydown', async event => {
+        if(event.key !== 'Enter' || event.repeat) return;
+        event.preventDefault();
+        await autoAddByBarcode(cartBarcode.value.trim());
+        cartBarcode.value = '';
+        cartBarcode.focus();
+      });
+    }
   }catch{
     location.href = '/login.html';
+  }
+}
+
+async function loadBankAccounts(){
+  const select = document.getElementById('bankAccount');
+  if(!select) return;
+  try{
+    const accounts = await api.get('/api/accounting/chart-of-accounts');
+    const banks = (accounts || []).filter(a => {
+      const type = String(val(a,'accountType','AccountType') || val(a,'accountCategory','AccountCategory') || '').toLowerCase();
+      const name = String(val(a,'accountName','AccountName') || '');
+      const no = String(val(a,'accountNo','AccountNo') || '');
+      return type.includes('bank') || /bank/i.test(name) || /^11/.test(no);
+    });
+    if(banks.length){
+      select.innerHTML = banks.map(b => {
+        const no = val(b,'accountNo','AccountNo');
+        const name = val(b,'accountName','AccountName');
+        return `<option value="${esc(no)}">${esc(no)} - ${esc(name)}</option>`;
+      }).join('');
+    }else{
+      select.innerHTML = '<option value="BANK">Default Bank</option>';
+    }
+  }catch{
+    select.innerHTML = '<option value="BANK">Default Bank</option>';
+  }
+}
+
+async function autoAddByBarcode(code){
+  if(!code) return;
+  try{
+    let match = products.find(p => String(val(p,'barcode','Barcode')).trim() === code
+      || String(val(p,'productCode','ProductCode')).trim().toLowerCase() === code.toLowerCase());
+    if(!match){
+      const found = await api.get('/api/products?term=' + encodeURIComponent(code));
+      match = (found || []).find(p => String(val(p,'barcode','Barcode')).trim() === code
+        || String(val(p,'productCode','ProductCode')).trim().toLowerCase() === code.toLowerCase())
+        || (found || [])[0];
+      if(found?.length) products = found;
+    }
+    if(!match){ msg('status', `No item matched barcode ${code}.`, false); return; }
+    const pid = Number(val(match,'productId','ProductId'));
+    const existing = cart.find(x => x.productId === pid);
+    if(existing){
+      existing.quantity = Number(existing.quantity || 0) + 1;
+      renderCart();
+      msg('status', `Added ${val(match,'productName','ProductName')} (qty +1).`, true);
+      return;
+    }
+    cart.push({
+      productId: pid,
+      productName: val(match,'productName','ProductName'),
+      productCode: val(match,'productCode','ProductCode'),
+      quantity: 1,
+      price: Number(val(match,'salePrice','SalePrice') || 0),
+      discountPercent: Number(val(match,'productDiscountPercent','ProductDiscountPercent') || 0),
+      taxPercent: Number(val(match,'taxPercent','TaxPercent') || 0),
+      taxInclusive: Boolean(val(match,'taxInclusive','TaxInclusive'))
+    });
+    renderCart();
+    msg('status', `Added ${val(match,'productName','ProductName')} to cart.`, true);
+  }catch(e){
+    msg('status', e.message, false);
   }
 }
 
@@ -149,9 +230,14 @@ async function postSale(){
   try{
     if(!cart.length){ msg('status','Cart is empty.',false); return; }
     const method = payMethod.value || 'Cash';
+    if(method === 'Bank'){
+      const bank = document.getElementById('bankAccount')?.value || '';
+      if(!bank){ msg('status','Select a bank account for Bank payment.',false); return; }
+    }
+    const bankCode = method === 'Bank' ? (document.getElementById('bankAccount')?.value || '') : '';
     const body = {
       customerId: 0,
-      remarks: 'Web POS sale',
+      remarks: method === 'Bank' ? `Web POS sale | Bank ${bankCode}` : 'Web POS sale | Cash',
       lines: cart.map(line => ({
         productId: line.productId,
         quantity: line.quantity,
@@ -159,10 +245,10 @@ async function postSale(){
         discountPercent: line.discountPercent || 0
       })),
       payments: [{
-        paymentMethodId: 1,
-        paymentMethodName: method,
+        paymentMethodId: method === 'Bank' ? 4 : 1,
+        paymentMethodName: method === 'Bank' ? 'Bank Transfer' : 'Cash',
         amount: Number(paid.value || 0),
-        referenceNo: ''
+        referenceNo: bankCode
       }]
     };
     const result = await api.post('/api/pos/sales', body);

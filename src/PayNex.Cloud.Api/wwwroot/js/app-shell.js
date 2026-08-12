@@ -39,7 +39,7 @@
   sidebar.innerHTML = `
     <div class="brand">
       <div class="brand-logo" aria-hidden="true"></div>
-      <div><h2>PayNex Cloud</h2><p>Cloud SaaS ERP</p></div>
+      <div><h2>PayNex</h2><p>SaaS ERP</p></div>
     </div>
     <div class="side-user">
       <b id="sideUser">Signed in user</b>
@@ -59,7 +59,6 @@
       <div class="page-title">${title}</div>
     </div>
     <div class="command-area">
-      <div class="command-box">Search menu, customer, item, account, report...</div>
       <select id="paynexBranchSelector" class="branch-selector" hidden></select>
     </div>
     <div class="header-right">
@@ -92,7 +91,6 @@
           <div class="environment-panel-note">Switching refreshes the ERP workspace and applies the selected environment to your session.</div>
         </section>
       </div>
-      <div class="clock" id="paynexClock"></div>
       <div class="app-user-menu" id="paynexUserMenu">
         <button type="button" class="app-user-trigger" id="paynexUserTrigger" aria-haspopup="dialog" aria-expanded="false" aria-controls="paynexUserPanel" title="Signed-in user">
           <span class="app-user-avatar">
@@ -141,28 +139,66 @@
   }
 
   let currentAvatarObjectUrl='';
-  async function refreshCurrentUserAvatar(){
+  let avatarRefreshSeq=0;
+  async function refreshCurrentUserAvatar(event){
+    const seq=++avatarRefreshSeq;
     const pairs=[
       [document.getElementById('paynexUserAvatarImage'),document.getElementById('paynexUserAvatarFallback')],
       [document.getElementById('paynexUserPanelImage'),document.getElementById('paynexUserPanelFallback')]
     ];
-    pairs.forEach(([img,fallback])=>{
-      if(!img||!fallback) return;
-      img.hidden=true; fallback.hidden=false;
-      img.onload=()=>{img.hidden=false;fallback.hidden=true};
-      img.onerror=()=>{img.hidden=true;fallback.hidden=false};
-    });
-    if(currentAvatarObjectUrl){URL.revokeObjectURL(currentAvatarObjectUrl);currentAvatarObjectUrl='';}
-    if(!window.api?.fetchWithRefresh)return;
+    const apiClient=typeof api!=='undefined'?api:window.api;
+    if(!apiClient?.fetchWithRefresh) return;
+
+    const showFallback=()=>{
+      pairs.forEach(([img,fallback])=>{
+        if(!img||!fallback) return;
+        img.hidden=true;
+        fallback.hidden=false;
+      });
+    };
+    const showPhoto=(objectUrl)=>{
+      pairs.forEach(([img,fallback])=>{
+        if(!img||!fallback) return;
+        img.onload=()=>{ img.hidden=false; fallback.hidden=true; };
+        img.onerror=()=>{ img.hidden=true; fallback.hidden=false; };
+        img.src=objectUrl;
+      });
+    };
+
+    showFallback();
     try{
-      // Fetch through the authenticated API helper so an expired access cookie
-      // can be refreshed before the picture from the signed-in user's card loads.
-      const response=await api.fetchWithRefresh('/api/me/photo?v='+Date.now(),{method:'GET',cache:'no-store'});
-      if(!response.ok)return;
-      const blob=await response.blob();
-      if(!blob.size||!String(blob.type||'').startsWith('image/'))return;
-      currentAvatarObjectUrl=URL.createObjectURL(blob);
-      pairs.forEach(([img])=>{if(img)img.src=currentAvatarObjectUrl;});
+      const me=(()=>{try{return JSON.parse(localStorage.getItem('paynex_last_user')||'{}');}catch{return {};}})();
+      const detail=event?.detail||{};
+      let userId=Number(detail.userId||me.userId||me.UserId||0);
+      if(!userId){
+        try{
+          const live=await apiClient.get('/api/me');
+          localStorage.setItem('paynex_last_user', JSON.stringify(live||{}));
+          userId=Number(live.userId||live.UserId||0);
+        }catch{}
+      }
+      const stamp=Date.now();
+      const candidates=[];
+      if(detail.photoUrl) candidates.push(String(detail.photoUrl));
+      candidates.push('/api/me/photo?v='+stamp);
+      if(userId>0) candidates.push(`/api/users/${userId}/photo?v=${stamp}`);
+
+      for(const candidate of candidates){
+        if(seq!==avatarRefreshSeq) return;
+        const response=await apiClient.fetchWithRefresh(candidate,{method:'GET',cache:'no-store'});
+        if(!response.ok) continue;
+        const blob=await response.blob();
+        if(!blob.size || blob.size<32) continue;
+        const type=String(blob.type||'');
+        if(type && !type.startsWith('image/') && type!=='application/octet-stream') continue;
+        if(seq!==avatarRefreshSeq) return;
+        const objectUrl=URL.createObjectURL(blob);
+        const previous=currentAvatarObjectUrl;
+        currentAvatarObjectUrl=objectUrl;
+        showPhoto(objectUrl);
+        if(previous) URL.revokeObjectURL(previous);
+        return;
+      }
     }catch{}
   }
 
@@ -271,8 +307,6 @@
     });
   });
 
-  function tick(){ const el = document.getElementById('paynexClock'); if(el) el.textContent = new Date().toLocaleString(); }
-  tick(); setInterval(tick, 1000);
 
   function ensureBranchMenuVisible(){
     const menu=document.querySelector('.side-menu');
@@ -367,7 +401,7 @@
         ['paynexUserAvatarFallback','paynexUserPanelFallback'].forEach(id=>setText(id,initials));
         const cardLink=document.getElementById('paynexMyUserCardLink');
         if(cardLink) cardLink.href=userId?`/user-card.html?id=${userId}`:'/users.html';
-        if(!isOwner) refreshCurrentUserAvatar();
+        refreshCurrentUserAvatar();
         if(su) su.textContent = user;
         if(sr) sr.textContent = isOwner ? 'Platform Super Admin • PayNex Cloud ERP' : ([role,company].filter(Boolean).join(' • ') || 'Company workspace');
         if(badge) badge.textContent = isOwner ? 'PayNex Owner' : (env + ' SaaS');

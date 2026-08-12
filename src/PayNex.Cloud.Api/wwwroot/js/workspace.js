@@ -93,13 +93,53 @@ async function init(){
   try{
     const me = await api.get('/api/me');
     workspaceUser = me;
-    const companyName = me.companyName || me.CompanyName || 'PayNex Cloud ERP';
+    let companyName = me.companyName || me.CompanyName || 'PayNex Cloud ERP';
     const userName = me.displayName || me.DisplayName || me.userName || me.UserName || '';
     const roleName = me.roleName || me.RoleName || '';
     const homeCompanyName = document.getElementById('homeCompanyName');
     if(homeCompanyName) homeCompanyName.textContent = companyName;
     const shellCompany = document.getElementById('foCompanyText');
     if(shellCompany) shellCompany.textContent = companyName;
+    const avatarFallback = document.getElementById('foCompanyAvatarFallback');
+    const avatarImg = document.getElementById('foCompanyAvatarImg');
+    const setCompanyInitials = (name)=>{
+      if(!avatarFallback) return;
+      const initials = String(name||'PN').trim().split(/\s+/).filter(Boolean).slice(0,2).map(w=>w[0]).join('').toUpperCase() || 'PN';
+      avatarFallback.textContent = initials;
+      avatarFallback.hidden = false;
+    };
+    setCompanyInitials(companyName);
+    if(avatarImg){
+      avatarImg.hidden = true;
+      avatarImg.removeAttribute('src');
+    }
+    // Company Information logo (same image saved on company.html)
+    try{
+      const company = await api.get('/api/company');
+      const infoName = company.companyName || company.CompanyName || '';
+      if(infoName){
+        companyName = infoName;
+        if(homeCompanyName) homeCompanyName.textContent = companyName;
+        if(shellCompany) shellCompany.textContent = companyName;
+        setCompanyInitials(companyName);
+      }
+      const logoB64 = company.logoBase64 || company.LogoBase64 || '';
+      if(avatarImg && logoB64){
+        avatarImg.onload = ()=>{ avatarImg.hidden=false; if(avatarFallback) avatarFallback.hidden=true; };
+        avatarImg.onerror = ()=>{ avatarImg.hidden=true; if(avatarFallback) avatarFallback.hidden=false; };
+        avatarImg.src = 'data:image/png;base64,' + logoB64;
+      } else if(avatarImg && window.api?.fetchWithRefresh){
+        const response = await api.fetchWithRefresh('/api/company/logo?v='+Date.now(),{method:'GET',cache:'no-store'});
+        if(response.ok){
+          const blob = await response.blob();
+          if(blob.size){
+            avatarImg.onload = ()=>{ avatarImg.hidden=false; if(avatarFallback) avatarFallback.hidden=true; };
+            avatarImg.onerror = ()=>{ avatarImg.hidden=true; if(avatarFallback) avatarFallback.hidden=false; };
+            avatarImg.src = URL.createObjectURL(blob);
+          }
+        }
+      }
+    }catch{}
     const sideUser = document.getElementById('sideUser');
     const sideRole = document.getElementById('sideRole');
     if(sideUser && userName) sideUser.textContent = userName;
