@@ -22,7 +22,8 @@ function lockCustomerToWalkIn(customers){
 async function init(){
   try{
     const me = await api.get('/api/me');
-    document.getElementById('who').textContent = `${me.companyName || me.CompanyName} | ${me.displayName || me.DisplayName} | ${me.roleName || me.RoleName}`;
+    const who = document.getElementById('who');
+    if(who) who.textContent = `${me.companyName || me.CompanyName} | ${me.displayName || me.DisplayName} | ${me.roleName || me.RoleName}`;
     const look = await api.get('/api/lookups');
     lockCustomerToWalkIn(look.customers || []);
     await loadBankAccounts();
@@ -220,8 +221,24 @@ function renderCart(){
   const total = roundMoney(cart.reduce((sum, line) => sum + lineTotal(line), 0));
   document.getElementById('cart').innerHTML = cart.length ? cart.map((line, index) => {
     const calculation = calculateLine(line);
-    return `<div class="cart-item"><div><b>${line.productName}</b><br><span class="muted">${line.productCode || ''}</span><div class="row" style="grid-template-columns:70px 80px 80px;margin-top:4px"><input type="number" value="${line.quantity}" min="1" onchange="cart[${index}].quantity=Math.max(1,Number(this.value||1));renderCart()"><input type="number" value="${line.price}" min="0" onchange="cart[${index}].price=Math.max(0,Number(this.value||0));renderCart()"><input type="number" value="${line.discountPercent || 0}" min="0" max="100" onchange="cart[${index}].discountPercent=Math.min(100,Math.max(0,Number(this.value||0)));renderCart()"></div><span class="mini">Qty • Price • Disc% | Tax ${money(calculation.taxAmount)}</span></div><div class="right"><b>${money(calculation.total)}</b><br><a href="#" onclick="event.preventDefault();cart.splice(${index},1);renderCart()">remove</a></div></div>`;
-  }).join('') : '<p class="muted">Cart is empty. Add product to start billing.</p>';
+    const name = esc(line.productName || '');
+    const code = esc(line.productCode || '');
+    return `<div class="cart-item">
+      <div class="cart-item-main">
+        <div class="cart-item-head">
+          <b title="${code}">${name}</b>
+          <span class="cart-item-total">${money(calculation.total)}</span>
+          <button type="button" class="cart-remove-icon" onclick="cart.splice(${index},1);renderCart()" title="Remove" aria-label="Remove">×</button>
+        </div>
+        <div class="cart-item-fields">
+          <input class="cart-cell-input small" type="number" value="${line.quantity}" min="1" title="Qty" onchange="cart[${index}].quantity=Math.max(1,Number(this.value||1));renderCart()">
+          <input class="cart-cell-input" type="number" value="${line.price}" min="0" step="0.01" title="Price" onchange="cart[${index}].price=Math.max(0,Number(this.value||0));renderCart()">
+          <input class="cart-cell-input small" type="number" value="${line.discountPercent || 0}" min="0" max="100" title="Disc %" onchange="cart[${index}].discountPercent=Math.min(100,Math.max(0,Number(this.value||0)));renderCart()">
+          <span class="mini cart-item-tax">Tax ${money(calculation.taxAmount)}</span>
+        </div>
+      </div>
+    </div>`;
+  }).join('') : '<p class="muted empty-cart">Cart is empty. Add product to start billing.</p>';
   document.getElementById('total').textContent = money(total);
   document.getElementById('paid').value = total.toFixed(2);
 }

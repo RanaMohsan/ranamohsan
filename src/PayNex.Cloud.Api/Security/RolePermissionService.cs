@@ -39,6 +39,20 @@ public sealed class RolePermissionService
 
         var map = ReadPermissionMap(user);
 
+        // Mobile POS sessions are limited by design; allow core trading sync operations.
+        if (IsMobileSession(map))
+        {
+            if (path.StartsWith("/api/sales-invoices", StringComparison.OrdinalIgnoreCase)) return true;
+            if (path.StartsWith("/api/pos/sales", StringComparison.OrdinalIgnoreCase)) return true;
+            if (path.StartsWith("/api/customer-payments", StringComparison.OrdinalIgnoreCase)) return true;
+            if (path.StartsWith("/api/vendor-payments", StringComparison.OrdinalIgnoreCase)) return true;
+            if (path.StartsWith("/api/customers", StringComparison.OrdinalIgnoreCase) && method.Equals("GET", StringComparison.OrdinalIgnoreCase)) return true;
+            if (path.StartsWith("/api/vendors", StringComparison.OrdinalIgnoreCase) && method.Equals("GET", StringComparison.OrdinalIgnoreCase)) return true;
+            if (path.StartsWith("/api/products", StringComparison.OrdinalIgnoreCase) && method.Equals("GET", StringComparison.OrdinalIgnoreCase)) return true;
+            if (path.StartsWith("/api/lookups", StringComparison.OrdinalIgnoreCase)) return true;
+            if (path.StartsWith("/api/mobile", StringComparison.OrdinalIgnoreCase)) return true;
+        }
+
         if (path.StartsWith("/api/reports/expenses", StringComparison.OrdinalIgnoreCase))
         {
             if (map.TryGetValue("expenses.printReport", out var printAllowed) && printAllowed) return true;
@@ -134,8 +148,13 @@ public sealed class RolePermissionService
 
     private static bool IsAdmin(UserSession user) =>
         user.IsCompanySuperAdmin ||
+        user.IsPlatformOwner ||
         user.RoleName.Equals("Admin", StringComparison.OrdinalIgnoreCase) ||
+        user.RoleName.Equals("System Admin", StringComparison.OrdinalIgnoreCase) ||
         user.RoleName.Equals("Company Super Admin", StringComparison.OrdinalIgnoreCase);
+
+    private static bool IsMobileSession(Dictionary<string, bool> map) =>
+        map.TryGetValue("mobile.access", out var allowed) && allowed;
 
     private static Dictionary<string, bool> ReadPermissionMap(UserSession user)
     {

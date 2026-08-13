@@ -23,6 +23,7 @@ public static class InvoiceDraftEndpoints
     {
         var user = ApiAuth.RequireUser(http, tokens);
         if (user == null) return Results.Unauthorized();
+        user = await PosSessionHelper.EnsureTenantPosSessionAsync(db, user);
         if (request.CustomerId <= 0 || (request.SalesInvoiceId <= 0 && request.Lines.Count == 0))
             return Results.BadRequest(new { message = "Customer and at least one invoice line are required to create the draft." });
 

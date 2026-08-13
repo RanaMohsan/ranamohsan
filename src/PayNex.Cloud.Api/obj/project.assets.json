@@ -2158,7 +2158,7 @@
     ]
   },
   "packageFolders": {
-    "C:\\Users\\Hamid\\AppData\\Local\\Temp\\cursor-sandbox-cache\\605bd8b6f6a1b0bfc1e0e27ad4a68f61\\nuget": {}
+    "C:\\Users\\Hamid\\.nuget\\packages\\": {}
   },
   "project": {
     "version": "1.0.0",
@@ -2166,7 +2166,7 @@
       "projectUniqueName": "C:\\Users\\Hamid\\Documents\\POS\\owner_portal_work_BC_list___After__filters\\owner_portal_work\\src\\PayNex.Cloud.Api\\PayNex.Cloud.Api.csproj",
       "projectName": "PayNex.Cloud.Api",
       "projectPath": "C:\\Users\\Hamid\\Documents\\POS\\owner_portal_work_BC_list___After__filters\\owner_portal_work\\src\\PayNex.Cloud.Api\\PayNex.Cloud.Api.csproj",
-      "packagesPath": "C:\\Users\\Hamid\\AppData\\Local\\Temp\\cursor-sandbox-cache\\605bd8b6f6a1b0bfc1e0e27ad4a68f61\\nuget",
+      "packagesPath": "C:\\Users\\Hamid\\.nuget\\packages\\",
       "outputPath": "C:\\Users\\Hamid\\Documents\\POS\\owner_portal_work_BC_list___After__filters\\owner_portal_work\\src\\PayNex.Cloud.Api\\obj\\",
       "projectStyle": "PackageReference",
       "configFilePaths": [

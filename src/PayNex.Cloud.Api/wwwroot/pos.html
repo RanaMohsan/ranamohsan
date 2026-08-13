@@ -3,23 +3,11 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width,initial-scale=1">
-  <title>PayNex Web POS</title>
-  <link rel="stylesheet" href="/css/app.css?v=avatar-fix-20260812d">
+  <title>Web POS</title>
+  <link rel="stylesheet" href="/css/app.css?v=pos-no-top-20260813">
 </head>
-<body>
-  <div class="shell">
-    <div class="top">
-      <div>
-        <h1>Counter Sales / POS Billing</h1>
-        <p id="who" class="muted">Compact cashier screen with larger cart, product lookup, split payment and thermal receipt print.</p>
-      </div>
-      <div class="nav">
-        <a href="/workspace.html">Workspace</a>
-        <a href="/picture-sales.html">Picture Sales</a>
-        <a href="/shift.html">Shift</a>
-        <a href="/reports.html">Reports</a>
-      </div>
-    </div>
+<body class="sidebar-collapsed pos-page-body">
+  <div class="shell pos-page">
     <div class="pos-layout">
       <div class="panel">
         <div class="setup-section-title">
@@ -40,42 +28,46 @@
         <div class="shortcuts">Shortcuts: Scan barcode to search - product selection - Pay/Post Sale generates A4 invoice and thermal receipt.</div>
       </div>
       <div class="panel pos-cart-panel">
-        <div class="setup-section-title">
-          <h2>Cart & Payment</h2>
-          <span class="lookup-chip">Counter Sale</span>
-        </div>
-        <div class="pos-cart-scan">
-          <input id="cartBarcode" type="text" placeholder="Scan / type barcode — auto add" autocomplete="off">
+        <div class="pos-cart-top">
+          <div class="setup-section-title">
+            <h2>Cart & Payment</h2>
+            <span class="lookup-chip">Counter Sale</span>
+          </div>
+          <div class="pos-cart-scan">
+            <input id="cartBarcode" type="text" placeholder="Scan / type barcode — auto add" autocomplete="off">
+          </div>
         </div>
         <div id="cart" class="cart-list"></div>
-        <div class="pos-total-box">
-          <div>Grand Total</div>
-          <div class="amount total" id="total">Rs. 0.00</div>
+        <div class="pos-cart-footer">
+          <div class="pos-total-box">
+            <div>Grand Total</div>
+            <div class="amount total" id="total">Rs. 0.00</div>
+          </div>
+          <div class="row">
+            <label>Paid Amount<input id="paid" type="number" placeholder="Paid Amount"></label>
+            <label>Payment
+              <select id="payMethod" data-no-lookup="1">
+                <option value="Cash">Cash</option>
+                <option value="Bank">Bank</option>
+              </select>
+            </label>
+          </div>
+          <div class="row pos-bank-row" id="bankRow" hidden>
+            <label>Bank Account
+              <select id="bankAccount" data-no-lookup="1">
+                <option value="">Select bank</option>
+              </select>
+            </label>
+          </div>
+          <div class="actions">
+            <button class="success" onclick="postSale()">Pay / Post Sale</button>
+            <button class="secondary" onclick="cart=[];renderCart()">New Sale</button>
+            <button class="secondary" onclick="printLastReceipt()">Print Last Receipt</button>
+            <button class="secondary" onclick="alert('Hold sale ready for workflow')">Hold</button>
+            <button class="secondary" onclick="alert('Recall hold ready for workflow')">Recall</button>
+          </div>
+          <p id="status"></p>
         </div>
-        <div class="row">
-          <label>Paid Amount<input id="paid" type="number" placeholder="Paid Amount"></label>
-          <label>Payment
-            <select id="payMethod" data-no-lookup="1">
-              <option value="Cash">Cash</option>
-              <option value="Bank">Bank</option>
-            </select>
-          </label>
-        </div>
-        <div class="row pos-bank-row" id="bankRow" hidden>
-          <label>Bank Account
-            <select id="bankAccount" data-no-lookup="1">
-              <option value="">Select bank</option>
-            </select>
-          </label>
-        </div>
-        <div class="actions">
-          <button class="success" onclick="postSale()">Pay / Post Sale</button>
-          <button class="secondary" onclick="cart=[];renderCart()">New Sale</button>
-          <button class="secondary" onclick="printLastReceipt()">Print Last Receipt</button>
-          <button class="secondary" onclick="alert('Hold sale ready for workflow')">Hold</button>
-          <button class="secondary" onclick="alert('Recall hold ready for workflow')">Recall</button>
-        </div>
-        <p id="status"></p>
       </div>
     </div>
   </div>
@@ -112,7 +104,7 @@
   </div>
 
   <script src="/js/api.js?v=avatar-fix-20260812d"></script>
-  <script src="/js/pos.js?v=pos-bank-scan-20260812"></script>
+  <script src="/js/pos.js?v=pos-no-top-20260813"></script>
   <script src="/js/app-shell.js?v=avatar-fix-20260812d"></script>
 </body>
 </html>

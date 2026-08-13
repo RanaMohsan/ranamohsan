@@ -1,6 +1,6 @@
 const foModules = [
   ['/pos.html','cash','Counter Sales / POS Billing'],
-  ['/picture-sales.html','product','Picture Sales'],
+  ['/picture-sales.html','product','Counter Sale'],
   ['/items.html','product','Item Master'],
   ['/customers.html','self','Customer Master'],
   ['/sales.html','invoice','Sales Invoices'],

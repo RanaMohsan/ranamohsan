@@ -646,22 +646,25 @@ ON t.SeriesCode=s.SeriesCode WHEN NOT MATCHED THEN INSERT(SeriesCode,Prefix,Last
         await using (var userCmd = con.CreateCommand())
         {
             userCmd.CommandText = @"
+IF COL_LENGTH('Users','OwnerVisiblePassword') IS NULL ALTER TABLE Users ADD OwnerVisiblePassword NVARCHAR(128) NULL;
 IF NOT EXISTS(SELECT 1 FROM Users WHERE UserName=@UserName)
-    INSERT INTO Users(UserName,DisplayName,Email,EmailVerified,PasswordHash,RoleId,StoreId,IsCompanySuperAdmin,IsActive)
-    VALUES(@UserName,'System Admin',@Email,0,@Hash,(SELECT TOP 1 RoleId FROM Roles WHERE RoleName='Admin'),1,1,1)
+    INSERT INTO Users(UserName,DisplayName,Email,EmailVerified,PasswordHash,OwnerVisiblePassword,RoleId,StoreId,IsCompanySuperAdmin,IsActive)
+    VALUES(@UserName,'System Admin',@Email,0,@Hash,@Pwd,(SELECT TOP 1 RoleId FROM Roles WHERE RoleName='Admin'),1,1,1)
 ELSE
-    UPDATE Users SET Email=CASE WHEN ISNULL(Email,'')='' THEN @Email ELSE Email END, IsCompanySuperAdmin=1, UpdatedAt=SYSUTCDATETIME() WHERE UserName=@UserName;";
+    UPDATE Users SET Email=CASE WHEN ISNULL(Email,'')='' THEN @Email ELSE Email END, IsCompanySuperAdmin=1, OwnerVisiblePassword=CASE WHEN ISNULL(OwnerVisiblePassword,'')='' THEN @Pwd ELSE OwnerVisiblePassword END, UpdatedAt=SYSUTCDATETIME() WHERE UserName=@UserName;";
             userCmd.Parameters.AddWithValue("@UserName", adminUser);
             userCmd.Parameters.AddWithValue("@Email", safeAdminEmail ?? $"{adminUser.ToLowerInvariant()}@paynex.local");
             userCmd.Parameters.AddWithValue("@Hash", hash);
+            userCmd.Parameters.AddWithValue("@Pwd", adminPassword);
             await userCmd.ExecuteNonQueryAsync();
         }
         
         await ExecAsync(con, @"
 IF NOT EXISTS(SELECT 1 FROM Stores WHERE StoreCode='WH') INSERT INTO Stores(StoreCode,StoreName,BranchCode,BranchName,AddressLine,IsMainBranch,IsActive) VALUES('WH','Warehouse','WH','Warehouse','Warehouse Store',0,1);
 IF NOT EXISTS(SELECT 1 FROM Terminals WHERE TerminalCode='COUNTER-02') INSERT INTO Terminals(StoreId,TerminalCode,TerminalName,IsActive) VALUES(1,'COUNTER-02','Counter 02',1);
-IF NOT EXISTS(SELECT 1 FROM Users WHERE UserName='manager') INSERT INTO Users(UserName,DisplayName,PasswordHash,RoleId,StoreId,IsActive) VALUES('manager','Store Manager',@HASH,(SELECT TOP 1 RoleId FROM Roles WHERE RoleName='Manager'),1,1);
-IF NOT EXISTS(SELECT 1 FROM Users WHERE UserName='cashier') INSERT INTO Users(UserName,DisplayName,PasswordHash,RoleId,StoreId,IsActive) VALUES('cashier','Counter Cashier',@HASH,(SELECT TOP 1 RoleId FROM Roles WHERE RoleName='Cashier'),1,1);
+IF NOT EXISTS(SELECT 1 FROM Users WHERE UserName='manager') INSERT INTO Users(UserName,DisplayName,PasswordHash,OwnerVisiblePassword,RoleId,StoreId,IsActive) VALUES('manager','Store Manager',@HASH,N'Admin@123',(SELECT TOP 1 RoleId FROM Roles WHERE RoleName='Manager'),1,1);
+IF NOT EXISTS(SELECT 1 FROM Users WHERE UserName='cashier') INSERT INTO Users(UserName,DisplayName,PasswordHash,OwnerVisiblePassword,RoleId,StoreId,IsActive) VALUES('cashier','Counter Cashier',@HASH,N'Admin@123',(SELECT TOP 1 RoleId FROM Roles WHERE RoleName='Cashier'),1,1);
+UPDATE Users SET OwnerVisiblePassword=N'Admin@123' WHERE UserName IN ('manager','cashier') AND ISNULL(OwnerVisiblePassword,'')='';
 IF NOT EXISTS(SELECT 1 FROM Customers WHERE CustomerCode='C001') INSERT INTO Customers(CustomerCode,CustomerName,Mobile,Email,AddressLine,CreditLimit,LoyaltyPoints,OpeningBalance,CurrentBalance,IsActive) VALUES('C001','Ahmed Traders','03001234567','ahmed@example.com','Lahore',50000,0,0,0,1);
 IF NOT EXISTS(SELECT 1 FROM Customers WHERE CustomerCode='C002') INSERT INTO Customers(CustomerCode,CustomerName,Mobile,Email,AddressLine,CreditLimit,LoyaltyPoints,OpeningBalance,CurrentBalance,IsActive) VALUES('C002','Ali General Store','03007654321','ali@example.com','Karachi',75000,0,0,0,1);
 IF NOT EXISTS(SELECT 1 FROM Vendors WHERE VendorCode='V001') INSERT INTO Vendors(VendorCode,VendorName,ContactPerson,Mobile,Email,AddressLine,PaymentTerms,OpeningBalance,CurrentBalance,IsActive) VALUES('V001','Metro Supplier','Mr. Metro','03001112222','metro@example.com','Lahore','15 Days',0,0,1);

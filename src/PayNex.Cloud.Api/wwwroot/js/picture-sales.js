@@ -38,7 +38,10 @@ function lockCustomerToWalkIn(customers){
 async function init(){
   try{
     const me = await api.get('/api/me');
-    canOverrideSellingPrice = hasPermission(me,'pricing.overrideSellingPrice') || hasPermission(me,'pricing.changeProductPrice');
+    canOverrideSellingPrice = hasPermission(me,'pricing.overrideSellingPrice')
+      || hasPermission(me,'pricing.changeProductPrice')
+      || !!(me.isPlatformOwner || me.IsPlatformOwner)
+      || !!(me.isCompanySuperAdmin || me.IsCompanySuperAdmin);
     const who = document.getElementById('who');
     if(who) who.textContent = `${me.companyName || me.CompanyName} | ${me.displayName || me.DisplayName} | ${me.roleName || me.RoleName}`;
   }catch{ location.href='/login.html'; return; }
@@ -216,6 +219,18 @@ function confirmLineModal(){
   renderCart();
 }
 
+function updateCartQty(index, value){
+  if(!cart[index]) return;
+  cart[index].quantity = Math.max(1, Math.round(Number(value || 1)));
+  renderCart();
+}
+
+function updateCartPrice(index, value){
+  if(!cart[index] || !canOverrideSellingPrice) return;
+  cart[index].price = Math.max(0, Number(value || 0));
+  renderCart();
+}
+
 function renderCart(){
   if(!cart.length){
     cartBox.innerHTML = '<p class="muted empty-cart">Cart is empty.</p>';
@@ -223,17 +238,19 @@ function renderCart(){
     paid.value = '';
     return;
   }
-  cartBox.innerHTML = `<table class="table picture-cart-table"><thead><tr><th>Item No.</th><th>Item Name</th><th>Price</th><th>Qty</th><th>Tax</th><th>Total</th><th></th></tr></thead><tbody>${cart.map((l,i)=>{
+  cartBox.innerHTML = `<table class="table picture-cart-table"><thead><tr><th class="cart-col-name">Item Name</th><th class="cart-col-price">Price</th><th class="cart-col-qty">Qty</th><th>Tax</th><th>Total</th><th></th></tr></thead><tbody>${cart.map((l,i)=>{
     const line = calcLine(l);
-    const taxLabel = l.taxPercent > 0 ? `${money(line.tax)}<br><span class="mini">${Number(l.taxPercent).toFixed(2)}%${l.taxInclusive ? ' Inc.' : ''}</span>` : 'Rs. 0.00';
-    return `<tr>
-      <td>${esc(l.productCode || '')}</td>
-      <td><b>${esc(l.productName)}</b></td>
-      <td><input class="cart-cell-input" type="number" step="0.01" ${canOverrideSellingPrice?'':'readonly'} value="${Number(l.price || 0).toFixed(2)}" onchange="if(canOverrideSellingPrice){cart[${i}].price=Math.max(0,Number(this.value||0));renderCart()}"></td>
-      <td><input class="cart-cell-input small" type="number" step="1" min="1" value="${l.quantity}" onchange="cart[${i}].quantity=Math.max(1,Number(this.value||1));renderCart()"></td>
+    const taxLabel = l.taxPercent > 0
+      ? `${money(line.tax)} <span class="mini">${Number(l.taxPercent).toFixed(0)}%</span>`
+      : 'Rs. 0.00';
+    const priceReadonly = canOverrideSellingPrice ? '' : 'readonly';
+    return `<tr class="picture-cart-row">
+      <td class="cart-col-name" title="${esc(l.productCode || '')}"><b>${esc(l.productName)}</b></td>
+      <td class="cart-col-price"><input class="cart-cell-input" type="number" step="0.01" min="0" ${priceReadonly} value="${Number(l.price || 0).toFixed(2)}" onchange="updateCartPrice(${i}, this.value)" title="${canOverrideSellingPrice ? 'Change price' : 'Price override permission required'}"></td>
+      <td class="cart-col-qty"><input class="cart-cell-input small" type="number" step="1" min="1" value="${l.quantity}" onchange="updateCartQty(${i}, this.value)" title="Change quantity"></td>
       <td class="amount-cell tax-cell">${taxLabel}</td>
       <td class="amount-cell"><b>${money(line.total)}</b></td>
-      <td><button class="danger slim-btn" onclick="cart.splice(${i},1);renderCart()">Remove</button></td>
+      <td class="cart-remove-cell"><button type="button" class="cart-remove-icon" onclick="cart.splice(${i},1);renderCart()" title="Remove" aria-label="Remove">×</button></td>
     </tr>`;
   }).join('')}</tbody></table>`;
   const s = cartSummary();

@@ -93,7 +93,21 @@
     $('cancelCompanyUserPasswordBtn').addEventListener('click', closePasswordManager);
     $('copyCompanyPasswordReceiptBtn').addEventListener('click', copyCompanyPasswordReceipt);
     $('forgetCompanyPasswordReceiptBtn').addEventListener('click', forgetSelectedPasswordReceipt);
-    $('userRows').addEventListener('click', event => {
+    $('userRows').addEventListener('click', async event => {
+      const copyButton = event.target.closest('[data-copy-password-user]');
+      if(copyButton){
+        const userId = Number(copyButton.dataset.copyPasswordUser || 0);
+        const selectedUser = findCompanyUser(userId);
+        const password = String(value(selectedUser || {}, 'passwordPlain', 'PasswordPlain') || passwordReceipts.get(userId) || '').trim();
+        if(!password){ setMessage('No password available to copy.', false); return; }
+        try{
+          await copyText(password);
+          setMessage('Password copied.', true);
+        }catch{
+          setMessage('Unable to copy password.', false);
+        }
+        return;
+      }
       const resetButton = event.target.closest('[data-reset-company-user]');
       if(resetButton){ openPasswordManager(Number(resetButton.dataset.resetCompanyUser), false); return; }
       const receiptButton = event.target.closest('[data-view-password-receipt]');
@@ -383,13 +397,15 @@
       if(selectedUser){
         selectedUser.hasPassword = true;
         selectedUser.HasPassword = true;
-        selectedUser.passwordInfo = 'Password set securely';
-        selectedUser.PasswordInfo = 'Password set securely';
+        selectedUser.passwordPlain = newPassword;
+        selectedUser.PasswordPlain = newPassword;
+        selectedUser.passwordInfo = newPassword;
+        selectedUser.PasswordInfo = newPassword;
       }
       renderCurrentRelated();
       openPasswordManager(id, true);
-      msg('companyPasswordStatus', result.message || 'Password saved securely. Copy it before leaving this page.', true);
-      setMessage('Company user password saved. A one-time View / Copy receipt is available in the Password column.', true);
+      msg('companyPasswordStatus', result.message || 'Password saved. It is shown clearly in the Password column.', true);
+      setMessage('Company user password saved. It is now shown clearly with Copy in the Password column.', true);
     }catch(error){
       msg('companyPasswordStatus', error.message, false);
     }finally{
@@ -442,7 +458,8 @@
       const active = toBool(value(user, 'isActive', 'IsActive'));
       const userId = Number(value(user, 'userId', 'UserId'));
       const hasPassword = toBool(value(user, 'hasPassword', 'HasPassword'));
-      const hasReceipt = passwordReceipts.has(userId);
+      const passwordPlain = String(value(user, 'passwordPlain', 'PasswordPlain') || passwordReceipts.get(userId) || '').trim();
+      const passwordLabel = passwordPlain || (hasPassword ? 'Unknown — reset to reveal' : 'Not set');
       return `<tr>
         <td>${esc(userId)}</td>
         <td><b>${esc(value(user, 'displayName', 'DisplayName') || value(user, 'userName', 'UserName'))}</b><br><span class="muted small-text">${esc(value(user, 'userName', 'UserName'))}</span></td>
@@ -452,9 +469,9 @@
         <td>${pill(active ? 'Active' : 'Inactive', active ? 'active' : 'inactive')}</td>
         <td>${toBool(value(user, 'emailVerified', 'EmailVerified')) ? pill('Verified', 'active') : pill('Pending OTP')}</td>
         <td><div class="password-table-actions">
-          ${pill(hasPassword ? 'Set securely' : 'Not set', hasPassword ? 'active' : 'inactive')}
+          <code class="password-clear-text">${esc(passwordLabel)}</code>
+          ${passwordPlain ? `<button type="button" class="success compact-button" data-copy-password-user="${userId}">Copy</button>` : ''}
           <button type="button" class="secondary compact-button" data-reset-company-user="${userId}">Set / Reset</button>
-          ${hasReceipt ? `<button type="button" class="success compact-button" data-view-password-receipt="${userId}">View / Copy once</button>` : ''}
         </div></td>
       </tr>`;
     }).join('') : '<tr><td colspan="8" class="bc-empty-row">No users found.</td></tr>';

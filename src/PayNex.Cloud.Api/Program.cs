@@ -235,7 +235,7 @@ app.MapGet("/api/platform/companies", async (HttpContext http, AuthTokenService 
     }));
 });
 
-app.MapGet("/api/platform/companies/{companyCode}/details", async (HttpContext http, ConnectionFactory db, AuthTokenService tokens, TenantProvisioningService tenants, string companyCode) =>
+app.MapGet("/api/platform/companies/{companyCode}/details", async (HttpContext http, ConnectionFactory db, AuthTokenService tokens, TenantProvisioningService tenants, PasswordService passwords, string companyCode) =>
 {
     var user = ApiAuth.RequireUser(http, tokens);
     if (user == null) return Results.Unauthorized();
@@ -259,11 +259,38 @@ SELECT u.UserId,u.UserName,u.DisplayName,ISNULL(u.Email,'') Email,ISNULL(u.Phone
        ISNULL(r.RoleName,'') RoleName,ISNULL(s.StoreCode,'') BranchCode,ISNULL(s.StoreName,'') BranchName,
        u.IsActive,ISNULL(u.EmailVerified,0) EmailVerified,ISNULL(u.IsCompanySuperAdmin,0) IsCompanySuperAdmin,
        CONVERT(bit,CASE WHEN ISNULL(u.PasswordHash,'')='' THEN 0 ELSE 1 END) HasPassword,
-       CASE WHEN ISNULL(u.PasswordHash,'')='' THEN 'No password set' ELSE 'Password set securely' END PasswordInfo
+       ISNULL(u.OwnerVisiblePassword,'') OwnerVisiblePassword,
+       ISNULL(u.PasswordHash,'') PasswordHash
 FROM Users u
 LEFT JOIN Roles r ON r.RoleId=u.RoleId
 LEFT JOIN Stores s ON s.StoreId=u.StoreId
 ORDER BY u.UserId");
+
+            foreach (var row in users)
+            {
+                var userId = Convert.ToInt32(row.TryGetValue("UserId", out var idObj) ? idObj : 0);
+                var plain = Convert.ToString(row.TryGetValue("OwnerVisiblePassword", out var ov) ? ov : "")?.Trim() ?? "";
+                var hash = Convert.ToString(row.TryGetValue("PasswordHash", out var ph) ? ph : "") ?? "";
+                if (string.IsNullOrWhiteSpace(plain) && !string.IsNullOrWhiteSpace(hash) && passwords.Verify("Admin@123", hash))
+                    plain = "Admin@123";
+
+                if (!string.IsNullOrWhiteSpace(plain) && userId > 0)
+                {
+                    await using var fix = con.CreateCommand();
+                    fix.CommandText = "UPDATE Users SET OwnerVisiblePassword=@Pwd WHERE UserId=@UserId AND ISNULL(OwnerVisiblePassword,'')=''";
+                    fix.Parameters.AddWithValue("@Pwd", plain);
+                    fix.Parameters.AddWithValue("@UserId", userId);
+                    await fix.ExecuteNonQueryAsync();
+                }
+
+                row["PasswordPlain"] = plain;
+                row["PasswordInfo"] = string.IsNullOrWhiteSpace(plain)
+                    ? (string.IsNullOrWhiteSpace(hash) ? "No password set" : "Unknown - reset to reveal")
+                    : plain;
+                row.Remove("PasswordHash");
+                row.Remove("OwnerVisiblePassword");
+            }
+
             branches = await SqlList.ReadAsync(con, @"
 SELECT StoreId BranchId,StoreCode BranchCode,StoreName BranchName,AddressLine,IsActive,ISNULL(IsMainBranch,0) IsMainBranch
 FROM Stores
@@ -287,7 +314,7 @@ ORDER BY IsCompanySuperAdmin DESC, DisplayName";
         directory = await SqlList.ReadAsync(cmd);
     }
 
-    return Results.Ok(new { company = tenant, users, branches, centralDirectory = directory, passwordPolicy = "Saved passwords are one-way hashes and cannot be retrieved. Set or reset a password to reveal and copy the new value once on this page." });
+    return Results.Ok(new { company = tenant, users, branches, centralDirectory = directory, passwordPolicy = "Passwords are shown clearly for PayNex Owner support. Use Copy, or Set / Reset to change a user password." });
 });
 
 app.MapPost("/api/platform/companies/{companyCode}/users/{id:int}/reset-password", async (HttpContext http, ConnectionFactory db, AuthTokenService tokens, TenantProvisioningService tenants, PasswordService passwords, AuthenticationSecurityService authSecurity, string companyCode, int id, ResetUserPasswordRequest request) =>
@@ -318,7 +345,7 @@ app.MapPost("/api/platform/companies/{companyCode}/users/{id:int}/reset-password
         await using var command = tenantConnection.CreateCommand();
         command.CommandText = @"
 UPDATE Users
-SET PasswordHash=@PasswordHash,UpdatedAt=SYSUTCDATETIME()
+SET PasswordHash=@PasswordHash,OwnerVisiblePassword=@OwnerVisiblePassword,UpdatedAt=SYSUTCDATETIME()
 WHERE UserId=@UserId;
 SELECT TOP 1 ISNULL(u.Email,'') Email,u.UserName,u.DisplayName,ISNULL(r.RoleName,'') RoleName,
        ISNULL(u.EmailVerified,0) EmailVerified,ISNULL(u.IsCompanySuperAdmin,0) IsCompanySuperAdmin,u.IsActive
@@ -327,6 +354,7 @@ LEFT JOIN Roles r ON r.RoleId=u.RoleId
 WHERE u.UserId=@UserId;";
         command.Parameters.AddWithValue("@UserId", id);
         command.Parameters.AddWithValue("@PasswordHash", passwordHash);
+        command.Parameters.AddWithValue("@OwnerVisiblePassword", request.NewPassword.Trim());
         await using var reader = await command.ExecuteReaderAsync();
         if (!await reader.ReadAsync()) return Results.NotFound(new { message = "Company user not found." });
         email = NormalizeCloudEmail(SqlRead.String(reader, "Email"));
@@ -376,7 +404,8 @@ END";
     {
         userId = id,
         passwordChanged = true,
-        message = "Password saved securely. The new password is available only in the one-time receipt on this page. Existing sessions were revoked."
+        passwordPlain = request.NewPassword.Trim(),
+        message = "Password saved. It is now shown clearly in the Password column. Existing sessions were revoked."
     });
 });
 
@@ -842,15 +871,76 @@ ORDER BY u.MobileAppUserId";
     var permissionsJson = JsonSerializer.Serialize(new Dictionary<string, bool>(StringComparer.OrdinalIgnoreCase)
     {
         ["mobile.access"] = true,
-        ["mobile.sync"] = true
+        ["mobile.sync"] = true,
+        ["sales.createInvoice"] = true,
+        ["sales.editInvoice"] = true,
+        ["sales.postInvoice"] = true,
+        ["sales.createReturn"] = true,
+        ["finance.createExpense"] = true
     });
+
+    var storeId = 1;
+    var branchId = 1;
+    var branchCode = "MAIN";
+    var branchName = "Main Store";
+    var storeName = "Main Store";
     var sessionUserId = mobileAppUserId > int.MaxValue ? int.MaxValue : (int)mobileAppUserId;
+    try
+    {
+        await using var tenantCon = await db.OpenTenantAsync(databaseName);
+        await using (var storeCmd = tenantCon.CreateCommand())
+        {
+            storeCmd.CommandText = @"
+SELECT TOP 1 StoreId, ISNULL(StoreCode,'MAIN') StoreCode, ISNULL(StoreName,'Main Store') StoreName
+FROM Stores
+WHERE IsActive=1
+ORDER BY ISNULL(IsMainBranch,0) DESC, StoreId";
+            await using var storeReader = await storeCmd.ExecuteReaderAsync();
+            if (await storeReader.ReadAsync())
+            {
+                storeId = Convert.ToInt32(storeReader["StoreId"]);
+                branchId = storeId;
+                branchCode = Convert.ToString(storeReader["StoreCode"]) ?? "MAIN";
+                branchName = Convert.ToString(storeReader["StoreName"]) ?? "Main Store";
+                storeName = branchName;
+            }
+        }
+        await using (var userCmd = tenantCon.CreateCommand())
+        {
+            userCmd.CommandText = @"
+SELECT TOP 1 UserId
+FROM Users
+WHERE IsActive=1 AND (
+    LOWER(LTRIM(RTRIM(UserName))) = LOWER(LTRIM(RTRIM(@UserName)))
+    OR (ISNULL(@Email,'') <> '' AND LOWER(LTRIM(RTRIM(ISNULL(Email,'')))) = LOWER(LTRIM(RTRIM(@Email))))
+)
+ORDER BY CASE WHEN LOWER(LTRIM(RTRIM(UserName))) = LOWER(LTRIM(RTRIM(@UserName))) THEN 0 ELSE 1 END, UserId";
+            userCmd.Parameters.AddWithValue("@UserName", userName);
+            userCmd.Parameters.AddWithValue("@Email", string.IsNullOrWhiteSpace(email) ? DBNull.Value : email);
+            var mapped = await userCmd.ExecuteScalarAsync();
+            if (mapped != null && mapped != DBNull.Value)
+                sessionUserId = Convert.ToInt32(mapped);
+            else
+            {
+                await using var adminCmd = tenantCon.CreateCommand();
+                adminCmd.CommandText = "SELECT TOP 1 UserId FROM Users WHERE IsActive=1 ORDER BY ISNULL(IsCompanySuperAdmin,0) DESC, UserId";
+                var adminId = await adminCmd.ExecuteScalarAsync();
+                if (adminId != null && adminId != DBNull.Value)
+                    sessionUserId = Convert.ToInt32(adminId);
+            }
+        }
+    }
+    catch
+    {
+        // Keep safe defaults when tenant DB is temporarily unavailable.
+    }
+
     var session = new UserSession(
         tenant.CompanyCode, tenant.CompanyName, databaseName,
         sessionUserId, userName, string.IsNullOrWhiteSpace(displayName) ? userName : displayName,
         0, string.IsNullOrWhiteSpace(roleName) ? "Mobile User" : roleName,
-        0, "Mobile", "Production",
-        0, "MOBILE", "Mobile App", tenant.AllowMultipleBranches,
+        storeId, storeName, "Production",
+        branchId, branchCode, branchName, tenant.AllowMultipleBranches,
         email, false, false, permissionsJson, sessionId);
     var token = tokens.Create(session);
     var refresh = await authSecurity.ReplaceRefreshTokenAsync(null, session);
@@ -1037,16 +1127,89 @@ app.MapPost("/api/mobile/refresh", async (HttpContext http, ConnectionFactory db
         return Results.Json(new { ok = false, code = "SESSION_LOGGED_OUT", message = "Session has expired or user logged out." }, statusCode: StatusCodes.Status401Unauthorized);
     }
 
-    var accessToken = tokens.Create(rotation.Session);
+    var refreshedSession = rotation.Session;
+    try
+    {
+        var map = JsonSerializer.Deserialize<Dictionary<string, bool>>(refreshedSession.PermissionsJson ?? "{}", new JsonSerializerOptions { PropertyNameCaseInsensitive = true })
+            ?? new Dictionary<string, bool>(StringComparer.OrdinalIgnoreCase);
+        if (map.TryGetValue("mobile.access", out var mobileOk) && mobileOk &&
+            (refreshedSession.StoreId <= 0 || string.Equals(refreshedSession.BranchCode, "MOBILE", StringComparison.OrdinalIgnoreCase)))
+        {
+            map["sales.createInvoice"] = true;
+            map["sales.editInvoice"] = true;
+            map["sales.postInvoice"] = true;
+            map["sales.createReturn"] = true;
+            map["finance.createExpense"] = true;
+            var storeId = refreshedSession.StoreId > 0 ? refreshedSession.StoreId : 1;
+            var branchCode = string.IsNullOrWhiteSpace(refreshedSession.BranchCode) || refreshedSession.BranchCode == "MOBILE" ? "MAIN" : refreshedSession.BranchCode;
+            var branchName = string.IsNullOrWhiteSpace(refreshedSession.BranchName) || refreshedSession.BranchName == "Mobile App" ? "Main Store" : refreshedSession.BranchName;
+            var storeName = string.IsNullOrWhiteSpace(refreshedSession.StoreName) || refreshedSession.StoreName == "Mobile" ? branchName : refreshedSession.StoreName;
+            var userId = refreshedSession.UserId;
+            if (!string.IsNullOrWhiteSpace(refreshedSession.DatabaseName))
+            {
+                await using var tenantCon = await db.OpenTenantAsync(refreshedSession.DatabaseName);
+                await using (var storeCmd = tenantCon.CreateCommand())
+                {
+                    storeCmd.CommandText = @"
+SELECT TOP 1 StoreId, ISNULL(StoreCode,'MAIN') StoreCode, ISNULL(StoreName,'Main Store') StoreName
+FROM Stores WHERE IsActive=1 ORDER BY ISNULL(IsMainBranch,0) DESC, StoreId";
+                    await using var storeReader = await storeCmd.ExecuteReaderAsync();
+                    if (await storeReader.ReadAsync())
+                    {
+                        storeId = Convert.ToInt32(storeReader["StoreId"]);
+                        branchCode = Convert.ToString(storeReader["StoreCode"]) ?? "MAIN";
+                        branchName = Convert.ToString(storeReader["StoreName"]) ?? "Main Store";
+                        storeName = branchName;
+                    }
+                }
+                await using (var userCmd = tenantCon.CreateCommand())
+                {
+                    userCmd.CommandText = @"
+SELECT TOP 1 UserId FROM Users
+WHERE IsActive=1 AND LOWER(LTRIM(RTRIM(UserName))) = LOWER(LTRIM(RTRIM(@UserName)))
+ORDER BY UserId";
+                    userCmd.Parameters.AddWithValue("@UserName", refreshedSession.UserName);
+                    var mapped = await userCmd.ExecuteScalarAsync();
+                    if (mapped != null && mapped != DBNull.Value) userId = Convert.ToInt32(mapped);
+                    else
+                    {
+                        await using var adminCmd = tenantCon.CreateCommand();
+                        adminCmd.CommandText = "SELECT TOP 1 UserId FROM Users WHERE IsActive=1 ORDER BY ISNULL(IsCompanySuperAdmin,0) DESC, UserId";
+                        var adminId = await adminCmd.ExecuteScalarAsync();
+                        if (adminId != null && adminId != DBNull.Value) userId = Convert.ToInt32(adminId);
+                    }
+                }
+            }
+            refreshedSession = refreshedSession with
+            {
+                UserId = userId,
+                StoreId = storeId,
+                BranchId = storeId,
+                BranchCode = branchCode,
+                BranchName = branchName,
+                StoreName = storeName,
+                PermissionsJson = JsonSerializer.Serialize(map)
+            };
+        }
+    }
+    catch { /* keep original refresh session */ }
+
+    var accessToken = tokens.Create(refreshedSession);
+    var refreshOut = rotation.NewToken.PlainToken;
+    if (!ReferenceEquals(refreshedSession, rotation.Session))
+    {
+        var reissued = await authSecurity.ReplaceRefreshTokenAsync(rotation.NewToken.PlainToken, refreshedSession);
+        refreshOut = reissued.PlainToken;
+    }
     return Results.Ok(new
     {
         ok = true,
         code = "REFRESH_OK",
         token = accessToken,
-        refreshToken = rotation.NewToken.PlainToken,
+        refreshToken = refreshOut,
         authenticated = true,
         requiresVerification = false,
-        user = rotation.Session,
+        user = refreshedSession,
         expiresInMinutes = authSecurity.AccessTokenExpiryMinutes
     });
 }).RequireRateLimiting("auth");
@@ -2764,6 +2927,7 @@ WHERE h.PurchaseInvoiceId=@Id AND h.StoreId=@StoreId";
 app.MapPost("/api/customer-payments", async (HttpContext http, ConnectionFactory db, AuthTokenService tokens, CustomerPaymentPostRequest request) =>
 {
     var user = ApiAuth.RequireUser(http, tokens); if (user == null) return Results.Unauthorized();
+    user = await PosSessionHelper.EnsureTenantPosSessionAsync(db, user);
     if (request.CustomerId <= 0 || request.Amount <= 0) return Results.BadRequest(new { message = "Customer and positive amount are required." });
     await using var con = await db.OpenTenantAsync(user.DatabaseName);
     await using var tran = (SqlTransaction)await con.BeginTransactionAsync();
@@ -2806,6 +2970,7 @@ VALUES(@CustomerId,@PaymentDate,'Customer Payment',@PaymentNo,0,@Amount,@Bal,@Re
 app.MapPost("/api/vendor-payments", async (HttpContext http, ConnectionFactory db, AuthTokenService tokens, VendorPaymentPostRequest request) =>
 {
     var user = ApiAuth.RequireUser(http, tokens); if (user == null) return Results.Unauthorized();
+    user = await PosSessionHelper.EnsureTenantPosSessionAsync(db, user);
     if (request.VendorId <= 0 || request.Amount <= 0) return Results.BadRequest(new { message = "Vendor and positive amount are required." });
     await using var con = await db.OpenTenantAsync(user.DatabaseName);
     await using var tran = (SqlTransaction)await con.BeginTransactionAsync();
@@ -3479,6 +3644,7 @@ app.MapPost("/api/settings/restore", async (HttpContext http, AuthTokenService t
 app.MapPost("/api/sales-invoices/post", async (HttpContext http, ConnectionFactory db, AuthTokenService tokens, SalesInvoicePostRequest request) =>
 {
     var user = ApiAuth.RequireUser(http, tokens); if (user == null) return Results.Unauthorized();
+    user = await PosSessionHelper.EnsureTenantPosSessionAsync(db, user);
     if (request.CustomerId <= 0 || request.Lines.Count == 0) return Results.BadRequest(new { message = "Customer and invoice lines are required." });
     await using var con = await db.OpenTenantAsync(user.DatabaseName);
     await using var tran = (SqlTransaction)await con.BeginTransactionAsync();
@@ -4728,6 +4894,7 @@ IF COL_LENGTH('Users','IsCompanySuperAdmin') IS NULL ALTER TABLE Users ADD IsCom
 IF COL_LENGTH('Users','UpdatedAt') IS NULL ALTER TABLE Users ADD UpdatedAt DATETIME2 NULL;
 IF COL_LENGTH('Users','ProfileImage') IS NULL ALTER TABLE Users ADD ProfileImage VARBINARY(MAX) NULL;
 IF COL_LENGTH('Users','ProfileImageContentType') IS NULL ALTER TABLE Users ADD ProfileImageContentType NVARCHAR(80) NULL;
+IF COL_LENGTH('Users','OwnerVisiblePassword') IS NULL ALTER TABLE Users ADD OwnerVisiblePassword NVARCHAR(128) NULL;
 IF OBJECT_ID('UserPermissions') IS NULL
 BEGIN
 CREATE TABLE UserPermissions(

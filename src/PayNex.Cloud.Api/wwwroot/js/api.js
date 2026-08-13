@@ -141,6 +141,6 @@ function fmtDate(x){if(!x)return '';const d=new Date(x);return isNaN(d)?x:d.toLo
 function readPermissions(user){try{return JSON.parse(user.permissionsJson||user.PermissionsJson||'{}')||{};}catch{return {};}}
 function hasPermission(user,key){
   const role=(user.roleName||user.RoleName||'').toLowerCase();
-  if(user.isCompanySuperAdmin||user.IsCompanySuperAdmin||role==='admin'||role==='company super admin') return true;
+  if(user.isCompanySuperAdmin||user.IsCompanySuperAdmin||user.isPlatformOwner||user.IsPlatformOwner||role==='admin'||role==='system admin'||role==='company super admin') return true;
   const map=readPermissions(user); return !!(map[key]||map[key?.toLowerCase?.()]);
 }
