@@ -1,0 +1,145 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>Cashier POS</title>
+  <link rel="stylesheet" href="/css/app.css?v=cashier-20260917i">
+  <link rel="stylesheet" href="/css/pos-cashier.css?v=cashier-20260917i">
+</head>
+<body class="sidebar-collapsed pos-cashier-body">
+  <div class="pos-cashier" id="posCashierRoot">
+    <header class="pos-cashier-header">
+      <div class="store-name" id="storeName">—</div>
+      <div class="bill-meta">
+        <div>Bill: <b id="billNo">NEW</b> / <span id="saleStatus">OPEN</span></div>
+        <div>Register: <span id="registerLabel">MAIN</span></div>
+        <div>User: <span id="cashierName">—</span></div>
+        <div class="clock" id="liveClock">--:--:--</div>
+      </div>
+    </header>
+
+    <div class="pos-entry-bar">
+      <label>Barcode / Item Code
+        <input id="barcodeInput" type="text" autocomplete="off" spellcheck="false" placeholder="Scan barcode or type + Enter">
+      </label>
+      <label>Description
+        <input id="descInput" type="text" autocomplete="off" placeholder="Search description (F4)">
+      </label>
+      <label>Qty
+        <input id="qtyInput" type="number" min="0.001" step="any" value="1">
+      </label>
+      <label>Price
+        <input id="priceInput" type="number" min="0" step="0.01" value="" placeholder="Auto">
+      </label>
+      <label>Disc %
+        <input id="lineDiscInput" type="number" min="0" max="100" step="0.01" value="0">
+      </label>
+      <button type="button" id="addItemBtn">ADD</button>
+    </div>
+
+    <div class="pos-main">
+      <div class="pos-grid-wrap">
+        <table class="pos-grid" id="cartGrid">
+          <thead>
+            <tr>
+              <th style="width:14%">ITEMCODE</th>
+              <th style="width:37%">DESCRIPTION</th>
+              <th style="width:9%" class="num">QTY</th>
+              <th style="width:12%" class="num">PRICE</th>
+              <th style="width:9%" class="num">DIS</th>
+              <th style="width:12%" class="num">TOTAL</th>
+              <th style="width:7%" class="status">STATUS</th>
+            </tr>
+          </thead>
+          <tbody id="cartBody"></tbody>
+        </table>
+      </div>
+      <aside class="pos-actions">
+        <div class="act-grid">
+          <button type="button" data-act="category">CATEGORY<br><small>(C)</small></button>
+          <button type="button" data-act="supplier" disabled title="Supplier filter not available">SUPPLIER<br><small>(S)</small></button>
+          <button type="button" data-act="customer">CUSTOMER<br><small>(J)</small></button>
+          <button type="button" data-act="description">DESCRIPTION<br><small>(O)</small></button>
+          <button type="button" data-act="itemcode">ITEM CODE<br><small>(I)</small></button>
+          <button type="button" data-act="hold">TEMP CLOSE<br><small>(T)</small></button>
+          <button type="button" data-act="retrieve">RETRIEVE<br><small>(R)</small></button>
+          <button type="button" data-act="duplicate">DUPLICATE<br><small>(A)</small></button>
+          <button type="button" data-act="discPct">DISCOUNT %<br><small>(D)</small></button>
+          <button type="button" data-act="discAmt">MANUAL DISC<br><small>(M)</small></button>
+          <button type="button" data-act="variant" disabled title="Product variants not configured for POS">COLORS<br><small>(V)</small></button>
+          <button type="button" data-act="payment">PAYMENT<br><small>(G)</small></button>
+          <button type="button" class="danger" data-act="cancel">BILL CANCEL<br><small>(Z)</small></button>
+          <button type="button" data-act="price">PRICE<br><small>(L)</small></button>
+          <button type="button" class="post-btn" data-act="post">POST<br><small>(P)</small></button>
+        </div>
+        <div class="quick-items" id="quickItems"></div>
+      </aside>
+    </div>
+
+    <div class="pos-totals">
+      <div class="pos-total-card items"><div class="lbl">ITEMS</div><div class="val" id="totItems">0</div></div>
+      <div class="pos-total-card subtotal"><div class="lbl">SUBTOTAL</div><div class="val" id="totSub">0.00</div></div>
+      <div class="pos-total-card payment">
+        <div class="lbl">PAYMENT</div>
+        <input id="totPayInput" class="val-input" type="number" min="0" step="0.01" value="0.00" title="Amount received from customer">
+      </div>
+      <div class="pos-total-card change"><div class="lbl" id="totChangeLbl">CHANGE</div><div class="val" id="totChange">0.00</div></div>
+      <div class="pos-disc-box">
+        <div><span>DISCOUNT %</span><b id="invDiscPct">0</b></div>
+        <div><span>DISCOUNT AMOUNT</span><b id="invDiscAmt">0.00</b></div>
+        <div><span>AFTER DISCOUNT</span><b id="totAfter">0.00</b></div>
+      </div>
+    </div>
+
+    <div class="pos-customer-strip">
+      <div class="cell"><span>Customer Code</span><b id="custCode">WALKIN</b></div>
+      <div class="cell"><span>Customer Name</span><b id="custName">Walk-in Customer</b></div>
+      <div class="cell"><span>Dis. Per</span><b id="custDisc">0</b></div>
+      <div class="cell"><span>Old Bal.</span><b id="custOldBal">0.00</b></div>
+      <div class="cell"><span>Cur. Trn.</span><b id="custCurTrn">0.00</b></div>
+      <div class="cell cell-edit"><span>Payment</span>
+        <input id="custPayInput" type="number" min="0" step="0.01" value="0.00" title="Amount received from customer">
+      </div>
+      <div class="cell"><span>Change</span><b id="custCurBal">0.00</b></div>
+      <div class="cell cell-edit"><span>Pay Method</span>
+        <select id="custPayMethod" title="Cash / Bank / Credit">
+          <option value="Cash">Cash</option>
+          <option value="Bank">Bank</option>
+          <option value="Card">Card</option>
+          <option value="Credit">Credit</option>
+        </select>
+      </div>
+      <div class="cell cell-edit"><span>Bank Code</span>
+        <select id="custBankCode" disabled title="Select bank account">
+          <option value="">—</option>
+        </select>
+      </div>
+    </div>
+
+    <div class="pos-fkeys">
+      <button type="button" data-fkey="F2"><small>F2</small>Itemcode</button>
+      <button type="button" data-fkey="F4"><small>F4</small>Description</button>
+      <button type="button" data-fkey="F5"><small>F5</small>Void Line</button>
+      <button type="button" data-fkey="F6"><small>F6</small>Refund</button>
+      <button type="button" data-fkey="F7"><small>F7</small>Multi Qty</button>
+      <button type="button" data-fkey="F9"><small>F9</small>Chg Qty</button>
+      <button type="button" class="exit" data-fkey="EXIT"><small>ESC</small>EXIT</button>
+    </div>
+  </div>
+
+  <div id="posStatus" class="pos-status"></div>
+
+  <div id="modalBackdrop" class="pos-modal-backdrop" role="dialog" aria-modal="true">
+    <div class="pos-modal" id="modalBox">
+      <div class="pos-modal-head"><span id="modalTitle">Dialog</span><button type="button" id="modalCloseBtn" style="background:transparent;border:0;color:#fff;font-size:18px;cursor:pointer">×</button></div>
+      <div class="pos-modal-body" id="modalBody"></div>
+      <div class="pos-modal-foot" id="modalFoot"></div>
+    </div>
+  </div>
+
+  <script src="/js/api.js"></script>
+  <script src="/js/app-shell.js?v=cashier-20260917i"></script>
+  <script src="/js/pos-cashier.js?v=cashier-20260917i"></script>
+</body>
+</html>

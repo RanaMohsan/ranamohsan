@@ -1,0 +1,64 @@
+<!doctype html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <link rel="stylesheet" href="/css/app.css?v=avatar-fix-20260812d">
+  <title>InterNex Subscription Reports</title>
+</head>
+<body>
+  <main class="shell bc-list-page owner-company-list-page" data-page-role="owner-subscription-report">
+    <section class="bc-page-heading">
+      <div>
+        <div class="bc-breadcrumb"><a href="/platform-subscriptions.html">Client Subscriptions</a> / Reports</div>
+        <h1>Subscription Reports</h1>
+        <p id="who" class="muted">Loading InterNex owner profile...</p>
+      </div>
+      <span class="bc-page-badge">Report</span>
+    </section>
+
+    <section class="bc-command-bar">
+      <button id="backBtn" class="secondary" type="button"><span>←</span> Subscriptions</button>
+      <button id="loadBtn" class="bc-command-primary" type="button"><span>↻</span> Load</button>
+      <button id="printBtn" class="secondary" type="button"><span>▣</span> Print HTML</button>
+    </section>
+
+    <section class="bc-filter-pane">
+      <div class="bc-filter-title">Report</div>
+      <label>Type
+        <select id="reportType" data-no-lookup="1">
+          <option value="register">Subscription Register</option>
+          <option value="expiry">Expiry (0-90 days)</option>
+          <option value="revenue">Monthly Revenue</option>
+        </select>
+      </label>
+      <label>Status
+        <select id="statusFilter" data-no-lookup="1">
+          <option value="">All</option>
+          <option value="Active">Active</option>
+          <option value="Expired">Expired</option>
+          <option value="Cancelled">Cancelled</option>
+          <option value="Suspended">Suspended</option>
+        </select>
+      </label>
+    </section>
+
+    <section class="bc-list-card">
+      <div class="bc-list-caption">
+        <div><strong id="reportTitle">Subscription Register</strong><span id="recordCount" class="muted">0 records</span></div>
+      </div>
+      <div class="bc-table-wrap">
+        <table class="bc-data-table">
+          <thead id="head"></thead>
+          <tbody id="rows"><tr><td class="bc-empty-row">Choose a report and click Load.</td></tr></tbody>
+        </table>
+      </div>
+    </section>
+    <p id="status" class="bc-status-line" aria-live="polite"></p>
+  </main>
+
+  <script src="/js/api.js?v=avatar-fix-20260812d"></script>
+  <script src="/js/platform-subscription-report.js?v=owner-sub-20260915"></script>
+  <script src="/js/app-shell.js?v=owner-sub-20260915"></script>
+</body>
+</html>

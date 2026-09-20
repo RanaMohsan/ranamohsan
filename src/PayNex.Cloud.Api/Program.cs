@@ -1,3 +1,4 @@
+using PayNex.Cloud.Api.Services.Images;
 using Microsoft.Data.SqlClient;
 using Microsoft.AspNetCore.RateLimiting;
 using PayNex.Cloud.Api.Data;
@@ -16,6 +17,11 @@ using System.Threading.RateLimiting;
 var builder = WebApplication.CreateBuilder(args);
 
 builder.Services.Configure<PayNexOptions>(builder.Configuration.GetSection("PayNex"));
+builder.Services.Configure<ItemImageOptions>(builder.Configuration.GetSection(ItemImageOptions.SectionName));
+builder.WebHost.ConfigureKestrel(kestrel =>
+{
+    kestrel.Limits.MaxRequestBodySize = 40L * 1024 * 1024;
+});
 var allowedCorsOrigins = builder.Configuration.GetSection("PayNex:AllowedCorsOrigins").Get<string[]>() ?? Array.Empty<string>();
 builder.Services.AddSingleton<ConnectionFactory>();
 builder.Services.AddSingleton<SqlScriptRunner>();
@@ -31,6 +37,13 @@ builder.Services.AddSingleton<BackupRestoreService>();
 builder.Services.AddSingleton<RequestValidationService>();
 builder.Services.AddSingleton<ConfigurationPackageService>();
 builder.Services.AddSingleton<ExpenseManagementService>();
+builder.Services.AddSingleton<BankAccountService>();
+builder.Services.AddSingleton<PlatformSubscriptionService>();
+builder.Services.AddSingleton<SubscriptionAccessService>();
+builder.Services.AddSingleton<DesktopAuthService>();
+builder.Services.AddSingleton<DesktopAccessService>();
+builder.Services.AddSingleton<CredentialUniquenessService>();
+builder.Services.AddSingleton<IImageOptimizationService, ImageOptimizationService>();
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen();
 builder.Services.AddRateLimiter(options =>
@@ -89,8 +102,15 @@ app.Use(async (context, next) =>
     if (path.StartsWith("/api/", StringComparison.OrdinalIgnoreCase) &&
         !path.StartsWith("/api/auth", StringComparison.OrdinalIgnoreCase) &&
         !path.Equals("/api/mobile/login", StringComparison.OrdinalIgnoreCase) &&
+        !path.Equals("/api/mobile/verify-otp", StringComparison.OrdinalIgnoreCase) &&
+        !path.Equals("/api/mobile/resend-otp", StringComparison.OrdinalIgnoreCase) &&
         !path.Equals("/api/mobile/health", StringComparison.OrdinalIgnoreCase) &&
         !path.Equals("/api/mobile/refresh", StringComparison.OrdinalIgnoreCase) &&
+        !path.Equals("/api/desktop/health", StringComparison.OrdinalIgnoreCase) &&
+        !path.Equals("/api/desktop/login", StringComparison.OrdinalIgnoreCase) &&
+        !path.Equals("/api/desktop/verify-otp", StringComparison.OrdinalIgnoreCase) &&
+        !path.Equals("/api/desktop/resend-otp", StringComparison.OrdinalIgnoreCase) &&
+        !path.Equals("/api/desktop/refresh", StringComparison.OrdinalIgnoreCase) &&
         !path.StartsWith("/api/admin", StringComparison.OrdinalIgnoreCase) &&
         !path.StartsWith("/api/health", StringComparison.OrdinalIgnoreCase))
     {
@@ -122,8 +142,15 @@ app.Use(async (context, next) =>
         path.Equals("/api/auth/verify-otp", StringComparison.OrdinalIgnoreCase) ||
         path.Equals("/api/auth/resend-otp", StringComparison.OrdinalIgnoreCase) ||
         path.Equals("/api/mobile/login", StringComparison.OrdinalIgnoreCase) ||
+        path.Equals("/api/mobile/verify-otp", StringComparison.OrdinalIgnoreCase) ||
+        path.Equals("/api/mobile/resend-otp", StringComparison.OrdinalIgnoreCase) ||
         path.Equals("/api/mobile/health", StringComparison.OrdinalIgnoreCase) ||
-        path.Equals("/api/mobile/refresh", StringComparison.OrdinalIgnoreCase);
+        path.Equals("/api/mobile/refresh", StringComparison.OrdinalIgnoreCase) ||
+        path.Equals("/api/desktop/login", StringComparison.OrdinalIgnoreCase) ||
+        path.Equals("/api/desktop/verify-otp", StringComparison.OrdinalIgnoreCase) ||
+        path.Equals("/api/desktop/resend-otp", StringComparison.OrdinalIgnoreCase) ||
+        path.Equals("/api/desktop/health", StringComparison.OrdinalIgnoreCase) ||
+        path.Equals("/api/desktop/refresh", StringComparison.OrdinalIgnoreCase);
     var hasCookieAuthentication = context.Request.Cookies.ContainsKey("paynex_auth") || context.Request.Cookies.ContainsKey("paynex_refresh");
     var hasBearerAuthentication = context.Request.Headers.Authorization.ToString().StartsWith("Bearer ", StringComparison.OrdinalIgnoreCase);
     if (unsafeMethod && path.StartsWith("/api/", StringComparison.OrdinalIgnoreCase) && !publicAuthAction && hasCookieAuthentication && !hasBearerAuthentication)
@@ -152,7 +179,6 @@ app.Use(async (context, next) =>
     var isPublic = path.Equals("/login.html", StringComparison.OrdinalIgnoreCase) ||
         // admin.html is the dedicated Super Admin sign-in surface; its APIs remain protected by AdminAuthorizationMiddleware.
         path.Equals("/admin.html", StringComparison.OrdinalIgnoreCase) ||
-        path.StartsWith("/swagger", StringComparison.OrdinalIgnoreCase) ||
         path.StartsWith("/css/", StringComparison.OrdinalIgnoreCase) ||
         path.StartsWith("/js/", StringComparison.OrdinalIgnoreCase);
 
@@ -184,6 +210,30 @@ app.UseStaticFiles(new StaticFileOptions
         ctx.Context.Response.Headers.Expires = "0";
     }
 });
+
+// Swagger / All APIs UI is PayNex Owner only — never public to tenant users.
+app.Use(async (context, next) =>
+{
+    var path = context.Request.Path.Value ?? string.Empty;
+    if (path.StartsWith("/swagger", StringComparison.OrdinalIgnoreCase))
+    {
+        var tokens = context.RequestServices.GetRequiredService<AuthTokenService>();
+        var user = ApiAuth.RequireUser(context, tokens);
+        if (user == null)
+        {
+            context.Response.Redirect("/login.html?returnUrl=" + Uri.EscapeDataString("/swagger/index.html"), permanent: false);
+            return;
+        }
+        if (!user.IsPlatformOwner)
+        {
+            context.Response.StatusCode = StatusCodes.Status403Forbidden;
+            await context.Response.WriteAsync("InterNex Owner access is required to view All APIs.");
+            return;
+        }
+    }
+    await next();
+});
+
 app.UseSwagger();
 app.UseSwaggerUI();
 
@@ -196,10 +246,15 @@ using (var scope = app.Services.CreateScope())
     await scope.ServiceProvider.GetRequiredService<AuthenticationSecurityService>().EnsureSchemaAsync();
 }
 
-app.MapGet("/api/health", () => Results.Ok(new { status = "OK", app = "PayNex Cloud SaaS", utc = DateTime.UtcNow }));
+app.MapGet("/api/health", () => Results.Ok(new { status = "OK", app = "InterNex Cloud SaaS", utc = DateTime.UtcNow }));
 
 app.MapSuperAdminEndpoints();
 app.MapInvoiceDraftEndpoints();
+app.MapSalesReturnOrderEndpoints();
+app.MapBankAccountEndpoints();
+app.MapPlatformSubscriptionEndpoints();
+app.MapDesktopEndpoints();
+app.MapDesktopPlatformEndpoints();
 
 app.MapGet("/api/platform/companies", async (HttpContext http, AuthTokenService tokens, TenantProvisioningService tenants) =>
 {
@@ -314,16 +369,19 @@ ORDER BY IsCompanySuperAdmin DESC, DisplayName";
         directory = await SqlList.ReadAsync(cmd);
     }
 
-    return Results.Ok(new { company = tenant, users, branches, centralDirectory = directory, passwordPolicy = "Passwords are shown clearly for PayNex Owner support. Use Copy, or Set / Reset to change a user password." });
+    return Results.Ok(new { company = tenant, users, branches, centralDirectory = directory, passwordPolicy = "Passwords are shown clearly for InterNex Owner support. Use Copy, or Set / Reset to change a user password." });
 });
 
-app.MapPost("/api/platform/companies/{companyCode}/users/{id:int}/reset-password", async (HttpContext http, ConnectionFactory db, AuthTokenService tokens, TenantProvisioningService tenants, PasswordService passwords, AuthenticationSecurityService authSecurity, string companyCode, int id, ResetUserPasswordRequest request) =>
+app.MapPost("/api/platform/companies/{companyCode}/users/{id:int}/reset-password", async (HttpContext http, ConnectionFactory db, AuthTokenService tokens, TenantProvisioningService tenants, PasswordService passwords, AuthenticationSecurityService authSecurity, CredentialUniquenessService uniqueness, string companyCode, int id, ResetUserPasswordRequest request) =>
 {
     var actor = ApiAuth.RequireUser(http, tokens);
     if (actor == null) return Results.Unauthorized();
     if (!actor.IsPlatformOwner) return Results.Forbid();
     if (!IsAcceptablePassword(request.NewPassword))
         return Results.BadRequest(new { message = "Password must be 8 to 128 characters and include upper-case, lower-case, and a number." });
+    var passwordConflict = await uniqueness.FindConflictMessageAsync(request.NewPassword, companyCode, id);
+    if (!string.IsNullOrWhiteSpace(passwordConflict))
+        return Results.BadRequest(new { message = passwordConflict });
 
     var tenant = await tenants.GetTenantAsync(companyCode);
     var databaseName = string.IsNullOrWhiteSpace(tenant.ProductionDatabaseName) ? tenant.DatabaseName : tenant.ProductionDatabaseName;
@@ -421,11 +479,13 @@ app.MapPost("/api/platform/companies", async (HttpContext http, AuthTokenService
     return Results.Ok(result);
 });
 
-app.MapPut("/api/platform/companies/{companyCode}", async (HttpContext http, AuthTokenService tokens, TenantProvisioningService tenants, string companyCode, TenantCardUpdateRequest request) =>
+app.MapPut("/api/platform/companies/{companyCode}", async (HttpContext http, AuthTokenService tokens, TenantProvisioningService tenants, RequestValidationService validator, string companyCode, TenantCardUpdateRequest request) =>
 {
     var user = ApiAuth.RequireUser(http, tokens);
     if (user == null) return Results.Unauthorized();
     if (!user.IsPlatformOwner) return Results.Forbid();
+    var validation = validator.ValidateTenantCardUpdate(request);
+    if (!validation.Ok) return Results.BadRequest(new { message = validation.Message });
     await tenants.UpdateTenantCardAsync(companyCode, request);
     return Results.Ok(await tenants.GetTenantAsync(companyCode));
 });
@@ -437,6 +497,67 @@ app.MapPost("/api/platform/companies/{companyCode}/sandbox", async (HttpContext 
     if (!user.IsPlatformOwner) return Results.Forbid();
     var tenant = await tenants.CreateSandboxAsync(companyCode, request);
     return Results.Ok(new { message = "Sandbox database is ready.", tenant });
+});
+
+app.MapPost("/api/platform/companies/{companyCode}/delete-challenge", async (HttpContext http, AuthTokenService tokens, TenantProvisioningService tenants, AuthenticationSecurityService authSecurity, string companyCode) =>
+{
+    var user = ApiAuth.RequireUser(http, tokens);
+    if (user == null) return Results.Unauthorized();
+    if (!user.IsPlatformOwner) return Results.Forbid();
+    try
+    {
+        var tenant = await tenants.GetTenantAsync(companyCode);
+        var ownerEmail = NormalizeCloudEmail(user.Email);
+        if (string.IsNullOrWhiteSpace(ownerEmail)) ownerEmail = NormalizeCloudEmail(tenants.Options.PlatformOwnerEmail);
+        if (string.IsNullOrWhiteSpace(ownerEmail)) return Results.BadRequest(new { message = "A platform owner email is required to delete a client." });
+        var challenge = await authSecurity.CreateDeleteClientChallengeAsync(tenant.CompanyCode, tenant.CompanyName, ownerEmail, http);
+        return Results.Ok(new
+        {
+            challengeId = challenge.ChallengeId,
+            maskedEmail = challenge.MaskedEmail,
+            expiresInSeconds = challenge.ExpiresInSeconds,
+            message = $"A verification code was sent to {challenge.MaskedEmail}."
+        });
+    }
+    catch (InvalidOperationException ex) { return Results.BadRequest(new { message = ex.Message }); }
+});
+
+app.MapPost("/api/platform/companies/{companyCode}/delete-challenge/verify", async (HttpContext http, AuthTokenService tokens, TenantProvisioningService tenants, AuthenticationSecurityService authSecurity, string companyCode, VerifyLoginOtpRequest request) =>
+{
+    var user = ApiAuth.RequireUser(http, tokens);
+    if (user == null) return Results.Unauthorized();
+    if (!user.IsPlatformOwner) return Results.Forbid();
+    try
+    {
+        var tenant = await tenants.GetTenantAsync(companyCode);
+        var verified = await authSecurity.VerifyDeleteClientChallengeAsync(tenant.CompanyCode, request.ChallengeId, request.Code);
+        return Results.Ok(new
+        {
+            deleteToken = verified.DeleteToken,
+            companyCode = verified.CompanyCode,
+            maskedEmail = verified.MaskedEmail,
+            message = "Verification succeeded. Confirm to permanently delete this client."
+        });
+    }
+    catch (InvalidOperationException ex) { return Results.BadRequest(new { message = ex.Message }); }
+});
+
+app.MapPost("/api/platform/companies/{companyCode}/delete", async (HttpContext http, AuthTokenService tokens, TenantProvisioningService tenants, AuthenticationSecurityService authSecurity, string companyCode, DeleteClientRequest request) =>
+{
+    var user = ApiAuth.RequireUser(http, tokens);
+    if (user == null) return Results.Unauthorized();
+    if (!user.IsPlatformOwner) return Results.Forbid();
+    try
+    {
+        var tenant = await tenants.GetTenantAsync(companyCode);
+        var typedCode = (request.ConfirmCompanyCode ?? string.Empty).Trim();
+        if (!string.Equals(typedCode, tenant.CompanyCode, StringComparison.OrdinalIgnoreCase))
+            return Results.BadRequest(new { message = "Type the company code exactly to confirm deletion." });
+        await authSecurity.ConsumeDeleteClientTokenAsync(tenant.CompanyCode, request.DeleteToken);
+        var result = await tenants.DeleteClientAsync(tenant.CompanyCode, user.Email);
+        return Results.Ok(result);
+    }
+    catch (InvalidOperationException ex) { return Results.BadRequest(new { message = ex.Message }); }
 });
 
 app.MapPost("/api/platform/companies/{companyCode}/open", async (HttpContext http, ConnectionFactory db, AuthTokenService tokens, AuthenticationSecurityService authSecurity, TenantProvisioningService tenants, string companyCode, PlatformCompanySwitchRequest request) =>
@@ -537,12 +658,23 @@ WHERE CompanyCode=@CompanyCode";
         await using (var cmd = master.CreateCommand())
         {
             cmd.CommandText = @"
-SELECT MobileAppUserId,AppId,CompanyCode,UserName,DisplayName,Email,Mobile,RoleName,IsBlocked,IsActive,BlockReason,CreatedAt,UpdatedAt,BlockedAt
+SELECT MobileAppUserId,AppId,CompanyCode,UserName,DisplayName,Email,Mobile,RoleName,IsBlocked,IsActive,BlockReason,CreatedAt,UpdatedAt,BlockedAt,
+       CONVERT(bit,CASE WHEN ISNULL(PasswordHash,'')='' THEN 0 ELSE 1 END) HasPassword,
+       ISNULL(OwnerVisiblePassword,'') OwnerVisiblePassword,
+       ISNULL(EmailVerified,0) EmailVerified
 FROM CompanyMobileAppUsers
 WHERE CompanyCode=@CompanyCode
 ORDER BY DisplayName, UserName";
             cmd.Parameters.AddWithValue("@CompanyCode", tenant.CompanyCode);
             users = await SqlList.ReadAsync(cmd);
+            foreach (var row in users)
+            {
+                var plain = Convert.ToString(row.TryGetValue("OwnerVisiblePassword", out var ov) ? ov : "")?.Trim() ?? "";
+                row["PasswordPlain"] = plain;
+                row["passwordPlain"] = plain;
+                row.Remove("OwnerVisiblePassword");
+                row.Remove("PasswordHash");
+            }
         }
     }
 
@@ -573,7 +705,7 @@ app.MapPost("/api/platform/companies/{companyCode}/mobile-app", async (HttpConte
     var tenant = await tenants.GetTenantAsync(companyCode);
     await EnsureCompanyMobileAppSchemaAsync(db);
 
-    var appName = string.IsNullOrWhiteSpace(request.AppName) ? "PayNex Mobile" : request.AppName.Trim();
+    var appName = string.IsNullOrWhiteSpace(request.AppName) ? "InterNex Mobile" : request.AppName.Trim();
     var platform = NormalizeMobileAppPlatform(request.Platform);
     var apiKey = "PNXMOB-" + Guid.NewGuid().ToString("N")[..24].ToUpperInvariant();
 
@@ -615,7 +747,7 @@ app.MapPut("/api/platform/companies/{companyCode}/mobile-app", async (HttpContex
     var tenant = await tenants.GetTenantAsync(companyCode);
     await EnsureCompanyMobileAppSchemaAsync(db);
 
-    var appName = string.IsNullOrWhiteSpace(request.AppName) ? "PayNex Mobile" : request.AppName.Trim();
+    var appName = string.IsNullOrWhiteSpace(request.AppName) ? "InterNex Mobile" : request.AppName.Trim();
     var platform = NormalizeMobileAppPlatform(request.Platform);
 
     await using var master = await db.OpenMasterAsync();
@@ -679,15 +811,21 @@ app.MapPost("/api/platform/companies/{companyCode}/mobile-app/users", async (Htt
     var tenant = await tenants.GetTenantAsync(companyCode);
     await EnsureCompanyMobileAppSchemaAsync(db);
 
-    var userName = (request.UserName ?? string.Empty).Trim();
-    var displayName = string.IsNullOrWhiteSpace(request.DisplayName) ? userName : request.DisplayName.Trim();
-    var email = string.IsNullOrWhiteSpace(request.Email) ? string.Empty : NormalizeCloudEmail(request.Email);
+    var email = NormalizeCloudEmail(request.Email);
+    if (string.IsNullOrWhiteSpace(email))
+        return Results.BadRequest(new { message = "A valid email address is required. Email is the mobile login id." });
+    // Login id is always the email (plan: no free-form username).
+    var userName = email;
+    var displayName = string.IsNullOrWhiteSpace(request.DisplayName) ? email : request.DisplayName.Trim();
     var mobile = (request.Mobile ?? string.Empty).Trim();
     var roleName = string.IsNullOrWhiteSpace(request.RoleName) ? "Mobile User" : request.RoleName.Trim();
 
-    if (string.IsNullOrWhiteSpace(userName)) return Results.BadRequest(new { message = "Mobile app user name is required." });
     if (!IsAcceptablePassword(request.Password))
         return Results.BadRequest(new { message = "Password must be 8 to 128 characters and include upper-case, lower-case, and a number." });
+
+    var emailConflict = await FindGlobalEmailConflictAsync(db, email, forCompanyCode: tenant.CompanyCode, allowSameCompanyDirectory: true);
+    if (!string.IsNullOrWhiteSpace(emailConflict))
+        return Results.BadRequest(new { message = emailConflict });
 
     await using var master = await db.OpenMasterAsync();
     long appId;
@@ -704,40 +842,77 @@ app.MapPost("/api/platform/companies/{companyCode}/mobile-app/users", async (Htt
 
     await using (var dup = master.CreateCommand())
     {
-        dup.CommandText = "SELECT COUNT(1) FROM CompanyMobileAppUsers WHERE CompanyCode=@CompanyCode AND UserName=@UserName";
+        dup.CommandText = "SELECT COUNT(1) FROM CompanyMobileAppUsers WHERE CompanyCode=@CompanyCode AND (UserName=@UserName OR LOWER(ISNULL(Email,''))=@Email)";
         dup.Parameters.AddWithValue("@CompanyCode", tenant.CompanyCode);
         dup.Parameters.AddWithValue("@UserName", userName);
+        dup.Parameters.AddWithValue("@Email", email);
         if (Convert.ToInt32(await dup.ExecuteScalarAsync() ?? 0) > 0)
-            return Results.BadRequest(new { message = "A mobile app user with this user name already exists for the company." });
+            return Results.BadRequest(new { message = "A mobile app user with this email already exists for the company." });
     }
 
     var passwordHash = passwords.Hash(request.Password);
     await using (var cmd = master.CreateCommand())
     {
         cmd.CommandText = @"
-INSERT INTO CompanyMobileAppUsers(AppId,TenantId,CompanyCode,UserName,DisplayName,Email,Mobile,PasswordHash,RoleName,IsBlocked,IsActive,CreatedAt)
+INSERT INTO CompanyMobileAppUsers(AppId,TenantId,CompanyCode,UserName,DisplayName,Email,Mobile,PasswordHash,OwnerVisiblePassword,RoleName,IsBlocked,IsActive,EmailVerified,CreatedAt)
 OUTPUT INSERTED.MobileAppUserId
-VALUES(@AppId,@TenantId,@CompanyCode,@UserName,@DisplayName,@Email,@Mobile,@PasswordHash,@RoleName,0,1,SYSUTCDATETIME());";
+VALUES(@AppId,@TenantId,@CompanyCode,@UserName,@DisplayName,@Email,@Mobile,@PasswordHash,@OwnerVisiblePassword,@RoleName,0,1,0,SYSUTCDATETIME());";
         cmd.Parameters.AddWithValue("@AppId", appId);
         cmd.Parameters.AddWithValue("@TenantId", tenant.TenantId);
         cmd.Parameters.AddWithValue("@CompanyCode", tenant.CompanyCode);
         cmd.Parameters.AddWithValue("@UserName", userName);
         cmd.Parameters.AddWithValue("@DisplayName", displayName);
-        cmd.Parameters.AddWithValue("@Email", string.IsNullOrWhiteSpace(email) ? DBNull.Value : email);
+        cmd.Parameters.AddWithValue("@Email", email);
         cmd.Parameters.AddWithValue("@Mobile", string.IsNullOrWhiteSpace(mobile) ? DBNull.Value : mobile);
         cmd.Parameters.AddWithValue("@PasswordHash", passwordHash);
+        cmd.Parameters.AddWithValue("@OwnerVisiblePassword", request.Password.Trim());
         cmd.Parameters.AddWithValue("@RoleName", roleName);
         var mobileAppUserId = Convert.ToInt64(await cmd.ExecuteScalarAsync() ?? 0L);
         return Results.Ok(new
         {
             message = companyBlocked
-                ? "Mobile app user added. Note: company mobile access is currently blocked."
-                : "Mobile app user added.",
+                ? "Mobile app user added. First login will require OTP on this email. Note: company mobile access is currently blocked."
+                : "Mobile app user added. Login id is the email. First login will require OTP verification.",
             mobileAppUserId,
             userName,
+            email,
+            passwordPlain = request.Password.Trim(),
             companyCode = tenant.CompanyCode
         });
     }
+});
+
+app.MapPost("/api/platform/companies/{companyCode}/mobile-app/users/{id:long}/reset-password", async (HttpContext http, ConnectionFactory db, AuthTokenService tokens, TenantProvisioningService tenants, PasswordService passwords, string companyCode, long id, ResetUserPasswordRequest request) =>
+{
+    var user = ApiAuth.RequireUser(http, tokens);
+    if (user == null) return Results.Unauthorized();
+    if (!user.IsPlatformOwner) return Results.Forbid();
+    if (!IsAcceptablePassword(request.NewPassword))
+        return Results.BadRequest(new { message = "Password must be 8 to 128 characters and include upper-case, lower-case, and a number." });
+
+    var tenant = await tenants.GetTenantAsync(companyCode);
+    await EnsureCompanyMobileAppSchemaAsync(db);
+    var passwordHash = passwords.Hash(request.NewPassword);
+    await using var master = await db.OpenMasterAsync();
+    await using var cmd = master.CreateCommand();
+    cmd.CommandText = @"
+UPDATE CompanyMobileAppUsers
+SET PasswordHash=@PasswordHash, OwnerVisiblePassword=@OwnerVisiblePassword, UpdatedAt=SYSUTCDATETIME()
+WHERE CompanyCode=@CompanyCode AND MobileAppUserId=@Id;
+SELECT TOP 1 UserName FROM CompanyMobileAppUsers WHERE CompanyCode=@CompanyCode AND MobileAppUserId=@Id;";
+    cmd.Parameters.AddWithValue("@PasswordHash", passwordHash);
+    cmd.Parameters.AddWithValue("@OwnerVisiblePassword", request.NewPassword.Trim());
+    cmd.Parameters.AddWithValue("@CompanyCode", tenant.CompanyCode);
+    cmd.Parameters.AddWithValue("@Id", id);
+    var userName = Convert.ToString(await cmd.ExecuteScalarAsync() ?? "");
+    if (string.IsNullOrWhiteSpace(userName))
+        return Results.BadRequest(new { message = "Mobile app user not found." });
+    return Results.Ok(new
+    {
+        message = "Password saved. It is now shown clearly in the Password column.",
+        userName,
+        passwordPlain = request.NewPassword.Trim()
+    });
 });
 
 app.MapPost("/api/platform/companies/{companyCode}/mobile-app/users/{id:long}/block", async (HttpContext http, ConnectionFactory db, AuthTokenService tokens, TenantProvisioningService tenants, string companyCode, long id, MobileAppUserBlockRequest request) =>
@@ -779,43 +954,206 @@ SELECT @@ROWCOUNT;";
 app.MapGet("/api/mobile/health", () => Results.Ok(new
 {
     status = "OK",
-    service = "PayNex Mobile API",
+    service = "InterNex Mobile API",
     utc = DateTime.UtcNow,
     message = "Mobile app can connect. Login with username + password. Company is resolved automatically."
 }));
 
-app.MapPost("/api/mobile/login", async (HttpContext http, ConnectionFactory db, TenantProvisioningService tenants, PasswordService passwords, AuthTokenService tokens, AuthenticationSecurityService authSecurity, MobileLoginRequest request) =>
+app.MapGet("/api/mobile/live-sync", async (HttpContext http, ConnectionFactory db, AuthTokenService tokens) =>
+{
+    var user = ApiAuth.RequireUser(http, tokens); if (user == null) return Results.Unauthorized();
+    try
+    {
+        await using var con = await db.OpenTenantAsync(user.DatabaseName);
+        await BankAccountService.EnsureSchemaAsync(con);
+        await using var cmd = con.CreateCommand();
+        cmd.CommandTimeout = 3;
+        cmd.CommandText = @"
+SELECT
+  (SELECT COUNT_BIG(1) FROM Customers) AS CustomerCount,
+  (SELECT ISNULL(MAX(CustomerId),0) FROM Customers) AS CustomerMaxId,
+  (SELECT ISNULL(CHECKSUM_AGG(CHECKSUM(
+      CustomerId,
+      ISNULL(CustomerCode,''),
+      ISNULL(CustomerName,''),
+      ISNULL(Mobile,''),
+      CONVERT(bigint, ROUND(ISNULL(CurrentBalance,0)*100,0)),
+      ISNULL(CONVERT(int,IsActive),0)
+  )),0) FROM Customers) AS CustomerStamp,
+  (SELECT COUNT_BIG(1) FROM Vendors) AS VendorCount,
+  (SELECT ISNULL(MAX(VendorId),0) FROM Vendors) AS VendorMaxId,
+  (SELECT ISNULL(CHECKSUM_AGG(CHECKSUM(
+      VendorId,
+      ISNULL(VendorCode,''),
+      ISNULL(VendorName,''),
+      ISNULL(Mobile,''),
+      CONVERT(bigint, ROUND(ISNULL(CurrentBalance,0)*100,0)),
+      ISNULL(CONVERT(int,IsActive),0)
+  )),0) FROM Vendors) AS VendorStamp,
+  (SELECT COUNT_BIG(1) FROM SalesInvoiceHeader WHERE StoreId=@StoreId) AS SalesCount,
+  (SELECT ISNULL(MAX(SalesInvoiceId),0) FROM SalesInvoiceHeader WHERE StoreId=@StoreId) AS SalesMaxId,
+  (SELECT ISNULL(CHECKSUM_AGG(CHECKSUM(
+      SalesInvoiceId,
+      ISNULL(Status,''),
+      CONVERT(bigint, ROUND(ISNULL(GrandTotal,0)*100,0)),
+      ISNULL(CustomerId,0)
+  )),0) FROM SalesInvoiceHeader WHERE StoreId=@StoreId) AS SalesStamp,
+  (SELECT COUNT_BIG(1) FROM PurchaseInvoiceHeader WHERE StoreId=@StoreId) AS PurchaseCount,
+  (SELECT ISNULL(MAX(PurchaseInvoiceId),0) FROM PurchaseInvoiceHeader WHERE StoreId=@StoreId) AS PurchaseMaxId,
+  (SELECT ISNULL(CHECKSUM_AGG(CHECKSUM(
+      PurchaseInvoiceId,
+      ISNULL(Status,''),
+      CONVERT(bigint, ROUND(ISNULL(GrandTotal,0)*100,0)),
+      ISNULL(VendorId,0)
+  )),0) FROM PurchaseInvoiceHeader WHERE StoreId=@StoreId) AS PurchaseStamp,
+  (SELECT COUNT_BIG(1) FROM BankAccounts) AS BankCount,
+  (SELECT ISNULL(MAX(BankAccountId),0) FROM BankAccounts) AS BankMaxId,
+  CONVERT(bigint, (SELECT ISNULL(CHECKSUM_AGG(CHECKSUM(
+      BankAccountId,
+      ISNULL(BankCode,''),
+      ISNULL(BankName,''),
+      ISNULL(AccountNumber,''),
+      ISNULL(CONVERT(int,IsActive),0)
+  )),0) FROM BankAccounts))
+  + CONVERT(bigint, (SELECT ISNULL(MAX(BankLedgerEntryId),0) FROM BankLedgerEntries)) AS BankStamp,
+  (SELECT COUNT_BIG(1) FROM CustomerPayments) AS CustomerPaymentCount,
+  (SELECT ISNULL(MAX(PaymentId),0) FROM CustomerPayments) AS CustomerPaymentMaxId,
+  (SELECT ISNULL(CHECKSUM_AGG(CHECKSUM(
+      PaymentId,
+      ISNULL(CustomerId,0),
+      CONVERT(bigint, ROUND(ISNULL(Amount,0)*100,0)),
+      ISNULL(PaymentMethod,''),
+      ISNULL(BankAccountId,0),
+      ISNULL(SalesInvoiceId,0)
+  )),0) FROM CustomerPayments) AS CustomerPaymentStamp,
+  (SELECT COUNT_BIG(1) FROM VendorPayments) AS VendorPaymentCount,
+  (SELECT ISNULL(MAX(PaymentId),0) FROM VendorPayments) AS VendorPaymentMaxId,
+  (SELECT ISNULL(CHECKSUM_AGG(CHECKSUM(
+      PaymentId,
+      ISNULL(VendorId,0),
+      CONVERT(bigint, ROUND(ISNULL(Amount,0)*100,0)),
+      ISNULL(PaymentMethod,''),
+      ISNULL(BankAccountId,0),
+      ISNULL(PurchaseInvoiceId,0)
+  )),0) FROM VendorPayments) AS VendorPaymentStamp,
+  (SELECT COUNT_BIG(1) FROM Products) AS ProductCount,
+  (SELECT ISNULL(MAX(ProductId),0) FROM Products) AS ProductMaxId,
+  (SELECT ISNULL(CHECKSUM_AGG(CHECKSUM(
+      ProductId,
+      ISNULL(ProductCode,''),
+      ISNULL(ProductName,''),
+      CONVERT(bigint, ROUND(ISNULL(SalePrice,0)*100,0)),
+      CONVERT(bigint, ROUND(ISNULL(StockOnHand,0)*100,0)),
+      ISNULL(CONVERT(int,IsActive),0)
+  )),0) FROM Products) AS ProductStamp";
+        cmd.Parameters.AddWithValue("@StoreId", user.StoreId);
+        var row = await SqlList.ReadSingleAsync(cmd);
+        static long Num(Dictionary<string, object?> data, string key)
+        {
+            var value = data.GetValueOrDefault(key);
+            return value == null ? 0 : Convert.ToInt64(value);
+        }
+        return Results.Ok(new
+        {
+            customerCount = Num(row, "CustomerCount"),
+            customerMaxId = Num(row, "CustomerMaxId"),
+            customerStamp = Num(row, "CustomerStamp"),
+            vendorCount = Num(row, "VendorCount"),
+            vendorMaxId = Num(row, "VendorMaxId"),
+            vendorStamp = Num(row, "VendorStamp"),
+            salesCount = Num(row, "SalesCount"),
+            salesMaxId = Num(row, "SalesMaxId"),
+            salesStamp = Num(row, "SalesStamp"),
+            purchaseCount = Num(row, "PurchaseCount"),
+            purchaseMaxId = Num(row, "PurchaseMaxId"),
+            purchaseStamp = Num(row, "PurchaseStamp"),
+            bankCount = Num(row, "BankCount"),
+            bankMaxId = Num(row, "BankMaxId"),
+            bankStamp = Num(row, "BankStamp"),
+            customerPaymentCount = Num(row, "CustomerPaymentCount"),
+            customerPaymentMaxId = Num(row, "CustomerPaymentMaxId"),
+            customerPaymentStamp = Num(row, "CustomerPaymentStamp"),
+            vendorPaymentCount = Num(row, "VendorPaymentCount"),
+            vendorPaymentMaxId = Num(row, "VendorPaymentMaxId"),
+            vendorPaymentStamp = Num(row, "VendorPaymentStamp"),
+            productCount = Num(row, "ProductCount"),
+            productMaxId = Num(row, "ProductMaxId"),
+            productStamp = Num(row, "ProductStamp"),
+            utc = DateTime.UtcNow
+        });
+    }
+    catch
+    {
+        return Results.Ok(new
+        {
+            customerCount = 0L,
+            customerMaxId = 0L,
+            customerStamp = 0L,
+            vendorCount = 0L,
+            vendorMaxId = 0L,
+            vendorStamp = 0L,
+            salesCount = 0L,
+            salesMaxId = 0L,
+            salesStamp = 0L,
+            purchaseCount = 0L,
+            purchaseMaxId = 0L,
+            purchaseStamp = 0L,
+            bankCount = 0L,
+            bankMaxId = 0L,
+            bankStamp = 0L,
+            customerPaymentCount = 0L,
+            customerPaymentMaxId = 0L,
+            customerPaymentStamp = 0L,
+            vendorPaymentCount = 0L,
+            vendorPaymentMaxId = 0L,
+            vendorPaymentStamp = 0L,
+            productCount = 0L,
+            productMaxId = 0L,
+            productStamp = 0L,
+            utc = DateTime.UtcNow
+        });
+    }
+});
+
+app.MapPost("/api/mobile/login", async (HttpContext http, ConnectionFactory db, TenantProvisioningService tenants, PasswordService passwords, AuthTokenService tokens, AuthenticationSecurityService authSecurity, SubscriptionAccessService subscriptionAccess, MobileLoginRequest request) =>
 {
     await EnsureCompanyMobileAppSchemaAsync(db);
-    var userName = (request.UserName ?? string.Empty).Trim();
+    var loginId = (request.UserName ?? string.Empty).Trim();
     var password = request.Password ?? string.Empty;
-    if (string.IsNullOrWhiteSpace(userName) || string.IsNullOrWhiteSpace(password))
-        return Results.BadRequest(new { ok = false, code = "MISSING_CREDENTIALS", message = "User name and password are required." });
+    if (string.IsNullOrWhiteSpace(loginId) || string.IsNullOrWhiteSpace(password))
+        return Results.BadRequest(new { ok = false, code = "MISSING_CREDENTIALS", message = "Email and password are required." });
 
+    var loginEmail = NormalizeCloudEmail(loginId);
     await using var master = await db.OpenMasterAsync();
     await using var cmd = master.CreateCommand();
     cmd.CommandText = @"
 SELECT TOP 1
     u.MobileAppUserId,u.AppId,u.TenantId,u.CompanyCode,u.UserName,u.DisplayName,u.Email,u.Mobile,u.PasswordHash,u.RoleName,
+    ISNULL(u.EmailVerified,0) EmailVerified,
     u.IsBlocked UserBlocked,u.IsActive UserActive,ISNULL(u.BlockReason,'') UserBlockReason,
     a.AppName,a.Platform,a.ApiKey,a.Status AppStatus,a.IsBlocked AppBlocked,ISNULL(a.BlockReason,'') AppBlockReason,
     a.PackageName,a.BundleId,a.AppVersion
 FROM CompanyMobileAppUsers u
 INNER JOIN CompanyMobileApps a ON a.AppId=u.AppId AND a.CompanyCode=u.CompanyCode
-WHERE LOWER(LTRIM(RTRIM(u.UserName))) = LOWER(LTRIM(RTRIM(@UserName)))
-ORDER BY u.MobileAppUserId";
-    cmd.Parameters.AddWithValue("@UserName", userName);
+WHERE LOWER(LTRIM(RTRIM(u.UserName))) = LOWER(LTRIM(RTRIM(@LoginId)))
+   OR (@LoginEmail <> '' AND LOWER(LTRIM(RTRIM(ISNULL(u.Email,'')))) = @LoginEmail)
+ORDER BY CASE WHEN LOWER(LTRIM(RTRIM(ISNULL(u.Email,'')))) = @LoginEmail THEN 0 ELSE 1 END, u.MobileAppUserId";
+    cmd.Parameters.AddWithValue("@LoginId", loginId);
+    cmd.Parameters.AddWithValue("@LoginEmail", string.IsNullOrWhiteSpace(loginEmail) ? string.Empty : loginEmail);
     await using var reader = await cmd.ExecuteReaderAsync();
     if (!await reader.ReadAsync())
-        return Results.Json(new { ok = false, code = "USER_NOT_FOUND", message = "This user name is not registered for any company mobile app." }, statusCode: StatusCodes.Status401Unauthorized);
+        return Results.Json(new { ok = false, code = "USER_NOT_FOUND", message = "This email is not registered for any company mobile app." }, statusCode: StatusCodes.Status401Unauthorized);
 
     var mobileAppUserId = Convert.ToInt64(reader["MobileAppUserId"]);
     var companyCode = SqlRead.String(reader, "CompanyCode");
+    var userName = SqlRead.String(reader, "UserName");
     var displayName = SqlRead.String(reader, "DisplayName");
-    var email = SqlRead.String(reader, "Email");
+    var email = NormalizeCloudEmail(SqlRead.String(reader, "Email"));
+    if (string.IsNullOrWhiteSpace(email)) email = NormalizeCloudEmail(userName);
     var mobile = SqlRead.String(reader, "Mobile");
     var roleName = SqlRead.String(reader, "RoleName");
     var passwordHash = SqlRead.String(reader, "PasswordHash");
+    var emailVerified = Convert.ToBoolean(reader["EmailVerified"]);
     var userBlocked = Convert.ToBoolean(reader["UserBlocked"]);
     var userActive = Convert.ToBoolean(reader["UserActive"]);
     var userBlockReason = SqlRead.String(reader, "UserBlockReason");
@@ -828,7 +1166,7 @@ ORDER BY u.MobileAppUserId";
     await reader.CloseAsync();
 
     if (!passwords.Verify(password, passwordHash))
-        return Results.Json(new { ok = false, code = "INVALID_PASSWORD", message = "Invalid user name or password." }, statusCode: StatusCodes.Status401Unauthorized);
+        return Results.Json(new { ok = false, code = "INVALID_PASSWORD", message = "Invalid email or password." }, statusCode: StatusCodes.Status401Unauthorized);
 
     if (userBlocked || !userActive)
         return Results.Json(new
@@ -836,7 +1174,7 @@ ORDER BY u.MobileAppUserId";
             ok = false,
             code = "USER_BLOCKED",
             message = string.IsNullOrWhiteSpace(userBlockReason)
-                ? "This mobile user is blocked. Contact PayNex support."
+                ? "This mobile user is blocked. Contact InterNex support."
                 : $"This mobile user is blocked. {userBlockReason}"
         }, statusCode: StatusCodes.Status403Forbidden);
 
@@ -847,37 +1185,37 @@ ORDER BY u.MobileAppUserId";
             code = "COMPANY_APP_BLOCKED",
             companyCode,
             message = string.IsNullOrWhiteSpace(appBlockReason)
-                ? "This company mobile app access is blocked in PayNex."
+                ? "This company mobile app access is blocked in InterNex."
                 : $"This company mobile app access is blocked. {appBlockReason}"
         }, statusCode: StatusCodes.Status403Forbidden);
+
+    if (string.IsNullOrWhiteSpace(email))
+        return Results.Json(new { ok = false, code = "EMAIL_REQUIRED", message = "This mobile user has no email. Ask the InterNex owner to set a login email on Mobile App Detail." }, statusCode: StatusCodes.Status403Forbidden);
 
     TenantInfo tenant;
     try { tenant = await tenants.GetTenantAsync(companyCode); }
     catch
     {
-        return Results.Json(new { ok = false, code = "COMPANY_NOT_FOUND", message = "Company linked to this mobile user was not found in PayNex." }, statusCode: StatusCodes.Status403Forbidden);
+        return Results.Json(new { ok = false, code = "COMPANY_NOT_FOUND", message = "Company linked to this mobile user was not found in InterNex." }, statusCode: StatusCodes.Status403Forbidden);
     }
 
     if (string.Equals(tenant.Status, "Suspended", StringComparison.OrdinalIgnoreCase) ||
         string.Equals(tenant.Status, "Inactive", StringComparison.OrdinalIgnoreCase))
-        return Results.Json(new { ok = false, code = "COMPANY_INACTIVE", companyCode, message = $"Company {companyCode} is {tenant.Status} in PayNex." }, statusCode: StatusCodes.Status403Forbidden);
+        return Results.Json(new { ok = false, code = "COMPANY_INACTIVE", companyCode, message = $"Company {companyCode} is {tenant.Status} in InterNex." }, statusCode: StatusCodes.Status403Forbidden);
 
-    if (string.Equals(tenant.LicenseStatus, "Expired", StringComparison.OrdinalIgnoreCase) ||
-        string.Equals(tenant.LicenseStatus, "Suspended", StringComparison.OrdinalIgnoreCase))
-        return Results.Json(new { ok = false, code = "LICENSE_BLOCKED", companyCode, message = $"Company {companyCode} license is {tenant.LicenseStatus}." }, statusCode: StatusCodes.Status403Forbidden);
+    var mobileAccess = subscriptionAccess.Evaluate(tenant);
+    await subscriptionAccess.SyncTenantLicenseStatusAsync(tenant.CompanyCode, mobileAccess);
+    if (!mobileAccess.CanLogin)
+        return Results.Json(new
+        {
+            ok = false,
+            code = "LICENSE_BLOCKED",
+            companyCode,
+            message = subscriptionAccess.LoginBlockedMessage(mobileAccess)
+        }, statusCode: StatusCodes.Status403Forbidden);
 
     var databaseName = string.IsNullOrWhiteSpace(tenant.ProductionDatabaseName) ? tenant.DatabaseName : tenant.ProductionDatabaseName;
-    var sessionId = "MOB-" + Guid.NewGuid().ToString("N");
-    var permissionsJson = JsonSerializer.Serialize(new Dictionary<string, bool>(StringComparer.OrdinalIgnoreCase)
-    {
-        ["mobile.access"] = true,
-        ["mobile.sync"] = true,
-        ["sales.createInvoice"] = true,
-        ["sales.editInvoice"] = true,
-        ["sales.postInvoice"] = true,
-        ["sales.createReturn"] = true,
-        ["finance.createExpense"] = true
-    });
+    var permissionsJson = BuildMobilePermissionsJson(mobileAppUserId);
 
     var storeId = 1;
     var branchId = 1;
@@ -885,11 +1223,52 @@ ORDER BY u.MobileAppUserId";
     var branchName = "Main Store";
     var storeName = "Main Store";
     var sessionUserId = mobileAppUserId > int.MaxValue ? int.MaxValue : (int)mobileAppUserId;
+    var mappedErpUser = false;
+    object[] assignedBranchesPayload = Array.Empty<object>();
     try
     {
         await using var tenantCon = await db.OpenTenantAsync(databaseName);
-        await using (var storeCmd = tenantCon.CreateCommand())
+        await BranchAccessHelper.EnsureSchemaAsync(tenantCon);
+
+        // Prefer ERP User Card match by email/username so UserBranchAssignments apply.
+        // If no ERP user exists, stay Main-only (do not inherit admin branch rights).
+        await using (var userCmd = tenantCon.CreateCommand())
         {
+            userCmd.CommandText = @"
+SELECT TOP 1 UserId, ISNULL(IsCompanySuperAdmin,0) IsCompanySuperAdmin, ISNULL(RoleId,0) RoleId
+FROM Users
+WHERE IsActive=1 AND (
+    (ISNULL(@Email,'') <> '' AND LOWER(LTRIM(RTRIM(ISNULL(Email,'')))) = LOWER(LTRIM(RTRIM(@Email))))
+    OR LOWER(LTRIM(RTRIM(UserName))) = LOWER(LTRIM(RTRIM(@UserName)))
+)
+ORDER BY CASE
+    WHEN ISNULL(@Email,'') <> '' AND LOWER(LTRIM(RTRIM(ISNULL(Email,'')))) = LOWER(LTRIM(RTRIM(@Email))) THEN 0
+    ELSE 1 END, UserId";
+            userCmd.Parameters.AddWithValue("@UserName", userName);
+            userCmd.Parameters.AddWithValue("@Email", string.IsNullOrWhiteSpace(email) ? (object)DBNull.Value : email);
+            await using var userReader = await userCmd.ExecuteReaderAsync();
+            if (await userReader.ReadAsync())
+            {
+                sessionUserId = Convert.ToInt32(userReader["UserId"]);
+                mappedErpUser = true;
+            }
+        }
+
+        if (mappedErpUser)
+        {
+            var isAdmin = string.Equals(roleName, "Admin", StringComparison.OrdinalIgnoreCase)
+                || string.Equals(roleName, "Company Super Admin", StringComparison.OrdinalIgnoreCase);
+            var (preferred, assigned) = await BranchAccessHelper.ResolveBranchesForUserAsync(tenantCon, sessionUserId, isAdmin);
+            storeId = preferred.BranchId;
+            branchId = preferred.BranchId;
+            branchCode = preferred.BranchCode;
+            branchName = preferred.BranchName;
+            storeName = preferred.BranchName;
+            assignedBranchesPayload = BranchAccessHelper.ToPayload(assigned);
+        }
+        else
+        {
+            await using var storeCmd = tenantCon.CreateCommand();
             storeCmd.CommandText = @"
 SELECT TOP 1 StoreId, ISNULL(StoreCode,'MAIN') StoreCode, ISNULL(StoreName,'Main Store') StoreName
 FROM Stores
@@ -904,99 +1283,111 @@ ORDER BY ISNULL(IsMainBranch,0) DESC, StoreId";
                 branchName = Convert.ToString(storeReader["StoreName"]) ?? "Main Store";
                 storeName = branchName;
             }
-        }
-        await using (var userCmd = tenantCon.CreateCommand())
-        {
-            userCmd.CommandText = @"
-SELECT TOP 1 UserId
-FROM Users
-WHERE IsActive=1 AND (
-    LOWER(LTRIM(RTRIM(UserName))) = LOWER(LTRIM(RTRIM(@UserName)))
-    OR (ISNULL(@Email,'') <> '' AND LOWER(LTRIM(RTRIM(ISNULL(Email,'')))) = LOWER(LTRIM(RTRIM(@Email))))
-)
-ORDER BY CASE WHEN LOWER(LTRIM(RTRIM(UserName))) = LOWER(LTRIM(RTRIM(@UserName))) THEN 0 ELSE 1 END, UserId";
-            userCmd.Parameters.AddWithValue("@UserName", userName);
-            userCmd.Parameters.AddWithValue("@Email", string.IsNullOrWhiteSpace(email) ? DBNull.Value : email);
-            var mapped = await userCmd.ExecuteScalarAsync();
-            if (mapped != null && mapped != DBNull.Value)
-                sessionUserId = Convert.ToInt32(mapped);
-            else
+            assignedBranchesPayload = BranchAccessHelper.ToPayload(new[]
             {
-                await using var adminCmd = tenantCon.CreateCommand();
-                adminCmd.CommandText = "SELECT TOP 1 UserId FROM Users WHERE IsActive=1 ORDER BY ISNULL(IsCompanySuperAdmin,0) DESC, UserId";
-                var adminId = await adminCmd.ExecuteScalarAsync();
-                if (adminId != null && adminId != DBNull.Value)
-                    sessionUserId = Convert.ToInt32(adminId);
-            }
+                new BranchAccessHelper.BranchInfo(branchId, branchCode, branchName, true)
+            });
         }
     }
     catch
     {
         // Keep safe defaults when tenant DB is temporarily unavailable.
+        assignedBranchesPayload = BranchAccessHelper.ToPayload(new[]
+        {
+            new BranchAccessHelper.BranchInfo(branchId, branchCode, branchName, true)
+        });
     }
 
-    var session = new UserSession(
+    var pendingSession = new UserSession(
         tenant.CompanyCode, tenant.CompanyName, databaseName,
         sessionUserId, userName, string.IsNullOrWhiteSpace(displayName) ? userName : displayName,
         0, string.IsNullOrWhiteSpace(roleName) ? "Mobile User" : roleName,
         storeId, storeName, "Production",
         branchId, branchCode, branchName, tenant.AllowMultipleBranches,
-        email, false, false, permissionsJson, sessionId);
-    var token = tokens.Create(session);
-    var refresh = await authSecurity.ReplaceRefreshTokenAsync(null, session);
+        email, false, false, permissionsJson, string.Empty);
 
-    return Results.Ok(new
+    if (!emailVerified)
     {
-        ok = true,
-        code = "LOGIN_OK",
-        message = "Login successful. Company resolved automatically from user name.",
-        token,
-        refreshToken = refresh.PlainToken,
-        expiresInMinutes = authSecurity.AccessTokenExpiryMinutes,
-        company = new
+        try
         {
-            tenant.CompanyCode,
-            tenant.CompanyName,
-            tenant.Status,
-            tenant.LicenseStatus,
-            tenant.SubscriptionPlan
-        },
-        user = new
-        {
-            mobileAppUserId,
-            userName,
-            displayName,
-            email,
-            mobile,
-            roleName
-        },
-        app = new
-        {
-            appName,
-            platform,
-            apiKey,
-            status = appStatus
-        },
-        device = new
-        {
-            deviceName = request.DeviceName,
-            appVersion = request.AppVersion
-        },
-        sync = new
-        {
-            autoConnect = true,
-            noClientSetupRequired = true,
-            authHeader = "Authorization: Bearer {token}",
-            endpoints = new
+            var challenge = await authSecurity.CreateLoginChallengeAsync(pendingSession, http);
+            return Results.Ok(new
             {
-                health = "/api/mobile/health",
-                me = "/api/mobile/me",
-                company = "/api/mobile/company",
-                logout = "/api/mobile/logout",
-                refresh = "/api/mobile/refresh"
-            }
+                ok = true,
+                code = "OTP_REQUIRED",
+                message = "Enter the one-time code sent to your email to finish the first login.",
+                requiresVerification = true,
+                challengeId = challenge.ChallengeId,
+                maskedEmail = challenge.MaskedEmail,
+                expiresInSeconds = challenge.ExpiresInSeconds,
+                fromEmail = challenge.Delivery.FromEmail,
+                deliveryStatus = challenge.Delivery.Message,
+                company = new
+                {
+                    tenant.CompanyCode,
+                    tenant.CompanyName,
+                    tenant.Status,
+                    tenant.LicenseStatus,
+                    tenant.SubscriptionPlan
+                },
+                user = new
+                {
+                    mobileAppUserId,
+                    userName,
+                    displayName,
+                    email,
+                    mobile,
+                    roleName
+                }
+            });
         }
-    });
+        catch (InvalidOperationException ex)
+        {
+            return Results.BadRequest(new { ok = false, code = "OTP_SEND_FAILED", message = ex.Message });
+        }
+    }
+
+    return await CompleteMobileLoginAsync(http, db, tokens, authSecurity, pendingSession, mobileAppUserId, mobile, appName, platform, apiKey, appStatus, request.DeviceName, request.AppVersion, assignedBranchesPayload);
+}).RequireRateLimiting("auth");
+
+app.MapPost("/api/mobile/verify-otp", async (HttpContext http, ConnectionFactory db, AuthTokenService tokens, AuthenticationSecurityService authSecurity, VerifyLoginOtpRequest request) =>
+{
+    try
+    {
+        var verified = await authSecurity.VerifyLoginChallengeAsync(request.ChallengeId, request.Code, http);
+        var session = verified.PendingSession;
+        if (!string.Equals(ReadAuthChannel(session), "mobile", StringComparison.OrdinalIgnoreCase))
+            return Results.BadRequest(new { ok = false, code = "WRONG_CHANNEL", message = "This verification belongs to a different sign-in flow. Sign in again from the mobile app." });
+
+        var mobileAppUserId = ReadMobileAppUserId(session);
+        await MarkMobileEmailVerifiedAsync(db, mobileAppUserId, session.Email, session.CompanyCode);
+        return await CompleteMobileLoginAsync(http, db, tokens, authSecurity, session, mobileAppUserId, null, null, null, null, null, null, null, null);
+    }
+    catch (InvalidOperationException ex)
+    {
+        return Results.BadRequest(new { ok = false, code = "OTP_INVALID", message = ex.Message });
+    }
+}).RequireRateLimiting("auth");
+
+app.MapPost("/api/mobile/resend-otp", async (HttpContext http, AuthenticationSecurityService authSecurity, ResendLoginOtpRequest request) =>
+{
+    try
+    {
+        var challenge = await authSecurity.ResendLoginChallengeAsync(request.ChallengeId, http);
+        return Results.Ok(new
+        {
+            ok = true,
+            requiresVerification = true,
+            challengeId = challenge.ChallengeId,
+            maskedEmail = challenge.MaskedEmail,
+            expiresInSeconds = challenge.ExpiresInSeconds,
+            deliveryStatus = challenge.Delivery.Message
+        });
+    }
+    catch (InvalidOperationException ex)
+    {
+        return Results.BadRequest(new { ok = false, code = "OTP_RESEND_FAILED", message = ex.Message });
+    }
 }).RequireRateLimiting("auth");
 
 app.MapGet("/api/mobile/me", async (HttpContext http, ConnectionFactory db, AuthTokenService tokens, TenantProvisioningService tenants) =>
@@ -1025,9 +1416,40 @@ WHERE u.CompanyCode=@CompanyCode AND LOWER(LTRIM(RTRIM(u.UserName))) = LOWER(LTR
     TenantInfo? tenantInfo = null;
     try { tenantInfo = await tenants.GetTenantAsync(session.CompanyCode); } catch { /* keep session values */ }
 
+    object[] branchesPayload = Array.Empty<object>();
+    try
+    {
+        if (!string.IsNullOrWhiteSpace(session.DatabaseName) && session.UserId > 0)
+        {
+            await using var tenantCon = await db.OpenTenantAsync(session.DatabaseName);
+            var (_, assigned) = await BranchAccessHelper.ResolveBranchesForUserAsync(tenantCon, session.UserId, IsCompanySecurityAdmin(session));
+            branchesPayload = BranchAccessHelper.ToPayload(assigned);
+        }
+    }
+    catch { /* omit branches on failure */ }
+
+    if (branchesPayload.Length == 0)
+    {
+        branchesPayload = BranchAccessHelper.ToPayload(new[]
+        {
+            new BranchAccessHelper.BranchInfo(
+                session.BranchId > 0 ? session.BranchId : session.StoreId,
+                string.IsNullOrWhiteSpace(session.BranchCode) ? "MAIN" : session.BranchCode,
+                string.IsNullOrWhiteSpace(session.BranchName) ? "Main Store" : session.BranchName,
+                true)
+        });
+    }
+
     return Results.Ok(new
     {
         ok = true,
+        allowMultipleBranches = session.AllowMultipleBranches,
+        showSelector = session.AllowMultipleBranches && branchesPayload.Length > 1,
+        storeId = session.StoreId,
+        branchId = session.BranchId,
+        branchCode = session.BranchCode,
+        branchName = session.BranchName,
+        branches = branchesPayload,
         company = new
         {
             companyCode = SqlRead.String(reader, "CompanyCode"),
@@ -1039,11 +1461,16 @@ WHERE u.CompanyCode=@CompanyCode AND LOWER(LTRIM(RTRIM(u.UserName))) = LOWER(LTR
         user = new
         {
             mobileAppUserId = Convert.ToInt64(reader["MobileAppUserId"]),
+            userId = session.UserId,
             userName = SqlRead.String(reader, "UserName"),
             displayName = SqlRead.String(reader, "DisplayName"),
             email = SqlRead.String(reader, "Email"),
             mobile = SqlRead.String(reader, "Mobile"),
-            roleName = SqlRead.String(reader, "RoleName")
+            roleName = SqlRead.String(reader, "RoleName"),
+            storeId = session.StoreId,
+            branchId = session.BranchId,
+            branchCode = session.BranchCode,
+            branchName = session.BranchName
         },
         app = new
         {
@@ -1071,7 +1498,7 @@ FROM CompanyMobileApps WHERE CompanyCode=@CompanyCode";
     var rows = await SqlList.ReadAsync(cmd);
     var appRow = rows.FirstOrDefault();
     if (appRow == null)
-        return Results.Json(new { ok = false, code = "COMPANY_APP_NOT_REGISTERED", message = "Mobile app is not registered for this company in PayNex." }, statusCode: StatusCodes.Status403Forbidden);
+        return Results.Json(new { ok = false, code = "COMPANY_APP_NOT_REGISTERED", message = "Mobile app is not registered for this company in InterNex." }, statusCode: StatusCodes.Status403Forbidden);
 
     object? Get(string key) =>
         appRow.TryGetValue(key, out var v) ? v :
@@ -1128,19 +1555,19 @@ app.MapPost("/api/mobile/refresh", async (HttpContext http, ConnectionFactory db
     }
 
     var refreshedSession = rotation.Session;
+    object[] branchesPayload = Array.Empty<object>();
     try
     {
-        var map = JsonSerializer.Deserialize<Dictionary<string, bool>>(refreshedSession.PermissionsJson ?? "{}", new JsonSerializerOptions { PropertyNameCaseInsensitive = true })
-            ?? new Dictionary<string, bool>(StringComparer.OrdinalIgnoreCase);
-        if (map.TryGetValue("mobile.access", out var mobileOk) && mobileOk &&
-            (refreshedSession.StoreId <= 0 || string.Equals(refreshedSession.BranchCode, "MOBILE", StringComparison.OrdinalIgnoreCase)))
+        var map = RolePermissionService.ParseBoolPermissionMap(refreshedSession.PermissionsJson);
+        if (map.TryGetValue("mobile.access", out var mobileOk) && mobileOk)
         {
             map["sales.createInvoice"] = true;
             map["sales.editInvoice"] = true;
             map["sales.postInvoice"] = true;
             map["sales.createReturn"] = true;
             map["finance.createExpense"] = true;
-            var storeId = refreshedSession.StoreId > 0 ? refreshedSession.StoreId : 1;
+            var storeId = refreshedSession.StoreId > 0 ? refreshedSession.StoreId : refreshedSession.BranchId;
+            var branchId = refreshedSession.BranchId > 0 ? refreshedSession.BranchId : storeId;
             var branchCode = string.IsNullOrWhiteSpace(refreshedSession.BranchCode) || refreshedSession.BranchCode == "MOBILE" ? "MAIN" : refreshedSession.BranchCode;
             var branchName = string.IsNullOrWhiteSpace(refreshedSession.BranchName) || refreshedSession.BranchName == "Mobile App" ? "Main Store" : refreshedSession.BranchName;
             var storeName = string.IsNullOrWhiteSpace(refreshedSession.StoreName) || refreshedSession.StoreName == "Mobile" ? branchName : refreshedSession.StoreName;
@@ -1148,51 +1575,73 @@ app.MapPost("/api/mobile/refresh", async (HttpContext http, ConnectionFactory db
             if (!string.IsNullOrWhiteSpace(refreshedSession.DatabaseName))
             {
                 await using var tenantCon = await db.OpenTenantAsync(refreshedSession.DatabaseName);
-                await using (var storeCmd = tenantCon.CreateCommand())
-                {
-                    storeCmd.CommandText = @"
-SELECT TOP 1 StoreId, ISNULL(StoreCode,'MAIN') StoreCode, ISNULL(StoreName,'Main Store') StoreName
-FROM Stores WHERE IsActive=1 ORDER BY ISNULL(IsMainBranch,0) DESC, StoreId";
-                    await using var storeReader = await storeCmd.ExecuteReaderAsync();
-                    if (await storeReader.ReadAsync())
-                    {
-                        storeId = Convert.ToInt32(storeReader["StoreId"]);
-                        branchCode = Convert.ToString(storeReader["StoreCode"]) ?? "MAIN";
-                        branchName = Convert.ToString(storeReader["StoreName"]) ?? "Main Store";
-                        storeName = branchName;
-                    }
-                }
+                await BranchAccessHelper.EnsureSchemaAsync(tenantCon);
+
+                // Remap to ERP user by email/username when possible (do not fall back to admin).
                 await using (var userCmd = tenantCon.CreateCommand())
                 {
                     userCmd.CommandText = @"
 SELECT TOP 1 UserId FROM Users
-WHERE IsActive=1 AND LOWER(LTRIM(RTRIM(UserName))) = LOWER(LTRIM(RTRIM(@UserName)))
-ORDER BY UserId";
+WHERE IsActive=1 AND (
+    (ISNULL(@Email,'') <> '' AND LOWER(LTRIM(RTRIM(ISNULL(Email,'')))) = LOWER(LTRIM(RTRIM(@Email))))
+    OR LOWER(LTRIM(RTRIM(UserName))) = LOWER(LTRIM(RTRIM(@UserName)))
+)
+ORDER BY CASE
+    WHEN ISNULL(@Email,'') <> '' AND LOWER(LTRIM(RTRIM(ISNULL(Email,'')))) = LOWER(LTRIM(RTRIM(@Email))) THEN 0
+    ELSE 1 END, UserId";
                     userCmd.Parameters.AddWithValue("@UserName", refreshedSession.UserName);
+                    userCmd.Parameters.AddWithValue("@Email", string.IsNullOrWhiteSpace(refreshedSession.Email) ? (object)DBNull.Value : NormalizeCloudEmail(refreshedSession.Email));
                     var mapped = await userCmd.ExecuteScalarAsync();
                     if (mapped != null && mapped != DBNull.Value) userId = Convert.ToInt32(mapped);
-                    else
-                    {
-                        await using var adminCmd = tenantCon.CreateCommand();
-                        adminCmd.CommandText = "SELECT TOP 1 UserId FROM Users WHERE IsActive=1 ORDER BY ISNULL(IsCompanySuperAdmin,0) DESC, UserId";
-                        var adminId = await adminCmd.ExecuteScalarAsync();
-                        if (adminId != null && adminId != DBNull.Value) userId = Convert.ToInt32(adminId);
-                    }
                 }
+
+                var isAdmin = IsCompanySecurityAdmin(refreshedSession with { UserId = userId });
+                var (preferred, assigned) = await BranchAccessHelper.ResolveBranchesForUserAsync(tenantCon, userId, isAdmin);
+                // Keep current branch if still assigned; otherwise move to resolved default.
+                var keepCurrent = assigned.Any(b => b.BranchId == branchId && branchId > 0);
+                if (!keepCurrent)
+                {
+                    storeId = preferred.BranchId;
+                    branchId = preferred.BranchId;
+                    branchCode = preferred.BranchCode;
+                    branchName = preferred.BranchName;
+                    storeName = preferred.BranchName;
+                }
+                else
+                {
+                    var current = assigned.First(b => b.BranchId == branchId);
+                    branchCode = current.BranchCode;
+                    branchName = current.BranchName;
+                    storeName = current.BranchName;
+                    storeId = branchId;
+                }
+                branchesPayload = BranchAccessHelper.ToPayload(assigned);
             }
             refreshedSession = refreshedSession with
             {
                 UserId = userId,
                 StoreId = storeId,
-                BranchId = storeId,
+                BranchId = branchId,
                 BranchCode = branchCode,
                 BranchName = branchName,
                 StoreName = storeName,
-                PermissionsJson = JsonSerializer.Serialize(map)
+                PermissionsJson = BuildMobilePermissionsJson(ReadMobileAppUserId(refreshedSession))
             };
         }
     }
     catch { /* keep original refresh session */ }
+
+    if (branchesPayload.Length == 0)
+    {
+        branchesPayload = BranchAccessHelper.ToPayload(new[]
+        {
+            new BranchAccessHelper.BranchInfo(
+                refreshedSession.BranchId > 0 ? refreshedSession.BranchId : refreshedSession.StoreId,
+                string.IsNullOrWhiteSpace(refreshedSession.BranchCode) ? "MAIN" : refreshedSession.BranchCode,
+                string.IsNullOrWhiteSpace(refreshedSession.BranchName) ? "Main Store" : refreshedSession.BranchName,
+                true)
+        });
+    }
 
     var accessToken = tokens.Create(refreshedSession);
     var refreshOut = rotation.NewToken.PlainToken;
@@ -1209,21 +1658,32 @@ ORDER BY UserId";
         refreshToken = refreshOut,
         authenticated = true,
         requiresVerification = false,
+        allowMultipleBranches = refreshedSession.AllowMultipleBranches,
+        showSelector = refreshedSession.AllowMultipleBranches && branchesPayload.Length > 1,
+        branches = branchesPayload,
+        storeId = refreshedSession.StoreId,
+        branchId = refreshedSession.BranchId,
+        branchCode = refreshedSession.BranchCode,
+        branchName = refreshedSession.BranchName,
         user = refreshedSession,
         expiresInMinutes = authSecurity.AccessTokenExpiryMinutes
     });
 }).RequireRateLimiting("auth");
 
-app.MapPost("/api/auth/login", async (HttpContext http, ConnectionFactory db, TenantProvisioningService tenants, SuperAdminService admins, PasswordService passwords, AuthTokenService tokens, AuthenticationSecurityService authSecurity, LoginRequest request) =>
+app.MapPost("/api/auth/login", async (HttpContext http, ConnectionFactory db, TenantProvisioningService tenants, SuperAdminService admins, PasswordService passwords, AuthTokenService tokens, AuthenticationSecurityService authSecurity, SubscriptionAccessService subscriptionAccess, LoginRequest request) =>
 {
     await EnsureMasterUserDirectorySchemaAsync(db);
+    var loginId = (request.UserName ?? string.Empty).Trim();
+    if (string.IsNullOrWhiteSpace(loginId))
+        loginId = (request.Email ?? string.Empty).Trim();
     var email = NormalizeCloudEmail(request.Email);
-    if (string.IsNullOrWhiteSpace(email) && !string.IsNullOrWhiteSpace(request.UserName) && request.UserName.Contains('@'))
-        email = NormalizeCloudEmail(request.UserName);
+    if (string.IsNullOrWhiteSpace(email) && loginId.Contains('@'))
+        email = NormalizeCloudEmail(loginId);
+    var userName = loginId;
 
     var ipAddress = http.Connection.RemoteIpAddress?.ToString() ?? "unknown";
     var userAgent = http.Request.Headers["User-Agent"].ToString();
-    var loginKey = string.IsNullOrWhiteSpace(email) ? (request.UserName ?? "unknown") : email;
+    var loginKey = string.IsNullOrWhiteSpace(email) ? (string.IsNullOrWhiteSpace(userName) ? "unknown" : userName) : email;
     var lockedUntil = await authSecurity.GetLockoutUntilAsync(loginKey, ipAddress);
     if (lockedUntil.HasValue)
         return Results.Json(new
@@ -1232,12 +1692,17 @@ app.MapPost("/api/auth/login", async (HttpContext http, ConnectionFactory db, Te
             lockedUntil = lockedUntil.Value
         }, statusCode: StatusCodes.Status429TooManyRequests);
 
-    if (IsPlatformOwnerEmail(email, tenants.Options))
+    var ownerLoginId = string.IsNullOrWhiteSpace(loginId) ? email : loginId;
+    var isOwnerLogin = IsPlatformOwnerEmail(email, tenants.Options)
+        || IsPlatformOwnerEmail(ownerLoginId, tenants.Options)
+        || string.Equals(ownerLoginId, tenants.Options.PlatformOwnerUserName, StringComparison.OrdinalIgnoreCase)
+        || string.Equals(ownerLoginId, tenants.Options.SuperAdminUserName, StringComparison.OrdinalIgnoreCase)
+        || string.Equals(ownerLoginId, tenants.Options.SuperAdminEmail, StringComparison.OrdinalIgnoreCase);
+    if (isOwnerLogin)
     {
-        var ownerAdmin = await admins.LoginAsync(new SuperAdminLoginRequest(email, request.Password, null));
+        var ownerAdmin = await admins.LoginAsync(new SuperAdminLoginRequest(ownerLoginId, request.Password, null));
         if (ownerAdmin == null)
-            return await LoginFailureAsync(authSecurity, loginKey, ipAddress, userAgent, "Invalid email or password.");
-
+            return await LoginFailureAsync(authSecurity, loginKey, ipAddress, userAgent, "Invalid username or password.");
         await authSecurity.ResetFailedLoginAsync(loginKey, ipAddress);
         var ownerPermissions = JsonSerializer.Serialize(new Dictionary<string, bool>(StringComparer.OrdinalIgnoreCase)
         {
@@ -1251,42 +1716,77 @@ app.MapPost("/api/auth/login", async (HttpContext http, ConnectionFactory db, Te
             ["system.generalConfiguration"] = true
         });
         var ownerSession = new UserSession(
-            "PAYNEX", "PayNex Cloud ERP", string.Empty,
+            "PAYNEX", "InterNex Cloud ERP", string.Empty,
             ownerAdmin.SuperAdminUserId, ownerAdmin.UserName, ownerAdmin.DisplayName,
-            0, "Platform Super Admin", 0, "PayNex Platform", NormalizeTenantEnvironment(request.Environment),
-            0, "PLATFORM", "PayNex Platform", false, ownerAdmin.Email, true, true, ownerPermissions, string.Empty);
+            0, "Platform Super Admin", 0, "InterNex Platform", NormalizeTenantEnvironment(request.Environment),
+            0, "PLATFORM", "InterNex Platform", false, ownerAdmin.Email, true, true, ownerPermissions, string.Empty);
         // Platform owner always requires OTP on every login (no trusted-device skip).
         return await StartOrCompleteLoginAsync(http, db, tokens, authSecurity, ownerSession, forceOtp: true);
     }
 
-    // Modern login: email + password only. Company and database are resolved from CentralUserDirectory.
-    if (!string.IsNullOrWhiteSpace(email))
+    // Login by user name or email. Company and database are resolved from CentralUserDirectory.
+    if (!string.IsNullOrWhiteSpace(email) || !string.IsNullOrWhiteSpace(userName))
     {
         await using var master = await db.OpenMasterAsync();
         await using var find = master.CreateCommand();
-        find.CommandText = @"
-SELECT TOP 1 DirectoryUserId,TenantId,CompanyCode,UserId,Email,UserName,DisplayName,PasswordHash,EmailVerified,RoleName,IsCompanySuperAdmin,IsActive
+        if (!string.IsNullOrWhiteSpace(email))
+        {
+            find.CommandText = @"
+SELECT DirectoryUserId,TenantId,CompanyCode,UserId,Email,UserName,DisplayName,PasswordHash,EmailVerified,RoleName,IsCompanySuperAdmin,IsActive
 FROM CentralUserDirectory
 WHERE Email=@Email AND IsActive=1
 ORDER BY IsDefaultCompany DESC, DirectoryUserId";
-        find.Parameters.AddWithValue("@Email", email);
-        await using var d = await find.ExecuteReaderAsync();
-        if (!await d.ReadAsync())
-            return await LoginFailureAsync(authSecurity, loginKey, ipAddress, userAgent, "Invalid email or password.");
-        var directoryHash = SqlRead.String(d, "PasswordHash");
-        if (!passwords.Verify(request.Password, directoryHash))
-            return await LoginFailureAsync(authSecurity, loginKey, ipAddress, userAgent, "Invalid email or password.");
-        var directoryEmailVerified = SqlRead.Bool(d, "EmailVerified");
-        var companyCode = SqlRead.String(d, "CompanyCode");
-        var directoryUserId = SqlRead.Int(d, "UserId");
-        var directoryIsCompanySuperAdmin = SqlRead.Bool(d, "IsCompanySuperAdmin");
-        await d.CloseAsync();
+            find.Parameters.AddWithValue("@Email", email);
+        }
+        else
+        {
+            find.CommandText = @"
+SELECT DirectoryUserId,TenantId,CompanyCode,UserId,Email,UserName,DisplayName,PasswordHash,EmailVerified,RoleName,IsCompanySuperAdmin,IsActive
+FROM CentralUserDirectory
+WHERE LOWER(LTRIM(RTRIM(UserName))) = LOWER(LTRIM(RTRIM(@UserName))) AND IsActive=1
+ORDER BY IsDefaultCompany DESC, DirectoryUserId";
+            find.Parameters.AddWithValue("@UserName", userName);
+        }
+
+        var candidates = new List<(string CompanyCode, int UserId, string Email, string UserName, string DisplayName, string PasswordHash, bool EmailVerified, bool IsCompanySuperAdmin)>();
+        await using (var d = await find.ExecuteReaderAsync())
+        {
+            while (await d.ReadAsync())
+            {
+                candidates.Add((
+                    SqlRead.String(d, "CompanyCode"),
+                    SqlRead.Int(d, "UserId"),
+                    NormalizeCloudEmail(SqlRead.String(d, "Email")),
+                    SqlRead.String(d, "UserName"),
+                    SqlRead.String(d, "DisplayName"),
+                    SqlRead.String(d, "PasswordHash"),
+                    SqlRead.Bool(d, "EmailVerified"),
+                    SqlRead.Bool(d, "IsCompanySuperAdmin")));
+            }
+        }
+
+        if (candidates.Count == 0)
+            return await LoginFailureAsync(authSecurity, loginKey, ipAddress, userAgent, "Invalid username or password.");
+        var matches = candidates.Where(item => passwords.Verify(request.Password, item.PasswordHash)).ToList();
+        if (matches.Count == 0)
+            return await LoginFailureAsync(authSecurity, loginKey, ipAddress, userAgent, "Invalid username or password.");
+        if (matches.Count > 1)
+            return Results.BadRequest(new { message = "This username and password match more than one company. Ask the InterNex owner to set a unique password." });
+
+        var directory = matches[0];
+        var directoryEmailVerified = directory.EmailVerified;
+        var companyCode = directory.CompanyCode;
+        var directoryUserId = directory.UserId;
+        var directoryIsCompanySuperAdmin = directory.IsCompanySuperAdmin;
+        if (string.IsNullOrWhiteSpace(email)) email = directory.Email;
 
         var tenant = await db.GetTenantByCodeAsync(companyCode);
         if (tenant == null) return Results.BadRequest(new { message = "Company record not found for this user." });
-        if (!tenant.Status.Equals("Active", StringComparison.OrdinalIgnoreCase)) return Results.BadRequest(new { message = "Company is inactive. Please contact PayNex Super Admin." });
-        if (!tenant.LicenseStatus.Equals("Active", StringComparison.OrdinalIgnoreCase) && !tenant.LicenseStatus.Equals("Trial", StringComparison.OrdinalIgnoreCase)) return Results.BadRequest(new { message = "Company license is not active. Please renew subscription." });
-        if (tenant.ExpiryDate.HasValue && tenant.ExpiryDate.Value.Date < DateTime.Today) return Results.BadRequest(new { message = "Company subscription/trial has expired. Please renew subscription." });
+        if (!tenant.Status.Equals("Active", StringComparison.OrdinalIgnoreCase)) return Results.BadRequest(new { message = "Company is inactive. Please contact InterNex Super Admin." });
+        var access = subscriptionAccess.Evaluate(tenant);
+        await subscriptionAccess.SyncTenantLicenseStatusAsync(tenant.CompanyCode, access);
+        if (!access.CanLogin)
+            return Results.BadRequest(new { message = subscriptionAccess.LoginBlockedMessage(access) });
 
         var environmentName = NormalizeTenantEnvironment(request.Environment);
         string databaseName;
@@ -1303,11 +1803,12 @@ SELECT TOP 1 u.UserId,u.UserName,u.DisplayName,ISNULL(u.Email,'') Email,u.Passwo
 FROM Users u
 INNER JOIN Roles r ON r.RoleId=u.RoleId
 INNER JOIN Stores s ON s.StoreId=u.StoreId
-WHERE (u.UserId=@UserId OR LOWER(ISNULL(u.Email,''))=@Email) AND u.IsActive=1";
+WHERE (u.UserId=@UserId OR LOWER(ISNULL(u.Email,''))=@Email OR LOWER(LTRIM(RTRIM(u.UserName)))=@UserName) AND u.IsActive=1";
         cmd.Parameters.AddWithValue("@UserId", directoryUserId);
-        cmd.Parameters.AddWithValue("@Email", email);
+        cmd.Parameters.AddWithValue("@Email", string.IsNullOrWhiteSpace(email) ? (object)DBNull.Value : email);
+        cmd.Parameters.AddWithValue("@UserName", directory.UserName);
         await using var r = await cmd.ExecuteReaderAsync();
-        if (!await r.ReadAsync()) return Results.BadRequest(new { message = "This email is not active in the assigned company database." });
+        if (!await r.ReadAsync()) return Results.BadRequest(new { message = "This user is not active in the assigned company database." });
 
         var tenantUserId = SqlRead.Int(r, "UserId");
         var tenantUserName = SqlRead.String(r, "UserName");
@@ -1333,11 +1834,11 @@ WHERE (u.UserId=@UserId OR LOWER(ISNULL(u.Email,''))=@Email) AND u.IsActive=1";
     if (tenantLegacy == null)
         return await LoginFailureAsync(authSecurity, loginKey, ipAddress, userAgent, "Invalid email or password.");
     if (!tenantLegacy.Status.Equals("Active", StringComparison.OrdinalIgnoreCase))
-        return Results.BadRequest(new { message = "Company is inactive. Please contact PayNex Super Admin." });
-    if (!tenantLegacy.LicenseStatus.Equals("Active", StringComparison.OrdinalIgnoreCase) && !tenantLegacy.LicenseStatus.Equals("Trial", StringComparison.OrdinalIgnoreCase))
-        return Results.BadRequest(new { message = "Company license is not active. Please renew subscription." });
-    if (tenantLegacy.ExpiryDate.HasValue && tenantLegacy.ExpiryDate.Value.Date < DateTime.Today)
-        return Results.BadRequest(new { message = "Company subscription/trial has expired. Please renew subscription." });
+        return Results.BadRequest(new { message = "Company is inactive. Please contact InterNex Super Admin." });
+    var legacyAccess = subscriptionAccess.Evaluate(tenantLegacy);
+    await subscriptionAccess.SyncTenantLicenseStatusAsync(tenantLegacy.CompanyCode, legacyAccess);
+    if (!legacyAccess.CanLogin)
+        return Results.BadRequest(new { message = subscriptionAccess.LoginBlockedMessage(legacyAccess) });
 
     var legacyEnvironment = NormalizeTenantEnvironment(request.Environment);
     string legacyDatabaseName;
@@ -1437,7 +1938,61 @@ app.MapPost("/api/auth/refresh", async (HttpContext http, ConnectionFactory db, 
     return Results.Ok(new AuthenticatedLoginResponse(accessToken, rotation.Session));
 }).RequireRateLimiting("auth");
 
-app.MapGet("/api/me", (HttpContext http, AuthTokenService tokens) => ApiAuth.RequireUser(http, tokens) is { } user ? Results.Ok(user) : Results.Unauthorized());
+app.MapGet("/api/me", async (HttpContext http, AuthTokenService tokens, ConnectionFactory db) =>
+{
+    var user = ApiAuth.RequireUser(http, tokens);
+    if (user == null) return Results.Unauthorized();
+    var sandboxReady = false;
+    if (!user.IsPlatformOwner || !string.IsNullOrWhiteSpace(user.DatabaseName))
+    {
+        var code = user.CompanyCode;
+        if (!string.IsNullOrWhiteSpace(code) && !string.Equals(code, "PAYNEX", StringComparison.OrdinalIgnoreCase))
+        {
+            var tenant = await db.GetTenantByCodeAsync(code);
+            sandboxReady = tenant != null && tenant.AllowSandbox && !string.IsNullOrWhiteSpace(tenant.SandboxDatabaseName);
+        }
+    }
+    return Results.Ok(user with { SandboxReady = sandboxReady });
+});
+
+app.MapGet("/api/me/subscription", async (HttpContext http, AuthTokenService tokens, ConnectionFactory db, SubscriptionAccessService subscriptionAccess) =>
+{
+    var user = ApiAuth.RequireUser(http, tokens);
+    if (user == null) return Results.Unauthorized();
+    if (user.IsPlatformOwner)
+    {
+        return Results.Ok(new
+        {
+            expired = false,
+            showRenewBanner = false,
+            canPost = true,
+            canLogin = true,
+            daysPast = 0,
+            phase = SubscriptionAccessPhase.Active.ToString(),
+            expiryDate = (string?)null,
+            renewMessage = (string?)null,
+            licenseStatus = "Active",
+        });
+    }
+
+    var tenant = await db.GetTenantByCodeAsync(user.CompanyCode);
+    var access = subscriptionAccess.Evaluate(tenant);
+    if (access.IsExpired)
+        await subscriptionAccess.SyncTenantLicenseStatusAsync(user.CompanyCode, access);
+
+    return Results.Ok(new
+    {
+        expired = access.IsExpired,
+        showRenewBanner = access.ShouldShowRenewBanner,
+        canPost = access.CanPost,
+        canLogin = access.CanLogin,
+        daysPast = access.DaysPast,
+        phase = access.Phase.ToString(),
+        expiryDate = access.ExpiryDate?.ToString("yyyy-MM-dd"),
+        renewMessage = access.ShouldShowRenewBanner ? subscriptionAccess.RenewBannerMessage(access) : null,
+        licenseStatus = access.LicenseStatus,
+    });
+});
 
 app.MapGet("/api/currencies", async (HttpContext http, ConnectionFactory db, AuthTokenService tokens) =>
 {
@@ -1667,15 +2222,23 @@ WHERE (u.UserName=@UserName OR LOWER(ISNULL(u.Email,''))=@Email) AND u.IsActive=
 app.MapGet("/api/branches/context", async (HttpContext http, ConnectionFactory db, AuthTokenService tokens) =>
 {
     var user = ApiAuth.RequireUser(http, tokens); if (user == null) return Results.Unauthorized();
-    if (user.IsPlatformOwner) return Results.Ok(new { allowMultipleBranches = false, showSelector = false, currentBranchId = 0, currentBranchCode = "PLATFORM", currentBranchName = "PayNex Platform", branches = Array.Empty<object>() });
+    if (user.IsPlatformOwner) return Results.Ok(new { allowMultipleBranches = false, showSelector = false, currentBranchId = 0, currentBranchCode = "PLATFORM", currentBranchName = "InterNex Platform", branches = Array.Empty<object>() });
     var tenant = await db.GetTenantByCodeAsync(user.CompanyCode);
     await using var con = await db.OpenTenantAsync(user.DatabaseName);
     await EnsureTenantBranchSchemaAsync(con);
-    var branches = await ReadBranchesAsync(con);
-    if (!IsCompanySecurityAdmin(user)) branches = await FilterBranchesForUserAsync(con, user.UserId, branches);
+    var isAdmin = IsCompanySecurityAdmin(user);
+    var (_, assigned) = await BranchAccessHelper.ResolveBranchesForUserAsync(con, user.UserId, isAdmin);
     var allow = tenant?.AllowMultipleBranches == true;
-    var current = branches.FirstOrDefault(x => Convert.ToInt32(x["BranchId"] ?? 0) == user.BranchId) ?? branches.FirstOrDefault() ?? new Dictionary<string, object?>();
-    return Results.Ok(new { allowMultipleBranches = allow, showSelector = allow && branches.Count > 1, currentBranchId = current.GetValueOrDefault("BranchId"), currentBranchCode = current.GetValueOrDefault("BranchCode"), currentBranchName = current.GetValueOrDefault("BranchName"), branches });
+    var current = assigned.FirstOrDefault(x => x.BranchId == user.BranchId) ?? assigned.FirstOrDefault();
+    return Results.Ok(new
+    {
+        allowMultipleBranches = allow,
+        showSelector = allow && assigned.Count > 1,
+        currentBranchId = current?.BranchId ?? user.BranchId,
+        currentBranchCode = current?.BranchCode ?? user.BranchCode,
+        currentBranchName = current?.BranchName ?? user.BranchName,
+        branches = BranchAccessHelper.ToPayload(assigned)
+    });
 });
 
 app.MapGet("/api/branches", async (HttpContext http, ConnectionFactory db, AuthTokenService tokens) =>
@@ -1685,8 +2248,8 @@ app.MapGet("/api/branches", async (HttpContext http, ConnectionFactory db, AuthT
     var tenant = await db.GetTenantByCodeAsync(user.CompanyCode);
     await using var con = await db.OpenTenantAsync(user.DatabaseName);
     await EnsureTenantBranchSchemaAsync(con);
-    var branches = await ReadBranchesAsync(con);
-    if (!IsCompanySecurityAdmin(user)) branches = await FilterBranchesForUserAsync(con, user.UserId, branches);
+    // Full store rows for branch admin UI; still filtered to User Card assignments for non-admins.
+    var branches = await BranchAccessHelper.FilterBranchesForUserAsync(con, user.UserId, await ReadBranchesAsync(con), IsCompanySecurityAdmin(user));
     return Results.Ok(new { allowMultipleBranches = tenant?.AllowMultipleBranches == true, branches });
 });
 
@@ -1699,16 +2262,28 @@ app.MapPost("/api/branches/switch", async (HttpContext http, ConnectionFactory d
     await using var con = await db.OpenTenantAsync(user.DatabaseName);
     await EnsureTenantBranchSchemaAsync(con);
     await EnsureTenantUserSecuritySchemaAsync(con);
-    if (!IsCompanySecurityAdmin(user) && !await IsBranchAssignedToUserAsync(con, user.UserId, request.BranchId)) return Results.BadRequest(new { message = "This branch is not assigned to the logged-in user." });
+    if (!await BranchAccessHelper.IsBranchAssignedToUserAsync(con, user.UserId, request.BranchId, IsCompanySecurityAdmin(user)))
+        return Results.BadRequest(new { message = "This branch is not assigned to the logged-in user." });
     var branch = await GetBranchByIdAsync(con, request.BranchId);
     if (branch.BranchId <= 0) return Results.BadRequest(new { message = "Selected branch is not active or does not exist." });
     var session = user with { StoreId = branch.BranchId, StoreName = branch.BranchName, BranchId = branch.BranchId, BranchCode = branch.BranchCode, BranchName = branch.BranchName, AllowMultipleBranches = tenant.AllowMultipleBranches };
     var token = tokens.Create(session);
-    var refresh = await authSecurity.ReplaceRefreshTokenAsync(http.Request.Cookies["paynex_refresh"], session);
+    var currentRefresh = http.Request.Cookies["paynex_refresh"];
+    if (string.IsNullOrWhiteSpace(currentRefresh) && !string.IsNullOrWhiteSpace(request.RefreshToken))
+        currentRefresh = request.RefreshToken;
+    var refresh = await authSecurity.ReplaceRefreshTokenAsync(currentRefresh, session);
     SetTenantAuthCookie(http, token, authSecurity.AccessTokenExpiryMinutes);
     SetRefreshTokenCookie(http, refresh.PlainToken, refresh.ExpiresAt);
     SetCsrfCookie(http);
-    return Results.Ok(new { token, user = session });
+    var (_, assigned) = await BranchAccessHelper.ResolveBranchesForUserAsync(con, session.UserId, IsCompanySecurityAdmin(session));
+    return Results.Ok(new
+    {
+        token,
+        refreshToken = refresh.PlainToken,
+        user = session,
+        allowMultipleBranches = tenant.AllowMultipleBranches,
+        branches = BranchAccessHelper.ToPayload(assigned)
+    });
 });
 
 app.MapPost("/api/branches", async (HttpContext http, ConnectionFactory db, AuthTokenService tokens, BranchUpsertRequest request) =>
@@ -1897,11 +2472,13 @@ app.MapGet("/api/users/{id:int}/photo", async (HttpContext http, ConnectionFacto
     return Results.File((byte[])reader[0], Convert.ToString(reader[1]) ?? "image/png");
 });
 
-app.MapPost("/api/users/{id:int}/reset-password", async (HttpContext http, ConnectionFactory db, AuthTokenService tokens, PasswordService passwords, AuthenticationSecurityService authSecurity, int id, ResetUserPasswordRequest request) =>
+app.MapPost("/api/users/{id:int}/reset-password", async (HttpContext http, ConnectionFactory db, AuthTokenService tokens, PasswordService passwords, AuthenticationSecurityService authSecurity, CredentialUniquenessService uniqueness, int id, ResetUserPasswordRequest request) =>
 {
     var user = ApiAuth.RequireUser(http, tokens); if (user == null) return Results.Unauthorized();
     if (!CanUserManagePermission(user, "users.resetPassword")) return Results.BadRequest(new { message = "Reset Password permission is required." });
     if (!IsAcceptablePassword(request.NewPassword)) return Results.BadRequest(new { message = "Password must be at least 8 characters and include upper-case, lower-case, and a number." });
+    var passwordConflict = await uniqueness.FindConflictMessageAsync(request.NewPassword, user.CompanyCode, id);
+    if (!string.IsNullOrWhiteSpace(passwordConflict)) return Results.BadRequest(new { message = passwordConflict });
     await using var con = await db.OpenTenantAsync(user.DatabaseName);
     await EnsureTenantUserSecuritySchemaAsync(con);
     var hash = passwords.Hash(request.NewPassword);
@@ -1936,7 +2513,7 @@ SELECT TOP 1 ISNULL(u.Email,'') Email,ISNULL(u.EmailVerified,0) EmailVerified,u.
     return Results.Ok(new { passwordChanged = true, message = "Password reset successfully. Existing sessions and trusted devices were revoked. Copy it from the one-time password receipt before leaving this page." });
 });
 
-app.MapPost("/api/users", async (HttpContext http, ConnectionFactory db, AuthTokenService tokens, PasswordService passwords, AuthenticationSecurityService authSecurity, UserUpsertRequest request) =>
+app.MapPost("/api/users", async (HttpContext http, ConnectionFactory db, AuthTokenService tokens, PasswordService passwords, AuthenticationSecurityService authSecurity, CredentialUniquenessService uniqueness, UserUpsertRequest request) =>
 {
     var user = ApiAuth.RequireUser(http, tokens); if (user == null) return Results.Unauthorized();
     var isNewUser = request.UserId <= 0;
@@ -1948,10 +2525,19 @@ app.MapPost("/api/users", async (HttpContext http, ConnectionFactory db, AuthTok
     if (request.IsCompanySuperAdmin && !CanUserManagePermission(user, "users.promoteCompanySuperAdmin")) return Results.BadRequest(new { message = "Promote to Company Super Admin permission is required." });
     var email = NormalizeCloudEmail(request.Email);
     var displayName = string.IsNullOrWhiteSpace(request.DisplayName) ? (request.FullName ?? string.Empty).Trim() : request.DisplayName.Trim();
-    if (string.IsNullOrWhiteSpace(email)) return Results.BadRequest(new { message = "A valid email address is mandatory." });
+    if (string.IsNullOrWhiteSpace(email) || !RequestValidationService.IsGmailAddress(email))
+        return Results.BadRequest(new { message = "Company users must use a real Gmail address (@gmail.com). Login OTP is sent to that inbox." });
     if (string.IsNullOrWhiteSpace(displayName)) return Results.BadRequest(new { message = "Full name is required." });
     if (request.UserId <= 0 && string.IsNullOrWhiteSpace(request.Password)) return Results.BadRequest(new { message = "Password is required for new user." });
     if (!string.IsNullOrWhiteSpace(request.Password) && !IsAcceptablePassword(request.Password)) return Results.BadRequest(new { message = "Password must be at least 8 characters and include upper-case, lower-case, and a number." });
+    if (!string.IsNullOrWhiteSpace(request.Password))
+    {
+        var passwordConflict = await uniqueness.FindConflictMessageAsync(request.Password, user.CompanyCode, request.UserId);
+        if (!string.IsNullOrWhiteSpace(passwordConflict)) return Results.BadRequest(new { message = passwordConflict });
+    }
+
+    var emailConflict = await FindGlobalEmailConflictAsync(db, email, forCompanyCode: user.CompanyCode, excludeTenantUserId: request.UserId > 0 ? request.UserId : null);
+    if (!string.IsNullOrWhiteSpace(emailConflict)) return Results.BadRequest(new { message = emailConflict });
 
     await EnsureMasterUserDirectorySchemaAsync(db);
     await using var con = await db.OpenTenantAsync(user.DatabaseName);
@@ -1970,7 +2556,8 @@ app.MapPost("/api/users", async (HttpContext http, ConnectionFactory db, AuthTok
     var emailChanged = !string.Equals(existingEmail, email, StringComparison.OrdinalIgnoreCase);
     var emailVerified = !isNewUser && !emailChanged && existingVerified;
 
-    var userName = string.IsNullOrWhiteSpace(request.UserName) ? email : request.UserName.Trim();
+    // Login id is the email (UserName kept in sync for compatibility).
+    var userName = email;
     var passwordHash = string.IsNullOrWhiteSpace(request.Password) ? string.Empty : passwords.Hash(request.Password);
     var profileImage = request.RemoveProfileImage ? null : ParseUserProfileImage(request.ProfileImageBase64);
     int id;
@@ -2006,6 +2593,15 @@ END";
         cmd.Parameters.Add("@ProfileImage", SqlDbType.VarBinary, -1).Value = profileImage.HasValue ? profileImage.Value.Bytes : (object)DBNull.Value;
         cmd.Parameters.Add("@ProfileImageContentType", SqlDbType.NVarChar, 80).Value = profileImage.HasValue ? profileImage.Value.ContentType : (object)DBNull.Value;
         id = Convert.ToInt32(await cmd.ExecuteScalarAsync());
+    }
+
+    if (!string.IsNullOrWhiteSpace(request.Password))
+    {
+        await using var visible = con.CreateCommand();
+        visible.CommandText = "UPDATE Users SET OwnerVisiblePassword=@Pwd WHERE UserId=@UserId";
+        visible.Parameters.AddWithValue("@Pwd", request.Password.Trim());
+        visible.Parameters.AddWithValue("@UserId", id);
+        await visible.ExecuteNonQueryAsync();
     }
 
     string roleName = "";
@@ -2049,14 +2645,16 @@ END";
     });
 });
 
-app.MapGet("/api/products", async (HttpContext http, ConnectionFactory db, AuthTokenService tokens, string? term, bool? includeInactive) =>
+app.MapGet("/api/products", async (HttpContext http, ConnectionFactory db, AuthTokenService tokens, string? term, bool? includeInactive, int? skip, int? take) =>
 {
     var user = ApiAuth.RequireUser(http, tokens); if (user == null) return Results.Unauthorized();
     await using var con = await db.OpenTenantAsync(user.DatabaseName);
     await EnsureProductDefaultsColumnsAsync(con);
     await using var cmd = con.CreateCommand();
+    var pageSize = Math.Clamp(take ?? 500, 1, 500);
+    var offset = Math.Max(skip ?? 0, 0);
     cmd.CommandText = @"
-SELECT TOP 500 p.ProductId,p.ProductCode,p.Barcode,p.ProductName,
+SELECT p.ProductId,p.ProductCode,p.Barcode,p.ProductName,
        ISNULL(c.CategoryName,'') CategoryName,ISNULL(b.BrandName,'') BrandName,
        p.UnitOfMeasure,p.PurchasePrice,p.SalePrice,p.RetailPrice,
        ISNULL(t.TaxPercent,0) TaxPercent,ISNULL(t.IsInclusive,0) TaxInclusive,
@@ -2067,12 +2665,15 @@ LEFT JOIN Brands b ON b.BrandId=p.BrandId
 LEFT JOIN TaxGroups t ON t.TaxGroupId=p.TaxGroupId
 LEFT JOIN StockByStore sb ON sb.ProductId=p.ProductId AND sb.StoreId=@StoreId
 WHERE (@IncludeInactive=1 OR p.IsActive=1) AND (@Term='' OR p.ProductName LIKE @Like OR p.Barcode LIKE @Like OR p.ProductCode LIKE @Like)
-ORDER BY p.ProductName";
+ORDER BY p.ProductName, p.ProductId
+OFFSET @Skip ROWS FETCH NEXT @Take ROWS ONLY";
     var search = (term ?? string.Empty).Trim();
     cmd.Parameters.AddWithValue("@Term", search);
     cmd.Parameters.AddWithValue("@Like", "%" + search + "%");
     cmd.Parameters.AddWithValue("@StoreId", user.StoreId);
     cmd.Parameters.AddWithValue("@IncludeInactive", includeInactive == true ? 1 : 0);
+    cmd.Parameters.AddWithValue("@Skip", offset);
+    cmd.Parameters.AddWithValue("@Take", pageSize);
     return Results.Ok(await SqlList.ReadAsync(cmd));
 });
 
@@ -2122,6 +2723,22 @@ WHERE ProductCode LIKE 'ITM-%' OR ProductCode LIKE 'ITEM-%';";
     return Results.Ok(new { productCode = $"ITM-{next:000000}" });
 });
 
+app.MapGet("/api/customers/next-code", async (HttpContext http, ConnectionFactory db, AuthTokenService tokens) =>
+{
+    var user = ApiAuth.RequireUser(http, tokens); if (user == null) return Results.Unauthorized();
+    await using var con = await db.OpenTenantAsync(user.DatabaseName);
+    var code = await AllocateNextCustomerCodeAsync(con);
+    return Results.Ok(new { customerCode = code });
+});
+
+app.MapGet("/api/vendors/next-code", async (HttpContext http, ConnectionFactory db, AuthTokenService tokens) =>
+{
+    var user = ApiAuth.RequireUser(http, tokens); if (user == null) return Results.Unauthorized();
+    await using var con = await db.OpenTenantAsync(user.DatabaseName);
+    var code = await AllocateNextVendorCodeAsync(con);
+    return Results.Ok(new { vendorCode = code });
+});
+
 app.MapGet("/api/products/{id:int}/image", async (HttpContext http, ConnectionFactory db, AuthTokenService tokens, int id) =>
 {
     var user = ApiAuth.RequireUser(http, tokens);
@@ -2132,10 +2749,40 @@ app.MapGet("/api/products/{id:int}/image", async (HttpContext http, ConnectionFa
     cmd.Parameters.AddWithValue("@Id", id);
     var data = await cmd.ExecuteScalarAsync();
     if (data == null || data == DBNull.Value) return Results.NotFound();
-    return Results.File((byte[])data, "image/png");
+    var bytes = (byte[])data;
+    return Results.File(bytes, ImageOptimizationService.DetectRasterContentType(bytes));
 });
 
-app.MapPost("/api/products", async (HttpContext http, ConnectionFactory db, AuthTokenService tokens, ProductUpsertRequest p) =>
+app.MapPost("/api/products/optimize-image", async (HttpContext http, AuthTokenService tokens, IImageOptimizationService optimizer, OptimizeItemImageRequest request) =>
+{
+    var user = ApiAuth.RequireUser(http, tokens); if (user == null) return Results.Unauthorized();
+    if (!HasSessionPermission(user, "inventory.createItems") && !HasSessionPermission(user, "inventory.editItems"))
+        return Results.BadRequest(new { message = "Create or Edit Items permission is required." });
+    try
+    {
+        var source = ImageOptimizationService.DecodeBase64Payload(request.ImageBase64);
+        var result = await optimizer.OptimizeItemImageAsync(source, http.RequestAborted);
+        return Results.Ok(new
+        {
+            imageBase64 = Convert.ToBase64String(result.Data),
+            contentType = result.ContentType,
+            originalSizeBytes = result.OriginalSizeBytes,
+            optimizedSizeBytes = result.OptimizedSizeBytes,
+            width = result.Width,
+            height = result.Height,
+            quality = result.Quality,
+            wasResized = result.WasResized,
+            message = result.SummaryMessage,
+            details = result.Details
+        });
+    }
+    catch (ImageOptimizationException ex)
+    {
+        return Results.BadRequest(new { message = ex.Message });
+    }
+});
+
+app.MapPost("/api/products", async (HttpContext http, ConnectionFactory db, AuthTokenService tokens, IImageOptimizationService optimizer, ProductUpsertRequest p) =>
 {
     var user = ApiAuth.RequireUser(http, tokens); if (user == null) return Results.Unauthorized();
     if (p.ProductId <= 0 && !HasSessionPermission(user, "inventory.createItems")) return Results.BadRequest(new { message = "Create Items permission is required." });
@@ -2145,9 +2792,16 @@ app.MapPost("/api/products", async (HttpContext http, ConnectionFactory db, Auth
     byte[]? imageBytes = null;
     if (!string.IsNullOrWhiteSpace(p.ImageBase64))
     {
-        var raw = p.ImageBase64.Contains(',') ? p.ImageBase64[(p.ImageBase64.IndexOf(',') + 1)..] : p.ImageBase64;
-        try { imageBytes = Convert.FromBase64String(raw); }
-        catch { return Results.BadRequest(new { message = "Invalid item image file." }); }
+        try
+        {
+            var source = ImageOptimizationService.DecodeBase64Payload(p.ImageBase64);
+            var optimized = await optimizer.OptimizeItemImageAsync(source, http.RequestAborted);
+            imageBytes = optimized.Data;
+        }
+        catch (ImageOptimizationException ex)
+        {
+            return Results.BadRequest(new { message = ex.Message });
+        }
     }
     await using var con = await db.OpenTenantAsync(user.DatabaseName);
     await using var cmd = con.CreateCommand();
@@ -2200,17 +2854,23 @@ WHEN NOT MATCHED THEN INSERT(StoreId,ProductId,Quantity,AverageCost) VALUES(@Sto
     return Results.Ok(new { productId = id });
 });
 
-app.MapGet("/api/customers", async (HttpContext http, ConnectionFactory db, AuthTokenService tokens, string? term, bool? includeInactive) =>
+app.MapGet("/api/customers", async (HttpContext http, ConnectionFactory db, AuthTokenService tokens, string? term, bool? includeInactive, int? skip, int? take) =>
 {
     var user = ApiAuth.RequireUser(http, tokens); if (user == null) return Results.Unauthorized();
     await using var con = await db.OpenTenantAsync(user.DatabaseName);
     await using var cmd = con.CreateCommand();
-    cmd.CommandText = @"SELECT TOP 500 CustomerId,CustomerCode,CustomerName,Mobile,Email,AddressLine,CreditLimit,LoyaltyPoints,OpeningBalance,CurrentBalance,IsActive
-FROM Customers WHERE (@IncludeInactive=1 OR IsActive=1) AND (@Term='' OR CustomerName LIKE @Like OR CustomerCode LIKE @Like OR Mobile LIKE @Like) ORDER BY CustomerName";
+    var pageSize = Math.Clamp(take ?? 500, 1, 500);
+    var offset = Math.Max(skip ?? 0, 0);
+    cmd.CommandText = @"SELECT CustomerId,CustomerCode,CustomerName,Mobile,Email,AddressLine,CreditLimit,LoyaltyPoints,OpeningBalance,CurrentBalance,IsActive
+FROM Customers WHERE (@IncludeInactive=1 OR IsActive=1) AND (@Term='' OR CustomerName LIKE @Like OR CustomerCode LIKE @Like OR Mobile LIKE @Like)
+ORDER BY CustomerName, CustomerId
+OFFSET @Skip ROWS FETCH NEXT @Take ROWS ONLY";
     var search = (term ?? string.Empty).Trim();
     cmd.Parameters.AddWithValue("@Term", search);
     cmd.Parameters.AddWithValue("@Like", "%" + search + "%");
     cmd.Parameters.AddWithValue("@IncludeInactive", includeInactive == true ? 1 : 0);
+    cmd.Parameters.AddWithValue("@Skip", offset);
+    cmd.Parameters.AddWithValue("@Take", pageSize);
     return Results.Ok(await SqlList.ReadAsync(cmd));
 });
 
@@ -2229,8 +2889,60 @@ app.MapPost("/api/customers", async (HttpContext http, ConnectionFactory db, Aut
 {
     var user = ApiAuth.RequireUser(http, tokens); if (user == null) return Results.Unauthorized();
     await using var con = await db.OpenTenantAsync(user.DatabaseName);
-    await using var cmd = con.CreateCommand();
-    cmd.CommandText = @"
+    var customerCode = (c.CustomerCode ?? string.Empty).Trim();
+    var customerName = (c.CustomerName ?? string.Empty).Trim();
+    if (string.IsNullOrWhiteSpace(customerName))
+        return Results.BadRequest(new { message = "Customer name is required." });
+
+    if (c.CustomerId <= 0)
+    {
+        if (string.IsNullOrWhiteSpace(customerCode))
+            customerCode = await AllocateNextCustomerCodeAsync(con);
+        else
+        {
+            await using var dup = con.CreateCommand();
+            dup.CommandText = "SELECT TOP 1 CustomerCode FROM Customers WHERE UPPER(LTRIM(RTRIM(CustomerCode)))=UPPER(@Code)";
+            dup.Parameters.AddWithValue("@Code", customerCode);
+            var existing = await dup.ExecuteScalarAsync();
+            if (existing != null && existing != DBNull.Value)
+            {
+                var suggested = await AllocateNextCustomerCodeAsync(con);
+                return Results.Json(new
+                {
+                    code = "DUPLICATE_CODE",
+                    message = $"Customer code '{customerCode}' already exists in InterNex.",
+                    suggestedCode = suggested
+                }, statusCode: StatusCodes.Status409Conflict);
+            }
+        }
+    }
+    else if (string.IsNullOrWhiteSpace(customerCode))
+    {
+        return Results.BadRequest(new { message = "Customer code is required." });
+    }
+    else
+    {
+        await using var dupEdit = con.CreateCommand();
+        dupEdit.CommandText = "SELECT TOP 1 CustomerId FROM Customers WHERE UPPER(LTRIM(RTRIM(CustomerCode)))=UPPER(@Code) AND CustomerId<>@Id";
+        dupEdit.Parameters.AddWithValue("@Code", customerCode);
+        dupEdit.Parameters.AddWithValue("@Id", c.CustomerId);
+        var otherId = await dupEdit.ExecuteScalarAsync();
+        if (otherId != null && otherId != DBNull.Value)
+        {
+            var suggested = await AllocateNextCustomerCodeAsync(con);
+            return Results.Json(new
+            {
+                code = "DUPLICATE_CODE",
+                message = $"Customer code '{customerCode}' already exists in InterNex.",
+                suggestedCode = suggested
+            }, statusCode: StatusCodes.Status409Conflict);
+        }
+    }
+
+    try
+    {
+        await using var cmd = con.CreateCommand();
+        cmd.CommandText = @"
 IF EXISTS(SELECT 1 FROM Customers WHERE CustomerId=@CustomerId)
 BEGIN
  IF EXISTS(SELECT 1 FROM Customers WHERE CustomerId=@CustomerId AND CustomerCode='WALKIN')
@@ -2245,18 +2957,27 @@ BEGIN
  INSERT INTO Customers(CustomerCode,CustomerName,Mobile,Email,AddressLine,CreditLimit,LoyaltyPoints,OpeningBalance,CurrentBalance,IsActive)
  OUTPUT INSERTED.CustomerId VALUES(@CustomerCode,@CustomerName,@Mobile,@Email,@AddressLine,@CreditLimit,0,@OpeningBalance,@OpeningBalance,@IsActive);
 END";
-    var customerCode = (c.CustomerCode ?? string.Empty).Trim();
-    var customerName = (c.CustomerName ?? string.Empty).Trim();
-    cmd.Parameters.AddWithValue("@CustomerId", c.CustomerId);
-    cmd.Parameters.AddWithValue("@CustomerCode", customerCode);
-    cmd.Parameters.AddWithValue("@CustomerName", customerName);
-    cmd.Parameters.AddWithValue("@Mobile", c.Mobile ?? "");
-    cmd.Parameters.AddWithValue("@Email", c.Email ?? "");
-    cmd.Parameters.AddWithValue("@AddressLine", c.AddressLine ?? "");
-    cmd.Parameters.AddWithValue("@CreditLimit", c.CreditLimit);
-    cmd.Parameters.AddWithValue("@OpeningBalance", c.OpeningBalance);
-    cmd.Parameters.AddWithValue("@IsActive", c.IsActive);
-    return Results.Ok(new { customerId = Convert.ToInt32(await cmd.ExecuteScalarAsync()) });
+        cmd.Parameters.AddWithValue("@CustomerId", c.CustomerId);
+        cmd.Parameters.AddWithValue("@CustomerCode", customerCode);
+        cmd.Parameters.AddWithValue("@CustomerName", customerName);
+        cmd.Parameters.AddWithValue("@Mobile", c.Mobile ?? "");
+        cmd.Parameters.AddWithValue("@Email", c.Email ?? "");
+        cmd.Parameters.AddWithValue("@AddressLine", c.AddressLine ?? "");
+        cmd.Parameters.AddWithValue("@CreditLimit", c.CreditLimit);
+        cmd.Parameters.AddWithValue("@OpeningBalance", c.OpeningBalance);
+        cmd.Parameters.AddWithValue("@IsActive", c.IsActive);
+        return Results.Ok(new { customerId = Convert.ToInt32(await cmd.ExecuteScalarAsync()), customerCode });
+    }
+    catch (SqlException ex) when (ex.Number is 2627 or 2601)
+    {
+        var suggested = await AllocateNextCustomerCodeAsync(con);
+        return Results.Json(new
+        {
+            code = "DUPLICATE_CODE",
+            message = $"Customer code '{customerCode}' already exists in InterNex.",
+            suggestedCode = suggested
+        }, statusCode: StatusCodes.Status409Conflict);
+    }
 });
 
 app.MapGet("/api/vendors", async (HttpContext http, ConnectionFactory db, AuthTokenService tokens, string? term, bool? includeInactive) =>
@@ -2288,8 +3009,60 @@ app.MapPost("/api/vendors", async (HttpContext http, ConnectionFactory db, AuthT
 {
     var user = ApiAuth.RequireUser(http, tokens); if (user == null) return Results.Unauthorized();
     await using var con = await db.OpenTenantAsync(user.DatabaseName);
-    await using var cmd = con.CreateCommand();
-    cmd.CommandText = @"
+    var vendorCode = (v.VendorCode ?? string.Empty).Trim();
+    var vendorName = (v.VendorName ?? string.Empty).Trim();
+    if (string.IsNullOrWhiteSpace(vendorName))
+        return Results.BadRequest(new { message = "Vendor name is required." });
+
+    if (v.VendorId <= 0)
+    {
+        if (string.IsNullOrWhiteSpace(vendorCode))
+            vendorCode = await AllocateNextVendorCodeAsync(con);
+        else
+        {
+            await using var dup = con.CreateCommand();
+            dup.CommandText = "SELECT TOP 1 VendorCode FROM Vendors WHERE UPPER(LTRIM(RTRIM(VendorCode)))=UPPER(@Code)";
+            dup.Parameters.AddWithValue("@Code", vendorCode);
+            var existing = await dup.ExecuteScalarAsync();
+            if (existing != null && existing != DBNull.Value)
+            {
+                var suggested = await AllocateNextVendorCodeAsync(con);
+                return Results.Json(new
+                {
+                    code = "DUPLICATE_CODE",
+                    message = $"Vendor code '{vendorCode}' already exists in InterNex.",
+                    suggestedCode = suggested
+                }, statusCode: StatusCodes.Status409Conflict);
+            }
+        }
+    }
+    else if (string.IsNullOrWhiteSpace(vendorCode))
+    {
+        return Results.BadRequest(new { message = "Vendor code is required." });
+    }
+    else
+    {
+        await using var dupEdit = con.CreateCommand();
+        dupEdit.CommandText = "SELECT TOP 1 VendorId FROM Vendors WHERE UPPER(LTRIM(RTRIM(VendorCode)))=UPPER(@Code) AND VendorId<>@Id";
+        dupEdit.Parameters.AddWithValue("@Code", vendorCode);
+        dupEdit.Parameters.AddWithValue("@Id", v.VendorId);
+        var otherId = await dupEdit.ExecuteScalarAsync();
+        if (otherId != null && otherId != DBNull.Value)
+        {
+            var suggested = await AllocateNextVendorCodeAsync(con);
+            return Results.Json(new
+            {
+                code = "DUPLICATE_CODE",
+                message = $"Vendor code '{vendorCode}' already exists in InterNex.",
+                suggestedCode = suggested
+            }, statusCode: StatusCodes.Status409Conflict);
+        }
+    }
+
+    try
+    {
+        await using var cmd = con.CreateCommand();
+        cmd.CommandText = @"
 IF EXISTS(SELECT 1 FROM Vendors WHERE VendorId=@VendorId)
 BEGIN
  UPDATE Vendors SET VendorCode=@VendorCode,VendorName=@VendorName,ContactPerson=@ContactPerson,Mobile=@Mobile,Email=@Email,AddressLine=@AddressLine,PaymentTerms=@PaymentTerms,IsActive=@IsActive WHERE VendorId=@VendorId;
@@ -2300,30 +3073,70 @@ BEGIN
  INSERT INTO Vendors(VendorCode,VendorName,ContactPerson,Mobile,Email,AddressLine,PaymentTerms,OpeningBalance,CurrentBalance,IsActive)
  OUTPUT INSERTED.VendorId VALUES(@VendorCode,@VendorName,@ContactPerson,@Mobile,@Email,@AddressLine,@PaymentTerms,@OpeningBalance,@OpeningBalance,@IsActive);
 END";
-    cmd.Parameters.AddWithValue("@VendorId", v.VendorId);
-    cmd.Parameters.AddWithValue("@VendorCode", v.VendorCode.Trim());
-    cmd.Parameters.AddWithValue("@VendorName", v.VendorName.Trim());
-    cmd.Parameters.AddWithValue("@ContactPerson", v.ContactPerson ?? "");
-    cmd.Parameters.AddWithValue("@Mobile", v.Mobile ?? "");
-    cmd.Parameters.AddWithValue("@Email", v.Email ?? "");
-    cmd.Parameters.AddWithValue("@AddressLine", v.AddressLine ?? "");
-    cmd.Parameters.AddWithValue("@PaymentTerms", v.PaymentTerms ?? "");
-    cmd.Parameters.AddWithValue("@OpeningBalance", v.OpeningBalance);
-    cmd.Parameters.AddWithValue("@IsActive", v.IsActive);
-    return Results.Ok(new { vendorId = Convert.ToInt32(await cmd.ExecuteScalarAsync()) });
+        cmd.Parameters.AddWithValue("@VendorId", v.VendorId);
+        cmd.Parameters.AddWithValue("@VendorCode", vendorCode);
+        cmd.Parameters.AddWithValue("@VendorName", vendorName);
+        cmd.Parameters.AddWithValue("@ContactPerson", v.ContactPerson ?? "");
+        cmd.Parameters.AddWithValue("@Mobile", v.Mobile ?? "");
+        cmd.Parameters.AddWithValue("@Email", v.Email ?? "");
+        cmd.Parameters.AddWithValue("@AddressLine", v.AddressLine ?? "");
+        cmd.Parameters.AddWithValue("@PaymentTerms", v.PaymentTerms ?? "");
+        cmd.Parameters.AddWithValue("@OpeningBalance", v.OpeningBalance);
+        cmd.Parameters.AddWithValue("@IsActive", v.IsActive);
+        return Results.Ok(new { vendorId = Convert.ToInt32(await cmd.ExecuteScalarAsync()), vendorCode });
+    }
+    catch (SqlException ex) when (ex.Number is 2627 or 2601)
+    {
+        var suggested = await AllocateNextVendorCodeAsync(con);
+        return Results.Json(new
+        {
+            code = "DUPLICATE_CODE",
+            message = $"Vendor code '{vendorCode}' already exists in InterNex.",
+            suggestedCode = suggested
+        }, statusCode: StatusCodes.Status409Conflict);
+    }
 });
 
 app.MapPost("/api/pos/sales", async (HttpContext http, ConnectionFactory db, AuthTokenService tokens, SalePostRequest request) =>
 {
     var user = ApiAuth.RequireUser(http, tokens); if (user == null) return Results.Unauthorized();
+    if (!HasSessionPermission(user, "sales.createInvoice") && !HasSessionPermission(user, "sales.postInvoice"))
+        return Results.Json(new { message = "Create Invoice or Post Invoice permission is required." }, statusCode: StatusCodes.Status403Forbidden);
     if (request.Lines.Count == 0) return Results.BadRequest(new { message = "Cart is empty." });
+    user = await PosSessionHelper.EnsureTenantPosSessionAsync(db, user);
     await using var con = await db.OpenTenantAsync(user.DatabaseName);
+    await EnsureShiftManagementSchemaAsync(con);
+    await DesktopIdempotency.EnsureSchemaAsync(con);
     await using var tran = (SqlTransaction)await con.BeginTransactionAsync();
     try
     {
-        var shiftId = await PosSql.EnsureOpenShiftAsync(con, tran, user);
+        var clientDocumentId = DesktopIdempotency.NormalizeClientDocumentId(request.ClientDocumentId);
+        if (!string.IsNullOrWhiteSpace(clientDocumentId))
+        {
+            var existingSale = await DesktopIdempotency.FindPosSaleAsync(con, tran, clientDocumentId);
+            if (existingSale != null)
+            {
+                await tran.CommitAsync();
+                return Results.Ok(new
+                {
+                    saleId = existingSale.SaleId,
+                    invoiceNo = existingSale.InvoiceNo,
+                    grandTotal = existingSale.GrandTotal,
+                    paid = existingSale.Paid,
+                    change = existingSale.Change,
+                    lines = existingSale.Lines,
+                    duplicate = true,
+                    message = "Desktop sale was already posted. Existing InterNex document returned."
+                });
+            }
+        }
+        var shiftId = await PosSql.EnsureOpenShiftAsync(con, tran, user, request.ShiftId > 0 ? request.ShiftId : null);
+        var terminalId = await PosSql.EnsureTerminalIdAsync(con, tran, user.StoreId);
+        var applicationSource = ResolveApplicationSource(http, user);
+        if (applicationSource == "Cloud" && !string.IsNullOrWhiteSpace(clientDocumentId))
+            applicationSource = "Desktop";
         var invoiceNo = await PosSql.NextNumberAsync(con, tran, "POS");
-        var customerId = await PosSql.GetWalkInCustomerIdAsync(con, tran);
+        var customerId = await ResolvePosCustomerIdAsync(con, tran, request.CustomerId);
         var saleLines = new List<CalculatedSaleLine>();
         foreach (var line in request.Lines)
         {
@@ -2337,19 +3150,22 @@ app.MapPost("/api/pos/sales", async (HttpContext http, ConnectionFactory db, Aut
         var discount = saleLines.Sum(x => x.DiscountAmount);
         var tax = saleLines.Sum(x => x.TaxAmount);
         var grandTotal = saleLines.Sum(x => x.LineTotal);
-        var payments = request.Payments.Count == 0 ? new List<SalePaymentRequest>{ new(1, "Cash", grandTotal, "") } : request.Payments;
+        var payments = request.Payments.Count == 0
+            ? new List<SalePaymentRequest>{ new(0, "Cash", grandTotal, "") }
+            : request.Payments;
         var paid = payments.Sum(x => x.Amount);
         if (paid < grandTotal) throw new InvalidOperationException("Paid amount is less than grand total.");
         var change = paid - grandTotal;
 
         int saleId;
         await using (var cmd = new SqlCommand(@"
-INSERT INTO SalesHeader(InvoiceNo,StoreId,BranchCode,TerminalId,ShiftId,UserId,CustomerId,SubTotal,DiscountAmount,TaxAmount,GrandTotal,PaidAmount,ChangeAmount,Status,Remarks)
-OUTPUT INSERTED.SaleId VALUES(@InvoiceNo,@StoreId,@BranchCode,(SELECT TOP 1 TerminalId FROM Terminals WHERE StoreId=@StoreId AND IsActive=1 ORDER BY TerminalId),@ShiftId,@UserId,@CustomerId,@SubTotal,@DiscountAmount,@TaxAmount,@GrandTotal,@PaidAmount,@ChangeAmount,'Posted',@Remarks)", con, tran))
+INSERT INTO SalesHeader(InvoiceNo,StoreId,BranchCode,TerminalId,ShiftId,UserId,CustomerId,SubTotal,DiscountAmount,TaxAmount,GrandTotal,PaidAmount,ChangeAmount,Status,Remarks,ExternalClientDocumentId,ApplicationSource)
+OUTPUT INSERTED.SaleId VALUES(@InvoiceNo,@StoreId,@BranchCode,@TerminalId,@ShiftId,@UserId,@CustomerId,@SubTotal,@DiscountAmount,@TaxAmount,@GrandTotal,@PaidAmount,@ChangeAmount,'Posted',@Remarks,@ClientDocumentId,@ApplicationSource)", con, tran))
         {
             cmd.Parameters.AddWithValue("@InvoiceNo", invoiceNo);
             cmd.Parameters.AddWithValue("@StoreId", user.StoreId);
             cmd.Parameters.AddWithValue("@BranchCode", user.BranchCode);
+            cmd.Parameters.AddWithValue("@TerminalId", terminalId);
             cmd.Parameters.AddWithValue("@ShiftId", shiftId);
             cmd.Parameters.AddWithValue("@UserId", user.UserId);
             cmd.Parameters.AddWithValue("@CustomerId", customerId);
@@ -2360,6 +3176,8 @@ OUTPUT INSERTED.SaleId VALUES(@InvoiceNo,@StoreId,@BranchCode,(SELECT TOP 1 Term
             cmd.Parameters.AddWithValue("@PaidAmount", paid);
             cmd.Parameters.AddWithValue("@ChangeAmount", change);
             cmd.Parameters.AddWithValue("@Remarks", request.Remarks ?? "");
+            cmd.Parameters.AddWithValue("@ClientDocumentId", string.IsNullOrWhiteSpace(clientDocumentId) ? DBNull.Value : clientDocumentId);
+            cmd.Parameters.AddWithValue("@ApplicationSource", applicationSource);
             saleId = Convert.ToInt32(await cmd.ExecuteScalarAsync());
         }
 
@@ -2369,9 +3187,11 @@ OUTPUT INSERTED.SaleId VALUES(@InvoiceNo,@StoreId,@BranchCode,(SELECT TOP 1 Term
         }
         foreach (var pay in payments.Where(x => x.Amount > 0))
         {
+            var paymentMethodId = await PosSql.ResolvePaymentMethodIdAsync(
+                con, tran, pay.PaymentMethodId, pay.PaymentMethodName);
             await using var cmd = new SqlCommand("INSERT INTO PaymentLines(SaleId,PaymentMethodId,Amount,ReferenceNo) VALUES(@SaleId,@PaymentMethodId,@Amount,@ReferenceNo)", con, tran);
             cmd.Parameters.AddWithValue("@SaleId", saleId);
-            cmd.Parameters.AddWithValue("@PaymentMethodId", pay.PaymentMethodId <= 0 ? 1 : pay.PaymentMethodId);
+            cmd.Parameters.AddWithValue("@PaymentMethodId", paymentMethodId);
             cmd.Parameters.AddWithValue("@Amount", pay.Amount);
             cmd.Parameters.AddWithValue("@ReferenceNo", pay.ReferenceNo ?? "");
             await cmd.ExecuteNonQueryAsync();
@@ -2397,7 +3217,12 @@ VALUES(@CustomerId,CAST(GETDATE() AS DATE),'POS Sale',@InvoiceNo,@CreditAmount,0
     catch (Exception ex)
     {
         await tran.RollbackAsync();
-        return Results.BadRequest(new { message = ex.Message });
+        var sqlEx = ex as Microsoft.Data.SqlClient.SqlException
+            ?? ex.InnerException as Microsoft.Data.SqlClient.SqlException;
+        var message = sqlEx is { Number: 547 }
+            ? PosSql.FormatPosForeignKeyError(sqlEx)
+            : ex.Message;
+        return Results.BadRequest(new { message });
     }
 });
 
@@ -2406,10 +3231,31 @@ app.MapPost("/api/purchases", async (HttpContext http, ConnectionFactory db, Aut
     var user = ApiAuth.RequireUser(http, tokens); if (user == null) return Results.Unauthorized();
     if (request.VendorId <= 0) return Results.BadRequest(new { message = "Vendor is required." });
     if (request.Lines.Count == 0) return Results.BadRequest(new { message = "Purchase lines are required." });
+    user = await PosSessionHelper.EnsureTenantPosSessionAsync(db, user);
     await using var con = await db.OpenTenantAsync(user.DatabaseName);
+    await DesktopIdempotency.EnsureSchemaAsync(con);
     await using var tran = (SqlTransaction)await con.BeginTransactionAsync();
     try
     {
+        var clientDocumentId = DesktopIdempotency.NormalizeClientDocumentId(request.ClientDocumentId);
+        if (!string.IsNullOrWhiteSpace(clientDocumentId))
+        {
+            var existingPurchase = await DesktopIdempotency.FindPurchaseInvoiceAsync(con, tran, clientDocumentId);
+            if (existingPurchase != null)
+            {
+                await tran.CommitAsync();
+                return Results.Ok(new
+                {
+                    purchaseInvoiceId = existingPurchase.PurchaseInvoiceId,
+                    invoiceNo = existingPurchase.InvoiceNo,
+                    grandTotal = existingPurchase.GrandTotal,
+                    paid = existingPurchase.PaidAmount,
+                    balance = existingPurchase.BalanceAmount,
+                    duplicate = true,
+                    message = "Purchase was already posted. Existing InterNex document returned."
+                });
+            }
+        }
         var subTotal = request.Lines.Sum(x => x.Quantity * x.UnitCost);
         var taxAmount = request.Lines.Sum(x => Math.Round((x.Quantity * x.UnitCost) * x.TaxPercent / 100m, 2));
         var grandTotal = subTotal + taxAmount;
@@ -2448,8 +3294,8 @@ DELETE FROM PurchaseInvoiceLines WHERE PurchaseInvoiceId=@Id;", con, tran);
         {
             invoiceNo = await PosSql.NextNumberAsync(con, tran, "PURCHASE_INVOICE");
             await using var cmd = new SqlCommand(@"
-INSERT INTO PurchaseInvoiceHeader(InvoiceNo,VendorId,InvoiceDate,VendorInvoiceNo,StoreId,BranchCode,UserId,SubTotal,DiscountAmount,TaxAmount,GrandTotal,PaidAmount,BalanceAmount,Status,Remarks)
-OUTPUT INSERTED.PurchaseInvoiceId VALUES(@InvoiceNo,@VendorId,@InvoiceDate,@VendorInvoiceNo,@StoreId,@BranchCode,@UserId,@SubTotal,0,@TaxAmount,@GrandTotal,@PaidAmount,@Balance,'Posted',@Remarks)", con, tran);
+INSERT INTO PurchaseInvoiceHeader(InvoiceNo,VendorId,InvoiceDate,VendorInvoiceNo,StoreId,BranchCode,UserId,SubTotal,DiscountAmount,TaxAmount,GrandTotal,PaidAmount,BalanceAmount,Status,Remarks,ExternalClientDocumentId)
+OUTPUT INSERTED.PurchaseInvoiceId VALUES(@InvoiceNo,@VendorId,@InvoiceDate,@VendorInvoiceNo,@StoreId,@BranchCode,@UserId,@SubTotal,0,@TaxAmount,@GrandTotal,@PaidAmount,@Balance,'Posted',@Remarks,@ClientDocumentId)", con, tran);
             cmd.Parameters.AddWithValue("@InvoiceNo", invoiceNo);
             cmd.Parameters.AddWithValue("@VendorId", request.VendorId);
             cmd.Parameters.AddWithValue("@InvoiceDate", request.InvoiceDate.Date);
@@ -2463,6 +3309,7 @@ OUTPUT INSERTED.PurchaseInvoiceId VALUES(@InvoiceNo,@VendorId,@InvoiceDate,@Vend
             cmd.Parameters.AddWithValue("@PaidAmount", paid);
             cmd.Parameters.AddWithValue("@Balance", balance);
             cmd.Parameters.AddWithValue("@Remarks", request.Remarks ?? "");
+            cmd.Parameters.AddWithValue("@ClientDocumentId", string.IsNullOrWhiteSpace(clientDocumentId) ? DBNull.Value : clientDocumentId);
             id = Convert.ToInt32(await cmd.ExecuteScalarAsync());
         }
         foreach (var l in request.Lines)
@@ -2656,14 +3503,25 @@ app.MapGet("/api/shifts/current", async (HttpContext http, ConnectionFactory db,
 {
     var user = ApiAuth.RequireUser(http, tokens); if (user == null) return Results.Unauthorized();
     await using var con = await db.OpenTenantAsync(user.DatabaseName);
+    await EnsureShiftManagementSchemaAsync(con);
+    bool userWiseShift = true;
+    await using (var settingsCmd = new SqlCommand("SELECT TOP 1 ISNULL(UserWiseShift,1) UserWiseShift FROM ShiftManagementSettings WHERE SettingId=1", con))
+    {
+        var obj = await settingsCmd.ExecuteScalarAsync();
+        if (obj != null && obj != DBNull.Value) userWiseShift = Convert.ToBoolean(obj);
+    }
     await using var cmd = con.CreateCommand();
     cmd.CommandText = @"
 SELECT TOP 1 s.ShiftId,s.StoreId,s.TerminalId,s.UserId,s.OpeningCash,
-ISNULL(s.ExpectedCash, s.OpeningCash + ISNULL((SELECT SUM(pl.Amount) FROM PaymentLines pl INNER JOIN SalesHeader sh ON sh.SaleId=pl.SaleId INNER JOIN PaymentMethods pm ON pm.PaymentMethodId=pl.PaymentMethodId WHERE sh.ShiftId=s.ShiftId AND pm.PaymentMethodName='Cash'),0) + ISNULL((SELECT SUM(CASE WHEN EntryType='Cash In' THEN Amount WHEN EntryType='Cash Out' THEN -Amount ELSE 0 END) FROM CashDrawerLedger WHERE ShiftId=s.ShiftId),0)) ExpectedCash,
+ISNULL(s.ExpectedCash, s.OpeningCash
+ + ISNULL((SELECT SUM(pl.Amount) FROM PaymentLines pl INNER JOIN SalesHeader sh ON sh.SaleId=pl.SaleId INNER JOIN PaymentMethods pm ON pm.PaymentMethodId=pl.PaymentMethodId WHERE sh.ShiftId=s.ShiftId AND sh.Status='Posted' AND pm.PaymentMethodName='Cash'),0)
+ - ISNULL((SELECT SUM(RefundAmount) FROM ReturnHeader WHERE ShiftId=s.ShiftId AND Status='Posted'),0)
+ + ISNULL((SELECT SUM(CASE WHEN EntryType='Cash In' THEN Amount WHEN EntryType='Cash Out' THEN -Amount ELSE 0 END) FROM CashDrawerLedger WHERE ShiftId=s.ShiftId),0)) ExpectedCash,
 ISNULL(s.ClosingCash,0) ClosingCash,ISNULL(s.DifferenceAmount,0) DifferenceAmount,s.Status,s.OpenedAt,s.ClosedAt
-FROM Shifts s WHERE s.StoreId=@StoreId AND s.UserId=@UserId AND s.Status='Open' ORDER BY s.ShiftId DESC";
+FROM Shifts s WHERE s.StoreId=@StoreId AND s.Status='Open' AND (@UserWiseShift=0 OR s.UserId=@UserId) ORDER BY s.ShiftId DESC";
     cmd.Parameters.AddWithValue("@StoreId", user.StoreId);
     cmd.Parameters.AddWithValue("@UserId", user.UserId);
+    cmd.Parameters.AddWithValue("@UserWiseShift", userWiseShift ? 1 : 0);
     var list = await SqlList.ReadAsync(cmd);
     return list.Count == 0 ? Results.NotFound(new { message = "No open shift." }) : Results.Ok(list[0]);
 });
@@ -2672,10 +3530,17 @@ app.MapPost("/api/shifts/open", async (HttpContext http, ConnectionFactory db, A
 {
     var user = ApiAuth.RequireUser(http, tokens); if (user == null) return Results.Unauthorized();
     await using var con = await db.OpenTenantAsync(user.DatabaseName);
+    await EnsureShiftManagementSchemaAsync(con);
+    bool userWiseShift = true;
+    await using (var settingsCmd = new SqlCommand("SELECT TOP 1 ISNULL(UserWiseShift,1) UserWiseShift FROM ShiftManagementSettings WHERE SettingId=1", con))
+    {
+        var obj = await settingsCmd.ExecuteScalarAsync();
+        if (obj != null && obj != DBNull.Value) userWiseShift = Convert.ToBoolean(obj);
+    }
     await using var cmd = con.CreateCommand();
     cmd.CommandText = @"
-IF EXISTS(SELECT 1 FROM Shifts WHERE StoreId=@StoreId AND UserId=@UserId AND Status='Open')
- SELECT TOP 1 ShiftId FROM Shifts WHERE StoreId=@StoreId AND UserId=@UserId AND Status='Open' ORDER BY ShiftId DESC;
+IF EXISTS(SELECT 1 FROM Shifts WHERE StoreId=@StoreId AND Status='Open' AND (@UserWiseShift=0 OR UserId=@UserId))
+ SELECT TOP 1 ShiftId FROM Shifts WHERE StoreId=@StoreId AND Status='Open' AND (@UserWiseShift=0 OR UserId=@UserId) ORDER BY ShiftId DESC;
 ELSE
 BEGIN
  DECLARE @ResolvedTerminalId INT=(SELECT TOP 1 TerminalId FROM Terminals WHERE StoreId=@StoreId AND IsActive=1 ORDER BY TerminalId);
@@ -2688,6 +3553,7 @@ BEGIN
 END;";
     cmd.Parameters.AddWithValue("@StoreId", user.StoreId);
     cmd.Parameters.AddWithValue("@BranchCode", user.BranchCode);
+    cmd.Parameters.AddWithValue("@UserWiseShift", userWiseShift ? 1 : 0);
     cmd.Parameters.AddWithValue("@TerminalId", request.TerminalId <= 0 ? 1 : request.TerminalId);
     cmd.Parameters.AddWithValue("@UserId", user.UserId);
     cmd.Parameters.AddWithValue("@OpeningCash", request.OpeningCash < 0 ? 0 : request.OpeningCash);
@@ -2699,22 +3565,383 @@ app.MapPost("/api/shifts/close", async (HttpContext http, ConnectionFactory db, 
 {
     var user = ApiAuth.RequireUser(http, tokens); if (user == null) return Results.Unauthorized();
     await using var con = await db.OpenTenantAsync(user.DatabaseName);
+    await EnsureShiftManagementSchemaAsync(con);
+    bool userWiseShift = true;
+    await using (var settingsCmd = new SqlCommand("SELECT TOP 1 ISNULL(UserWiseShift,1) UserWiseShift FROM ShiftManagementSettings WHERE SettingId=1", con))
+    {
+        var obj = await settingsCmd.ExecuteScalarAsync();
+        if (obj != null && obj != DBNull.Value) userWiseShift = Convert.ToBoolean(obj);
+    }
     await using var cmd = con.CreateCommand();
     cmd.CommandText = @"
-DECLARE @ShiftId INT = (SELECT TOP 1 ShiftId FROM Shifts WHERE StoreId=@StoreId AND UserId=@UserId AND Status='Open' ORDER BY ShiftId DESC);
+DECLARE @ShiftId INT = (SELECT TOP 1 ShiftId FROM Shifts WHERE StoreId=@StoreId AND Status='Open' AND (@UserWiseShift=0 OR UserId=@UserId) ORDER BY ShiftId DESC);
 IF @ShiftId IS NULL THROW 50001, 'No open shift found.', 1;
 DECLARE @Expected DECIMAL(18,2) = (
  SELECT OpeningCash +
- ISNULL((SELECT SUM(pl.Amount) FROM PaymentLines pl INNER JOIN SalesHeader sh ON sh.SaleId=pl.SaleId INNER JOIN PaymentMethods pm ON pm.PaymentMethodId=pl.PaymentMethodId WHERE sh.ShiftId=@ShiftId AND pm.PaymentMethodName='Cash'),0) +
+ ISNULL((SELECT SUM(pl.Amount) FROM PaymentLines pl INNER JOIN SalesHeader sh ON sh.SaleId=pl.SaleId INNER JOIN PaymentMethods pm ON pm.PaymentMethodId=pl.PaymentMethodId WHERE sh.ShiftId=@ShiftId AND sh.Status='Posted' AND pm.PaymentMethodName='Cash'),0) -
+ ISNULL((SELECT SUM(RefundAmount) FROM ReturnHeader WHERE ShiftId=@ShiftId AND Status='Posted'),0) +
  ISNULL((SELECT SUM(CASE WHEN EntryType='Cash In' THEN Amount WHEN EntryType='Cash Out' THEN -Amount ELSE 0 END) FROM CashDrawerLedger WHERE ShiftId=@ShiftId),0)
  FROM Shifts WHERE ShiftId=@ShiftId);
 UPDATE Shifts SET ExpectedCash=@Expected,ClosingCash=@ClosingCash,DifferenceAmount=@ClosingCash-@Expected,Status='Closed',ClosedAt=SYSUTCDATETIME(),ClosingRemarks=@Remarks WHERE ShiftId=@ShiftId;
 SELECT @ShiftId ShiftId,@Expected ExpectedCash,@ClosingCash ClosingCash,@ClosingCash-@Expected DifferenceAmount;";
     cmd.Parameters.AddWithValue("@StoreId", user.StoreId);
     cmd.Parameters.AddWithValue("@UserId", user.UserId);
+    cmd.Parameters.AddWithValue("@UserWiseShift", userWiseShift ? 1 : 0);
     cmd.Parameters.AddWithValue("@ClosingCash", request.ClosingCash < 0 ? 0 : request.ClosingCash);
     cmd.Parameters.AddWithValue("@Remarks", request.Remarks ?? "");
     return Results.Ok(await SqlList.ReadSingleAsync(cmd));
+});
+
+app.MapGet("/api/shifts/settings", async (HttpContext http, ConnectionFactory db, AuthTokenService tokens) =>
+{
+    var user = ApiAuth.RequireUser(http, tokens); if (user == null) return Results.Unauthorized();
+    await using var con = await db.OpenTenantAsync(user.DatabaseName);
+    await EnsureShiftManagementSchemaAsync(con);
+
+    await using var cmd = con.CreateCommand();
+    cmd.CommandText = @"
+SELECT TOP 1
+    ISNULL(EnableShiftManagement,0) EnableShiftManagement,
+    ISNULL(EnableShiftManagement,0) EnableShift,
+    ISNULL(UserWiseShift,1) UserWiseShift
+FROM ShiftManagementSettings WHERE SettingId=1";
+    var settings = await SqlList.ReadSingleAsync(cmd);
+
+    bool userWiseShift = true;
+    if (settings.TryGetValue("UserWiseShift", out var uw) && uw != null && uw != DBNull.Value)
+        userWiseShift = Convert.ToBoolean(uw);
+
+    await using var currentCmd = con.CreateCommand();
+    currentCmd.CommandText = @"
+SELECT TOP 1 s.ShiftId,s.StoreId,s.TerminalId,s.UserId,s.OpeningCash,s.Status,s.OpenedAt,s.ClosedAt
+FROM Shifts s WHERE s.StoreId=@StoreId AND s.Status='Open' AND (@UserWiseShift=0 OR s.UserId=@UserId) ORDER BY s.ShiftId DESC";
+    currentCmd.Parameters.AddWithValue("@StoreId", user.StoreId);
+    currentCmd.Parameters.AddWithValue("@UserId", user.UserId);
+    currentCmd.Parameters.AddWithValue("@UserWiseShift", userWiseShift ? 1 : 0);
+    var currentList = await SqlList.ReadAsync(currentCmd);
+    var enable = ReadFlag(settings, "EnableShiftManagement") || ReadFlag(settings, "enableShiftManagement");
+    object? current = currentList.Count == 0 ? null : ShiftRowSnapshot(currentList[0]);
+    return Results.Ok(new
+    {
+        enableShiftManagement = enable,
+        enableShift = enable,
+        userWiseShift,
+        currentShift = current
+    });
+});
+
+app.MapPut("/api/shifts/settings", async (HttpContext http, ConnectionFactory db, AuthTokenService tokens, ShiftManagementSettingsUpdateRequest request) =>
+{
+    var user = ApiAuth.RequireUser(http, tokens); if (user == null) return Results.Unauthorized();
+    if (!HasSessionPermission(user, "system.generalConfiguration")) return Results.Forbid();
+    await using var con = await db.OpenTenantAsync(user.DatabaseName);
+    await EnsureShiftManagementSchemaAsync(con);
+
+    await using var cmd = con.CreateCommand();
+    cmd.CommandText = @"
+UPDATE ShiftManagementSettings
+SET EnableShiftManagement=@EnableShiftManagement,
+    EnableShift=@EnableShift,
+    UserWiseShift=@UserWiseShift,
+    UpdatedAt=SYSUTCDATETIME()
+WHERE SettingId=1;
+
+IF @@ROWCOUNT=0
+    INSERT INTO ShiftManagementSettings(SettingId,EnableShiftManagement,EnableShift,UserWiseShift)
+    VALUES(1,@EnableShiftManagement,@EnableShift,@UserWiseShift);";
+    cmd.Parameters.AddWithValue("@EnableShiftManagement", request.EnableShiftManagement);
+    cmd.Parameters.AddWithValue("@EnableShift", request.EnableShiftManagement);
+    cmd.Parameters.AddWithValue("@UserWiseShift", request.UserWiseShift);
+    await cmd.ExecuteNonQueryAsync();
+    return Results.Ok(new
+    {
+        message = "Shift settings saved.",
+        enableShiftManagement = request.EnableShiftManagement,
+        enableShift = request.EnableShiftManagement,
+        userWiseShift = request.UserWiseShift
+    });
+});
+
+app.MapGet("/api/shifts/list", async (HttpContext http, ConnectionFactory db, AuthTokenService tokens, DateTime? from, DateTime? to) =>
+{
+    var user = ApiAuth.RequireUser(http, tokens); if (user == null) return Results.Unauthorized();
+    await using var con = await db.OpenTenantAsync(user.DatabaseName);
+    await EnsureShiftManagementSchemaAsync(con);
+
+    bool userWiseShift = true;
+    await using (var settingsCmd = new SqlCommand("SELECT TOP 1 ISNULL(UserWiseShift,1) UserWiseShift FROM ShiftManagementSettings WHERE SettingId=1", con))
+    {
+        var obj = await settingsCmd.ExecuteScalarAsync();
+        if (obj != null && obj != DBNull.Value) userWiseShift = Convert.ToBoolean(obj);
+    }
+
+    var fromDate = (from ?? DateTime.Today.AddDays(-30)).Date;
+    var toDate = (to ?? DateTime.Today.AddDays(1)).Date.AddDays(1);
+
+    await using var cmd = con.CreateCommand();
+    cmd.CommandText = @"
+WITH SalesAgg AS (
+    SELECT ShiftId, SUM(ISNULL(GrandTotal,0)) TotalSales
+    FROM SalesHeader
+    WHERE Status='Posted'
+    GROUP BY ShiftId
+),
+ReturnAgg AS (
+    SELECT ShiftId, SUM(ISNULL(RefundAmount,0)) TotalReturns
+    FROM ReturnHeader
+    WHERE Status='Posted'
+    GROUP BY ShiftId
+)
+SELECT
+    s.ShiftId,
+    s.OpenedAt,
+    s.ClosedAt,
+    CONVERT(date, s.OpenedAt) OpeningDate,
+    CONVERT(varchar(8), s.OpenedAt, 108) OpeningTime,
+    CONVERT(date, s.ClosedAt) ClosingDate,
+    CASE WHEN s.ClosedAt IS NULL THEN '' ELSE CONVERT(varchar(8), s.ClosedAt, 108) END ClosingTime,
+    s.OpeningCash,
+    ISNULL(s.ClosingCash,0) ClosingCash,
+    s.Status,
+    ISNULL(sa.TotalSales,0) TotalSales,
+    ISNULL(ra.TotalReturns,0) TotalReturns
+FROM Shifts s
+LEFT JOIN SalesAgg sa ON sa.ShiftId=s.ShiftId
+LEFT JOIN ReturnAgg ra ON ra.ShiftId=s.ShiftId
+WHERE
+    s.StoreId=@StoreId
+    AND s.OpenedAt>=@From
+    AND s.OpenedAt<@To
+    AND (@UserWiseShift=0 OR s.UserId=@UserId)
+ORDER BY s.ShiftId DESC";
+    cmd.Parameters.AddWithValue("@StoreId", user.StoreId);
+    cmd.Parameters.AddWithValue("@UserId", user.UserId);
+    cmd.Parameters.AddWithValue("@UserWiseShift", userWiseShift ? 1 : 0);
+    cmd.Parameters.AddWithValue("@From", fromDate);
+    cmd.Parameters.AddWithValue("@To", toDate);
+
+    return Results.Ok(await SqlList.ReadAsync(cmd));
+});
+
+app.MapGet("/api/shifts/card", async (HttpContext http, ConnectionFactory db, AuthTokenService tokens, int? shiftId) =>
+{
+    var user = ApiAuth.RequireUser(http, tokens); if (user == null) return Results.Unauthorized();
+    await using var con = await db.OpenTenantAsync(user.DatabaseName);
+    await EnsureShiftManagementSchemaAsync(con);
+
+    bool userWiseShift = true;
+    await using (var settingsCmd = new SqlCommand("SELECT TOP 1 ISNULL(UserWiseShift,1) UserWiseShift FROM ShiftManagementSettings WHERE SettingId=1", con))
+    {
+        var obj = await settingsCmd.ExecuteScalarAsync();
+        if (obj != null && obj != DBNull.Value) userWiseShift = Convert.ToBoolean(obj);
+    }
+
+    int targetShiftId = shiftId ?? 0;
+    if (targetShiftId <= 0)
+    {
+        await using var findCmd = con.CreateCommand();
+        findCmd.CommandText = @"SELECT TOP 1 ShiftId
+FROM Shifts
+WHERE StoreId=@StoreId AND Status='Open' AND (@UserWiseShift=0 OR UserId=@UserId)
+ORDER BY ShiftId DESC";
+        findCmd.Parameters.AddWithValue("@StoreId", user.StoreId);
+        findCmd.Parameters.AddWithValue("@UserId", user.UserId);
+        findCmd.Parameters.AddWithValue("@UserWiseShift", userWiseShift ? 1 : 0);
+        var shiftObj = await findCmd.ExecuteScalarAsync();
+        if (shiftObj == null || shiftObj == DBNull.Value) return Results.NotFound(new { message = "No open shift." });
+        targetShiftId = Convert.ToInt32(shiftObj);
+    }
+
+    await using var cmd = con.CreateCommand();
+    cmd.CommandText = @"
+WITH
+SalesPosted AS (
+    SELECT SaleId,ApplicationSource,GrandTotal,PaidAmount
+    FROM SalesHeader
+    WHERE ShiftId=@ShiftId AND Status='Posted'
+),
+PaymentBySource AS (
+    SELECT
+        sp.ApplicationSource,
+        SUM(CASE WHEN pm.PaymentMethodName='Cash' THEN pl.Amount ELSE 0 END) CashSales,
+        SUM(CASE WHEN pm.PaymentMethodName='Credit' THEN pl.Amount ELSE 0 END) CreditSales,
+        SUM(CASE WHEN pm.PaymentMethodName IN('Card','Wallet','Bank Transfer') THEN pl.Amount ELSE 0 END) BankCardPayments
+    FROM PaymentLines pl
+    INNER JOIN SalesPosted sp ON sp.SaleId=pl.SaleId
+    INNER JOIN PaymentMethods pm ON pm.PaymentMethodId=pl.PaymentMethodId
+    GROUP BY sp.ApplicationSource
+),
+SalesTotalsBySource AS (
+    SELECT sp.ApplicationSource,
+           SUM(sp.GrandTotal) TotalSales,
+           SUM(sp.PaidAmount) TotalAmountCollected
+    FROM SalesPosted sp
+    GROUP BY sp.ApplicationSource
+),
+ReturnTotalsBySource AS (
+    SELECT rh.ApplicationSource,
+           SUM(rh.RefundAmount) TotalReturns
+    FROM ReturnHeader rh
+    WHERE rh.ShiftId=@ShiftId AND rh.Status='Posted'
+    GROUP BY rh.ApplicationSource
+),
+CashDrawerNet AS (
+    SELECT SUM(CASE
+        WHEN EntryType='Cash In' THEN Amount
+        WHEN EntryType='Cash Out' THEN -Amount
+        ELSE 0
+    END) CashDrawerNet
+    FROM CashDrawerLedger
+    WHERE ShiftId=@ShiftId
+)
+SELECT
+    s.ShiftId,
+    s.Status,
+    s.OpenedAt,
+    s.ClosedAt,
+    s.OpeningCash,
+    ISNULL(s.ClosingCash,0) ClosingCash,
+    -- expected/current cash balance
+    ISNULL(s.ExpectedCash,
+        s.OpeningCash
+        + ISNULL((SELECT SUM(p.CashSales) FROM PaymentBySource p),0)
+        - ISNULL((SELECT SUM(rt.TotalReturns) FROM ReturnTotalsBySource rt),0)
+        + ISNULL((SELECT CashDrawerNet FROM CashDrawerNet),0)
+    ) ExpectedCash,
+    CASE
+        WHEN s.Status='Open' THEN
+            ISNULL(s.ExpectedCash,
+                s.OpeningCash
+                + ISNULL((SELECT SUM(p.CashSales) FROM PaymentBySource p),0)
+                - ISNULL((SELECT SUM(rt.TotalReturns) FROM ReturnTotalsBySource rt),0)
+                + ISNULL((SELECT CashDrawerNet FROM CashDrawerNet),0)
+            )
+        ELSE ISNULL(s.ClosingCash,0)
+    END CurrentCashBalance,
+    -- overall (all sources)
+    ISNULL((SELECT SUM(p.CashSales) FROM PaymentBySource p),0) CashSales,
+    ISNULL((SELECT SUM(p.CreditSales) FROM PaymentBySource p),0) CreditSales,
+    ISNULL((SELECT SUM(p.BankCardPayments) FROM PaymentBySource p),0) BankCardPayments,
+    ISNULL((SELECT SUM(st.TotalSales) FROM SalesTotalsBySource st),0) TotalSales,
+    ISNULL((SELECT SUM(rt.TotalReturns) FROM ReturnTotalsBySource rt),0) TotalReturns,
+    ISNULL((SELECT SUM(st.TotalAmountCollected) FROM SalesTotalsBySource st),0) TotalAmountCollected,
+    -- per source
+    ISNULL((SELECT st.TotalSales FROM SalesTotalsBySource st WHERE st.ApplicationSource='Cloud'),0) SalesCloud,
+    ISNULL((SELECT st.TotalSales FROM SalesTotalsBySource st WHERE st.ApplicationSource='Desktop'),0) SalesDesktop,
+    ISNULL((SELECT st.TotalSales FROM SalesTotalsBySource st WHERE st.ApplicationSource='Mobile'),0) SalesMobile,
+    ISNULL((SELECT rt.TotalReturns FROM ReturnTotalsBySource rt WHERE rt.ApplicationSource='Cloud'),0) ReturnsCloud,
+    ISNULL((SELECT rt.TotalReturns FROM ReturnTotalsBySource rt WHERE rt.ApplicationSource='Desktop'),0) ReturnsDesktop,
+    ISNULL((SELECT rt.TotalReturns FROM ReturnTotalsBySource rt WHERE rt.ApplicationSource='Mobile'),0) ReturnsMobile,
+    ISNULL((SELECT p.CashSales FROM PaymentBySource p WHERE p.ApplicationSource='Cloud'),0) CashSalesCloud,
+    ISNULL((SELECT p.CreditSales FROM PaymentBySource p WHERE p.ApplicationSource='Cloud'),0) CreditSalesCloud,
+    ISNULL((SELECT p.BankCardPayments FROM PaymentBySource p WHERE p.ApplicationSource='Cloud'),0) BankCardPaymentsCloud,
+    ISNULL((SELECT p.CashSales FROM PaymentBySource p WHERE p.ApplicationSource='Desktop'),0) CashSalesDesktop,
+    ISNULL((SELECT p.CreditSales FROM PaymentBySource p WHERE p.ApplicationSource='Desktop'),0) CreditSalesDesktop,
+    ISNULL((SELECT p.BankCardPayments FROM PaymentBySource p WHERE p.ApplicationSource='Desktop'),0) BankCardPaymentsDesktop,
+    ISNULL((SELECT p.CashSales FROM PaymentBySource p WHERE p.ApplicationSource='Mobile'),0) CashSalesMobile,
+    ISNULL((SELECT p.CreditSales FROM PaymentBySource p WHERE p.ApplicationSource='Mobile'),0) CreditSalesMobile,
+    ISNULL((SELECT p.BankCardPayments FROM PaymentBySource p WHERE p.ApplicationSource='Mobile'),0) BankCardPaymentsMobile
+FROM Shifts s
+WHERE
+    s.ShiftId=@ShiftId
+    AND s.StoreId=@StoreId
+    AND (@UserWiseShift=0 OR s.UserId=@UserId)
+ORDER BY s.ShiftId DESC";
+    cmd.Parameters.AddWithValue("@ShiftId", targetShiftId);
+    cmd.Parameters.AddWithValue("@StoreId", user.StoreId);
+    cmd.Parameters.AddWithValue("@UserId", user.UserId);
+    cmd.Parameters.AddWithValue("@UserWiseShift", userWiseShift ? 1 : 0);
+
+    var card = await SqlList.ReadSingleAsync(cmd);
+    return card.Count == 0 ? Results.NotFound(new { message = "Shift not found." }) : Results.Ok(card);
+});
+
+app.MapGet("/api/shifts/{shiftId:int}/sales", async (HttpContext http, ConnectionFactory db, AuthTokenService tokens, int shiftId, string? source) =>
+{
+    var user = ApiAuth.RequireUser(http, tokens); if (user == null) return Results.Unauthorized();
+    await using var con = await db.OpenTenantAsync(user.DatabaseName);
+    await EnsureShiftManagementSchemaAsync(con);
+
+    bool userWiseShift = true;
+    await using (var settingsCmd = new SqlCommand("SELECT TOP 1 ISNULL(UserWiseShift,1) UserWiseShift FROM ShiftManagementSettings WHERE SettingId=1", con))
+    {
+        var obj = await settingsCmd.ExecuteScalarAsync();
+        if (obj != null && obj != DBNull.Value) userWiseShift = Convert.ToBoolean(obj);
+    }
+
+    var sourceValue = (source ?? "Cloud").Trim();
+    if (!sourceValue.Equals("Cloud", StringComparison.OrdinalIgnoreCase) &&
+        !sourceValue.Equals("Desktop", StringComparison.OrdinalIgnoreCase) &&
+        !sourceValue.Equals("Mobile", StringComparison.OrdinalIgnoreCase))
+        sourceValue = "Cloud";
+
+    await using var cmd = con.CreateCommand();
+    cmd.CommandText = @"
+SELECT
+    sh.SaleId,
+    sh.InvoiceNo,
+    sh.SaleDate,
+    sh.ApplicationSource,
+    sh.GrandTotal,
+    sh.PaidAmount,
+    sh.ChangeAmount,
+    sh.UserId
+FROM SalesHeader sh
+WHERE sh.ShiftId=@ShiftId
+  AND sh.Status='Posted'
+  AND (@UserWiseShift=0 OR sh.UserId=@UserId)
+  AND sh.ApplicationSource=@Source
+ORDER BY sh.SaleId DESC";
+    cmd.Parameters.AddWithValue("@ShiftId", shiftId);
+    cmd.Parameters.AddWithValue("@UserId", user.UserId);
+    cmd.Parameters.AddWithValue("@UserWiseShift", userWiseShift ? 1 : 0);
+    cmd.Parameters.AddWithValue("@Source", sourceValue);
+
+    return Results.Ok(await SqlList.ReadAsync(cmd));
+});
+
+app.MapGet("/api/shifts/{shiftId:int}/returns", async (HttpContext http, ConnectionFactory db, AuthTokenService tokens, int shiftId, string? source) =>
+{
+    var user = ApiAuth.RequireUser(http, tokens); if (user == null) return Results.Unauthorized();
+    await using var con = await db.OpenTenantAsync(user.DatabaseName);
+    await EnsureShiftManagementSchemaAsync(con);
+
+    bool userWiseShift = true;
+    await using (var settingsCmd = new SqlCommand("SELECT TOP 1 ISNULL(UserWiseShift,1) UserWiseShift FROM ShiftManagementSettings WHERE SettingId=1", con))
+    {
+        var obj = await settingsCmd.ExecuteScalarAsync();
+        if (obj != null && obj != DBNull.Value) userWiseShift = Convert.ToBoolean(obj);
+    }
+
+    var sourceValue = (source ?? "Cloud").Trim();
+    if (!sourceValue.Equals("Cloud", StringComparison.OrdinalIgnoreCase) &&
+        !sourceValue.Equals("Desktop", StringComparison.OrdinalIgnoreCase) &&
+        !sourceValue.Equals("Mobile", StringComparison.OrdinalIgnoreCase))
+        sourceValue = "Cloud";
+
+    await using var cmd = con.CreateCommand();
+    cmd.CommandText = @"
+SELECT
+    rh.ReturnId,
+    rh.ReturnNo,
+    rh.ReturnDate,
+    rh.OriginalInvoiceNo,
+    rh.ApplicationSource,
+    rh.RefundAmount,
+    rh.Reason,
+    rh.UserId
+FROM ReturnHeader rh
+WHERE rh.ShiftId=@ShiftId
+  AND rh.Status='Posted'
+  AND (@UserWiseShift=0 OR rh.UserId=@UserId)
+  AND rh.ApplicationSource=@Source
+ORDER BY rh.ReturnId DESC";
+    cmd.Parameters.AddWithValue("@ShiftId", shiftId);
+    cmd.Parameters.AddWithValue("@UserId", user.UserId);
+    cmd.Parameters.AddWithValue("@UserWiseShift", userWiseShift ? 1 : 0);
+    cmd.Parameters.AddWithValue("@Source", sourceValue);
+
+    return Results.Ok(await SqlList.ReadAsync(cmd));
 });
 
 app.MapGet("/api/returns/sale-lines", async (HttpContext http, ConnectionFactory db, AuthTokenService tokens, string invoiceNo) =>
@@ -2742,14 +3969,16 @@ app.MapPost("/api/returns", async (HttpContext http, ConnectionFactory db, AuthT
     if (string.IsNullOrWhiteSpace(request.OriginalInvoiceNo)) return Results.BadRequest(new { message = "Original invoice no is required." });
     if (request.Lines.Count == 0) return Results.BadRequest(new { message = "Return lines are required." });
     await using var con = await db.OpenTenantAsync(user.DatabaseName);
+    await EnsureShiftManagementSchemaAsync(con);
     await using var tran = (SqlTransaction)await con.BeginTransactionAsync();
     try
     {
         var shiftId = await PosSql.EnsureOpenShiftAsync(con, tran, user);
+        var applicationSource = ResolveApplicationSource(http, user);
         var returnNo = await PosSql.NextNumberAsync(con, tran, "RETURN");
         int returnId;
-        await using (var hdr = new SqlCommand(@"INSERT INTO ReturnHeader(ReturnNo,OriginalInvoiceNo,StoreId,BranchCode,TerminalId,ShiftId,UserId,RefundAmount,Reason,Status)
-OUTPUT INSERTED.ReturnId VALUES(@ReturnNo,@OriginalInvoiceNo,@StoreId,@BranchCode,(SELECT TOP 1 TerminalId FROM Terminals WHERE StoreId=@StoreId AND IsActive=1 ORDER BY TerminalId),@ShiftId,@UserId,0,@Reason,'Posted')", con, tran))
+        await using (var hdr = new SqlCommand(@"INSERT INTO ReturnHeader(ReturnNo,OriginalInvoiceNo,StoreId,BranchCode,TerminalId,ShiftId,UserId,RefundAmount,Reason,Status,ApplicationSource)
+OUTPUT INSERTED.ReturnId VALUES(@ReturnNo,@OriginalInvoiceNo,@StoreId,@BranchCode,(SELECT TOP 1 TerminalId FROM Terminals WHERE StoreId=@StoreId AND IsActive=1 ORDER BY TerminalId),@ShiftId,@UserId,0,@Reason,'Posted',@ApplicationSource)", con, tran))
         {
             hdr.Parameters.AddWithValue("@ReturnNo", returnNo);
             hdr.Parameters.AddWithValue("@OriginalInvoiceNo", request.OriginalInvoiceNo.Trim());
@@ -2758,6 +3987,7 @@ OUTPUT INSERTED.ReturnId VALUES(@ReturnNo,@OriginalInvoiceNo,@StoreId,@BranchCod
             hdr.Parameters.AddWithValue("@ShiftId", shiftId);
             hdr.Parameters.AddWithValue("@UserId", user.UserId);
             hdr.Parameters.AddWithValue("@Reason", request.Reason ?? "");
+            hdr.Parameters.AddWithValue("@ApplicationSource", applicationSource);
             returnId = Convert.ToInt32(await hdr.ExecuteScalarAsync());
         }
 
@@ -2840,36 +4070,89 @@ VALUES(@StoreId,@BranchCode,@ProductId,'Return',@ReturnNo,@Qty,0,@UnitCost,'POS 
     }
 });
 
-app.MapGet("/api/sales-invoices", async (HttpContext http, ConnectionFactory db, AuthTokenService tokens, DateTime? from, DateTime? to, string? status) =>
+app.MapGet("/api/sales-invoices", async (HttpContext http, ConnectionFactory db, AuthTokenService tokens, DateTime? from, DateTime? to, string? status, int? customerId, bool? openBalance) =>
 {
     var user = ApiAuth.RequireUser(http, tokens); if (user == null) return Results.Unauthorized();
     var statusFilter = NormalizeInvoiceStatusFilter(status);
     if (statusFilter == null)
         return Results.BadRequest(new { message = "Status must be Open, Draft, OpenDraft, or Posted." });
     await using var con = await db.OpenTenantAsync(user.DatabaseName);
+    await EnsureShiftManagementSchemaAsync(con);
+    var includePos = openBalance != true
+        && (string.IsNullOrEmpty(statusFilter) || string.Equals(statusFilter, "Posted", StringComparison.OrdinalIgnoreCase));
     await using var cmd = con.CreateCommand();
-    cmd.CommandText = @"SELECT TOP 1000 h.SalesInvoiceId,h.InvoiceNo,h.CustomerId,c.CustomerCode,c.CustomerName,h.InvoiceDate,h.PostedAt,h.SubTotal,h.DiscountAmount,h.TaxAmount,h.GrandTotal,h.PaidAmount,h.BalanceAmount,h.Status,ISNULL(h.Remarks,'') Remarks,
-ISNULL(s.StoreCode,'') StoreCode,ISNULL(s.StoreName,'') StoreName,ISNULL(u.DisplayName,'') PreparedBy
+    cmd.CommandText = @"
+SELECT TOP 1000 * FROM (
+SELECT h.SalesInvoiceId,
+       CAST(0 AS INT) PosSaleId,
+       CAST('SalesInvoice' AS NVARCHAR(20)) DocumentType,
+       CAST(ISNULL(NULLIF(LTRIM(RTRIM(h.ApplicationSource)),''),'Cloud') AS NVARCHAR(20)) ApplicationSource,
+       h.InvoiceNo,h.CustomerId,c.CustomerCode,c.CustomerName,h.InvoiceDate,h.PostedAt,
+       h.SubTotal,h.DiscountAmount,h.TaxAmount,h.GrandTotal,h.PaidAmount,h.BalanceAmount,h.Status,
+       ISNULL(h.Remarks,'') Remarks,
+       ISNULL(s.StoreCode,'') StoreCode,ISNULL(s.StoreName,'') StoreName,ISNULL(u.DisplayName,'') PreparedBy
 FROM SalesInvoiceHeader h
 INNER JOIN Customers c ON c.CustomerId=h.CustomerId
 LEFT JOIN Stores s ON s.StoreId=h.StoreId
 LEFT JOIN Users u ON u.UserId=h.UserId
 WHERE h.StoreId=@StoreId AND h.InvoiceDate>=@From AND h.InvoiceDate<=@To
   AND (@Status='' OR (@Status='OpenDraft' AND h.Status IN ('Open','Draft')) OR (@Status<>'OpenDraft' AND h.Status=@Status))
-ORDER BY h.SalesInvoiceId DESC";
+  AND (@CustomerId=0 OR h.CustomerId=@CustomerId)
+  AND (@OpenBalance=0 OR (h.Status='Posted' AND ISNULL(h.BalanceAmount,0)>0))
+UNION ALL
+SELECT CAST(0 AS INT) SalesInvoiceId,
+       h.SaleId PosSaleId,
+       CAST('PosSale' AS NVARCHAR(20)) DocumentType,
+       CAST(ISNULL(NULLIF(LTRIM(RTRIM(h.ApplicationSource)),''),'Cloud') AS NVARCHAR(20)) ApplicationSource,
+       h.InvoiceNo,h.CustomerId,ISNULL(c.CustomerCode,'') CustomerCode,ISNULL(c.CustomerName,'Walk-in Customer') CustomerName,
+       CAST(h.SaleDate AS DATE) InvoiceDate,h.SaleDate PostedAt,
+       h.SubTotal,h.DiscountAmount,h.TaxAmount,h.GrandTotal,h.PaidAmount,
+       CAST(0 AS DECIMAL(18,2)) BalanceAmount,h.Status,
+       ISNULL(h.Remarks,'') Remarks,
+       ISNULL(s.StoreCode,'') StoreCode,ISNULL(s.StoreName,'') StoreName,ISNULL(u.DisplayName,'') PreparedBy
+FROM SalesHeader h
+LEFT JOIN Customers c ON c.CustomerId=h.CustomerId
+LEFT JOIN Stores s ON s.StoreId=h.StoreId
+LEFT JOIN Users u ON u.UserId=h.UserId
+WHERE @IncludePos=1
+  AND h.StoreId=@StoreId AND h.Status='Posted'
+  AND CAST(h.SaleDate AS DATE)>=@From AND CAST(h.SaleDate AS DATE)<=@To
+  AND (@CustomerId=0 OR h.CustomerId=@CustomerId)
+) x
+ORDER BY InvoiceDate DESC, InvoiceNo DESC";
     cmd.Parameters.AddWithValue("@StoreId", user.StoreId);
     cmd.Parameters.AddWithValue("@From", (from ?? new DateTime(1900, 1, 1)).Date);
     cmd.Parameters.AddWithValue("@To", (to ?? DateTime.Today).Date);
     cmd.Parameters.AddWithValue("@Status", statusFilter);
+    cmd.Parameters.AddWithValue("@CustomerId", customerId ?? 0);
+    cmd.Parameters.AddWithValue("@OpenBalance", openBalance == true);
+    cmd.Parameters.AddWithValue("@IncludePos", includePos ? 1 : 0);
     return Results.Ok(await SqlList.ReadAsync(cmd));
 });
 
-app.MapGet("/api/sales-invoices/{id:int}", async (HttpContext http, ConnectionFactory db, AuthTokenService tokens, int id) =>
+app.MapGet("/api/sales-invoices/{id:int}", async (HttpContext http, ConnectionFactory db, AuthTokenService tokens, int id, string? documentType) =>
 {
     var user = ApiAuth.RequireUser(http, tokens); if (user == null) return Results.Unauthorized();
     await using var con = await db.OpenTenantAsync(user.DatabaseName);
+    await EnsureShiftManagementSchemaAsync(con);
     await using var cmd = con.CreateCommand();
-    cmd.CommandText = @"SELECT TOP 1 h.SalesInvoiceId,h.InvoiceNo,h.CustomerId,c.CustomerCode,c.CustomerName,c.Mobile,c.Email,c.AddressLine,h.InvoiceDate,h.PostedAt,h.StoreId,h.BranchCode,h.UserId,
+    var posSale = string.Equals(documentType, "PosSale", StringComparison.OrdinalIgnoreCase);
+    cmd.CommandText = posSale
+        ? @"SELECT TOP 1 CAST(0 AS INT) SalesInvoiceId,h.SaleId PosSaleId,CAST('PosSale' AS NVARCHAR(20)) DocumentType,
+CAST(ISNULL(NULLIF(LTRIM(RTRIM(h.ApplicationSource)),''),'Cloud') AS NVARCHAR(20)) ApplicationSource,
+h.InvoiceNo,h.CustomerId,ISNULL(c.CustomerCode,'') CustomerCode,ISNULL(c.CustomerName,'Walk-in Customer') CustomerName,ISNULL(c.Mobile,'') Mobile,ISNULL(c.Email,'') Email,ISNULL(c.AddressLine,'') AddressLine,
+CAST(h.SaleDate AS DATE) InvoiceDate,h.SaleDate PostedAt,h.StoreId,h.BranchCode,h.UserId,
+ISNULL(s.StoreCode,'') StoreCode,ISNULL(s.StoreName,'') StoreName,ISNULL(u.DisplayName,'') PreparedBy,
+h.SubTotal,h.DiscountAmount,h.TaxAmount,h.GrandTotal,h.PaidAmount,
+CAST(0 AS DECIMAL(18,2)) BalanceAmount,h.Status,ISNULL(h.Remarks,'') Remarks
+FROM SalesHeader h
+LEFT JOIN Customers c ON c.CustomerId=h.CustomerId
+LEFT JOIN Stores s ON s.StoreId=h.StoreId
+LEFT JOIN Users u ON u.UserId=h.UserId
+WHERE h.SaleId=@Id AND h.StoreId=@StoreId"
+        : @"SELECT TOP 1 h.SalesInvoiceId,CAST(0 AS INT) PosSaleId,CAST('SalesInvoice' AS NVARCHAR(20)) DocumentType,
+CAST(ISNULL(NULLIF(LTRIM(RTRIM(h.ApplicationSource)),''),'Cloud') AS NVARCHAR(20)) ApplicationSource,
+h.InvoiceNo,h.CustomerId,c.CustomerCode,c.CustomerName,c.Mobile,c.Email,c.AddressLine,h.InvoiceDate,h.PostedAt,h.StoreId,h.BranchCode,h.UserId,
 ISNULL(s.StoreCode,'') StoreCode,ISNULL(s.StoreName,'') StoreName,ISNULL(u.DisplayName,'') PreparedBy,h.SubTotal,h.DiscountAmount,h.TaxAmount,h.GrandTotal,h.PaidAmount,h.BalanceAmount,h.Status,ISNULL(h.Remarks,'') Remarks
 FROM SalesInvoiceHeader h
 INNER JOIN Customers c ON c.CustomerId=h.CustomerId
@@ -2879,10 +4162,73 @@ WHERE h.SalesInvoiceId=@Id AND h.StoreId=@StoreId";
     cmd.Parameters.AddWithValue("@Id", id);
     cmd.Parameters.AddWithValue("@StoreId", user.StoreId);
     var row = await SqlList.ReadSingleAsync(cmd);
-    return row.Count == 0 ? Results.NotFound(new { message = "Sales invoice not found." }) : Results.Ok(row);
+    return row.Count == 0 ? Results.NotFound(new { message = posSale ? "POS sale not found." : "Sales invoice not found." }) : Results.Ok(row);
 });
 
-app.MapGet("/api/purchase-invoices", async (HttpContext http, ConnectionFactory db, AuthTokenService tokens, DateTime? from, DateTime? to, string? status) =>
+app.MapDelete("/api/sales-invoices/{id:int}", async (HttpContext http, ConnectionFactory db, AuthTokenService tokens, int id) =>
+{
+    var user = ApiAuth.RequireUser(http, tokens); if (user == null) return Results.Unauthorized();
+    if (!CanUserManagePermission(user, "sales.deleteInvoice"))
+        return Results.BadRequest(new { message = "Delete Sales Invoice permission is required." });
+    await using var con = await db.OpenTenantAsync(user.DatabaseName);
+    await using var tran = (SqlTransaction)await con.BeginTransactionAsync();
+    try
+    {
+        string? status;
+        string? invoiceNo;
+        await using (var find = new SqlCommand(
+            "SELECT TOP 1 Status, InvoiceNo FROM SalesInvoiceHeader WITH(UPDLOCK,HOLDLOCK) WHERE SalesInvoiceId=@Id AND StoreId=@StoreId",
+            con, tran))
+        {
+            find.Parameters.AddWithValue("@Id", id);
+            find.Parameters.AddWithValue("@StoreId", user.StoreId);
+            await using var reader = await find.ExecuteReaderAsync();
+            if (!await reader.ReadAsync())
+            {
+                await tran.RollbackAsync();
+                return Results.NotFound(new { message = "Sales invoice not found." });
+            }
+            status = Convert.ToString(reader["Status"]);
+            invoiceNo = Convert.ToString(reader["InvoiceNo"]);
+        }
+
+        if (!string.Equals(status, "Open", StringComparison.OrdinalIgnoreCase) &&
+            !string.Equals(status, "Draft", StringComparison.OrdinalIgnoreCase))
+        {
+            await tran.RollbackAsync();
+            return Results.BadRequest(new { message = "Only Open or Draft sales invoices can be deleted. Posted invoices cannot be deleted." });
+        }
+
+        await using (var delLines = new SqlCommand("DELETE FROM SalesInvoiceLines WHERE SalesInvoiceId=@Id", con, tran))
+        {
+            delLines.Parameters.AddWithValue("@Id", id);
+            await delLines.ExecuteNonQueryAsync();
+        }
+        await using (var delHeader = new SqlCommand(
+            "DELETE FROM SalesInvoiceHeader WHERE SalesInvoiceId=@Id AND StoreId=@StoreId AND Status IN ('Open','Draft')",
+            con, tran))
+        {
+            delHeader.Parameters.AddWithValue("@Id", id);
+            delHeader.Parameters.AddWithValue("@StoreId", user.StoreId);
+            var rows = await delHeader.ExecuteNonQueryAsync();
+            if (rows == 0)
+            {
+                await tran.RollbackAsync();
+                return Results.BadRequest(new { message = "Sales invoice could not be deleted. It may already be posted." });
+            }
+        }
+
+        await tran.CommitAsync();
+        return Results.Ok(new { message = $"Sales invoice {invoiceNo} deleted.", salesInvoiceId = id });
+    }
+    catch (Exception ex)
+    {
+        await tran.RollbackAsync();
+        return Results.BadRequest(new { message = ex.Message });
+    }
+});
+
+app.MapGet("/api/purchase-invoices", async (HttpContext http, ConnectionFactory db, AuthTokenService tokens, DateTime? from, DateTime? to, string? status, int? vendorId, bool? openBalance) =>
 {
     var user = ApiAuth.RequireUser(http, tokens); if (user == null) return Results.Unauthorized();
     var statusFilter = NormalizeInvoiceStatusFilter(status);
@@ -2898,11 +4244,15 @@ LEFT JOIN Stores s ON s.StoreId=h.StoreId
 LEFT JOIN Users u ON u.UserId=h.UserId
 WHERE h.StoreId=@StoreId AND h.InvoiceDate>=@From AND h.InvoiceDate<=@To
   AND (@Status='' OR (@Status='OpenDraft' AND h.Status IN ('Open','Draft')) OR (@Status<>'OpenDraft' AND h.Status=@Status))
+  AND (@VendorId=0 OR ISNULL(h.VendorId,0)=@VendorId)
+  AND (@OpenBalance=0 OR (h.Status='Posted' AND ISNULL(h.BalanceAmount,0)>0))
 ORDER BY h.PurchaseInvoiceId DESC";
     cmd.Parameters.AddWithValue("@StoreId", user.StoreId);
     cmd.Parameters.AddWithValue("@From", (from ?? new DateTime(1900, 1, 1)).Date);
     cmd.Parameters.AddWithValue("@To", (to ?? DateTime.Today).Date);
     cmd.Parameters.AddWithValue("@Status", statusFilter);
+    cmd.Parameters.AddWithValue("@VendorId", vendorId ?? 0);
+    cmd.Parameters.AddWithValue("@OpenBalance", openBalance == true);
     return Results.Ok(await SqlList.ReadAsync(cmd));
 });
 
@@ -2924,41 +4274,92 @@ WHERE h.PurchaseInvoiceId=@Id AND h.StoreId=@StoreId";
     return row.Count == 0 ? Results.NotFound(new { message = "Purchase invoice not found." }) : Results.Ok(row);
 });
 
+app.MapDelete("/api/purchase-invoices/{id:int}", async (HttpContext http, ConnectionFactory db, AuthTokenService tokens, int id) =>
+{
+    var user = ApiAuth.RequireUser(http, tokens); if (user == null) return Results.Unauthorized();
+    if (!CanUserManagePermission(user, "purchase.deleteInvoice"))
+        return Results.BadRequest(new { message = "Delete Purchase Invoice permission is required." });
+    await using var con = await db.OpenTenantAsync(user.DatabaseName);
+    await using var tran = (SqlTransaction)await con.BeginTransactionAsync();
+    try
+    {
+        string? status;
+        string? invoiceNo;
+        await using (var find = new SqlCommand(
+            "SELECT TOP 1 Status, InvoiceNo FROM PurchaseInvoiceHeader WITH(UPDLOCK,HOLDLOCK) WHERE PurchaseInvoiceId=@Id AND StoreId=@StoreId",
+            con, tran))
+        {
+            find.Parameters.AddWithValue("@Id", id);
+            find.Parameters.AddWithValue("@StoreId", user.StoreId);
+            await using var reader = await find.ExecuteReaderAsync();
+            if (!await reader.ReadAsync())
+            {
+                await tran.RollbackAsync();
+                return Results.NotFound(new { message = "Purchase invoice not found." });
+            }
+            status = Convert.ToString(reader["Status"]);
+            invoiceNo = Convert.ToString(reader["InvoiceNo"]);
+        }
+
+        if (!string.Equals(status, "Open", StringComparison.OrdinalIgnoreCase) &&
+            !string.Equals(status, "Draft", StringComparison.OrdinalIgnoreCase))
+        {
+            await tran.RollbackAsync();
+            return Results.BadRequest(new { message = "Only Open or Draft purchase invoices can be deleted. Posted invoices cannot be deleted." });
+        }
+
+        await using (var delLines = new SqlCommand("DELETE FROM PurchaseInvoiceLines WHERE PurchaseInvoiceId=@Id", con, tran))
+        {
+            delLines.Parameters.AddWithValue("@Id", id);
+            await delLines.ExecuteNonQueryAsync();
+        }
+        await using (var delHeader = new SqlCommand(
+            "DELETE FROM PurchaseInvoiceHeader WHERE PurchaseInvoiceId=@Id AND StoreId=@StoreId AND Status IN ('Open','Draft')",
+            con, tran))
+        {
+            delHeader.Parameters.AddWithValue("@Id", id);
+            delHeader.Parameters.AddWithValue("@StoreId", user.StoreId);
+            var rows = await delHeader.ExecuteNonQueryAsync();
+            if (rows == 0)
+            {
+                await tran.RollbackAsync();
+                return Results.BadRequest(new { message = "Purchase invoice could not be deleted. It may already be posted." });
+            }
+        }
+
+        await tran.CommitAsync();
+        return Results.Ok(new { message = $"Purchase invoice {invoiceNo} deleted.", purchaseInvoiceId = id });
+    }
+    catch (Exception ex)
+    {
+        await tran.RollbackAsync();
+        return Results.BadRequest(new { message = ex.Message });
+    }
+});
+
 app.MapPost("/api/customer-payments", async (HttpContext http, ConnectionFactory db, AuthTokenService tokens, CustomerPaymentPostRequest request) =>
 {
     var user = ApiAuth.RequireUser(http, tokens); if (user == null) return Results.Unauthorized();
     user = await PosSessionHelper.EnsureTenantPosSessionAsync(db, user);
     if (request.CustomerId <= 0 || request.Amount <= 0) return Results.BadRequest(new { message = "Customer and positive amount are required." });
     await using var con = await db.OpenTenantAsync(user.DatabaseName);
+    await BankAccountService.EnsureSchemaAsync(con);
     await using var tran = (SqlTransaction)await con.BeginTransactionAsync();
     try
     {
-        var paymentNo = await PosSql.NextNumberAsync(con, tran, "CUSTOMER_PAYMENT");
-        int id;
-        await using (var cmd = new SqlCommand(@"
-INSERT INTO CustomerPayments(PaymentNo,CustomerId,PaymentDate,Amount,PaymentMethod,ReferenceNo,Remarks,CreatedBy,BranchCode)
-OUTPUT INSERTED.PaymentId VALUES(@PaymentNo,@CustomerId,@PaymentDate,@Amount,@PaymentMethod,@ReferenceNo,@Remarks,@UserId,@BranchCode);
-UPDATE Customers SET CurrentBalance=CurrentBalance-@Amount WHERE CustomerId=@CustomerId;
-DECLARE @Bal DECIMAL(18,2)=(SELECT CurrentBalance FROM Customers WHERE CustomerId=@CustomerId);
-INSERT INTO CustomerLedgerEntries(CustomerId,PostingDate,DocumentType,DocumentNo,DebitAmount,CreditAmount,BalanceAfter,Description,SourceId)
-VALUES(@CustomerId,@PaymentDate,'Customer Payment',@PaymentNo,0,@Amount,@Bal,@Remarks,SCOPE_IDENTITY());", con, tran))
+        var clientDocumentId = DesktopIdempotency.NormalizeClientDocumentId(request.ClientDocumentId);
+        if (!string.IsNullOrWhiteSpace(clientDocumentId))
         {
-            cmd.Parameters.AddWithValue("@PaymentNo", paymentNo);
-            cmd.Parameters.AddWithValue("@CustomerId", request.CustomerId);
-            cmd.Parameters.AddWithValue("@PaymentDate", request.PaymentDate.Date);
-            cmd.Parameters.AddWithValue("@Amount", request.Amount);
-            cmd.Parameters.AddWithValue("@PaymentMethod", request.PaymentMethod.Trim());
-            cmd.Parameters.AddWithValue("@ReferenceNo", request.ReferenceNo ?? "");
-            cmd.Parameters.AddWithValue("@Remarks", request.Remarks ?? "");
-            cmd.Parameters.AddWithValue("@UserId", user.UserId);
-            cmd.Parameters.AddWithValue("@BranchCode", user.BranchCode);
-            id = Convert.ToInt32(await cmd.ExecuteScalarAsync());
+            var existing = await DesktopIdempotency.FindCustomerPaymentAsync(con, tran, clientDocumentId);
+            if (existing != null)
+            {
+                await tran.CommitAsync();
+                return Results.Ok(new { paymentId = existing.PaymentId, paymentNo = existing.PaymentNo, duplicate = true });
+            }
         }
-        var setup = await GetPostingSetupAsync(con, tran);
-        await InsertGlAsync(con, tran, setup["CashAccount"], request.PaymentDate.Date, "Customer Payment", paymentNo, request.Amount, 0, "Customer payment received", id);
-        await InsertGlAsync(con, tran, setup["ReceivableAccount"], request.PaymentDate.Date, "Customer Payment", paymentNo, 0, request.Amount, "Receivable cleared", id);
+        var posted = await PostCustomerReceiptAsync(con, tran, user, request, applyInvoiceBalance: true);
         await tran.CommitAsync();
-        return Results.Ok(new { paymentId = id, paymentNo });
+        return Results.Ok(new { paymentId = posted.PaymentId, paymentNo = posted.PaymentNo });
     }
     catch (Exception ex)
     {
@@ -2973,35 +4374,23 @@ app.MapPost("/api/vendor-payments", async (HttpContext http, ConnectionFactory d
     user = await PosSessionHelper.EnsureTenantPosSessionAsync(db, user);
     if (request.VendorId <= 0 || request.Amount <= 0) return Results.BadRequest(new { message = "Vendor and positive amount are required." });
     await using var con = await db.OpenTenantAsync(user.DatabaseName);
+    await BankAccountService.EnsureSchemaAsync(con);
     await using var tran = (SqlTransaction)await con.BeginTransactionAsync();
     try
     {
-        var paymentNo = await PosSql.NextNumberAsync(con, tran, "VENDOR_PAYMENT");
-        int id;
-        await using (var cmd = new SqlCommand(@"
-INSERT INTO VendorPayments(PaymentNo,VendorId,PaymentDate,Amount,PaymentMethod,ReferenceNo,Remarks,CreatedBy,BranchCode)
-OUTPUT INSERTED.PaymentId VALUES(@PaymentNo,@VendorId,@PaymentDate,@Amount,@PaymentMethod,@ReferenceNo,@Remarks,@UserId,@BranchCode);
-UPDATE Vendors SET CurrentBalance=CurrentBalance-@Amount WHERE VendorId=@VendorId;
-DECLARE @Bal DECIMAL(18,2)=(SELECT CurrentBalance FROM Vendors WHERE VendorId=@VendorId);
-INSERT INTO VendorLedgerEntries(VendorId,PostingDate,DocumentType,DocumentNo,DebitAmount,CreditAmount,BalanceAfter,Description,SourceId)
-VALUES(@VendorId,@PaymentDate,'Vendor Payment',@PaymentNo,@Amount,0,@Bal,@Remarks,SCOPE_IDENTITY());", con, tran))
+        var clientDocumentId = DesktopIdempotency.NormalizeClientDocumentId(request.ClientDocumentId);
+        if (!string.IsNullOrWhiteSpace(clientDocumentId))
         {
-            cmd.Parameters.AddWithValue("@PaymentNo", paymentNo);
-            cmd.Parameters.AddWithValue("@VendorId", request.VendorId);
-            cmd.Parameters.AddWithValue("@PaymentDate", request.PaymentDate.Date);
-            cmd.Parameters.AddWithValue("@Amount", request.Amount);
-            cmd.Parameters.AddWithValue("@PaymentMethod", request.PaymentMethod.Trim());
-            cmd.Parameters.AddWithValue("@ReferenceNo", request.ReferenceNo ?? "");
-            cmd.Parameters.AddWithValue("@Remarks", request.Remarks ?? "");
-            cmd.Parameters.AddWithValue("@UserId", user.UserId);
-            cmd.Parameters.AddWithValue("@BranchCode", user.BranchCode);
-            id = Convert.ToInt32(await cmd.ExecuteScalarAsync());
+            var existing = await DesktopIdempotency.FindVendorPaymentAsync(con, tran, clientDocumentId);
+            if (existing != null)
+            {
+                await tran.CommitAsync();
+                return Results.Ok(new { paymentId = existing.PaymentId, paymentNo = existing.PaymentNo, duplicate = true });
+            }
         }
-        var setup = await GetPostingSetupAsync(con, tran);
-        await InsertGlAsync(con, tran, setup["PayableAccount"], request.PaymentDate.Date, "Vendor Payment", paymentNo, request.Amount, 0, "Payable cleared", id);
-        await InsertGlAsync(con, tran, setup["CashAccount"], request.PaymentDate.Date, "Vendor Payment", paymentNo, 0, request.Amount, "Vendor payment paid", id);
+        var posted = await PostVendorReceiptAsync(con, tran, user, request, applyInvoiceBalance: true);
         await tran.CommitAsync();
-        return Results.Ok(new { paymentId = id, paymentNo });
+        return Results.Ok(new { paymentId = posted.PaymentId, paymentNo = posted.PaymentNo });
     }
     catch (Exception ex)
     {
@@ -3228,9 +4617,14 @@ app.MapGet("/api/customer-payments", async (HttpContext http, ConnectionFactory 
 {
     var user = ApiAuth.RequireUser(http, tokens); if (user == null) return Results.Unauthorized();
     await using var con = await db.OpenTenantAsync(user.DatabaseName);
+    await BankAccountService.EnsureSchemaAsync(con);
     await using var cmd = con.CreateCommand();
-    cmd.CommandText = @"SELECT TOP 300 p.PaymentId,p.PaymentNo,p.CustomerId,c.CustomerName,p.PaymentDate,p.Amount,p.PaymentMethod,ISNULL(p.ReferenceNo,'') ReferenceNo,ISNULL(p.Remarks,'') Remarks
+    cmd.CommandText = @"SELECT TOP 300 p.PaymentId,p.PaymentNo,p.CustomerId,c.CustomerName,p.PaymentDate,p.Amount,p.PaymentMethod,ISNULL(p.ReferenceNo,'') ReferenceNo,ISNULL(p.Remarks,'') Remarks,
+ISNULL(p.BankAccountId,0) BankAccountId,ISNULL(b.BankCode,'') BankCode,ISNULL(b.BankName,'') BankName,
+ISNULL(p.SalesInvoiceId,0) SalesInvoiceId,ISNULL(si.InvoiceNo,'') InvoiceNo
 FROM CustomerPayments p INNER JOIN Customers c ON c.CustomerId=p.CustomerId
+LEFT JOIN BankAccounts b ON b.BankAccountId=p.BankAccountId
+LEFT JOIN SalesInvoiceHeader si ON si.SalesInvoiceId=p.SalesInvoiceId
 WHERE (ISNULL(p.BranchCode,@BranchCode)=@BranchCode) AND (@Term='' OR p.PaymentNo LIKE @Like OR c.CustomerName LIKE @Like OR p.ReferenceNo LIKE @Like)
 ORDER BY p.PaymentId DESC";
     var search = (term ?? string.Empty).Trim();
@@ -3244,9 +4638,14 @@ app.MapGet("/api/vendor-payments", async (HttpContext http, ConnectionFactory db
 {
     var user = ApiAuth.RequireUser(http, tokens); if (user == null) return Results.Unauthorized();
     await using var con = await db.OpenTenantAsync(user.DatabaseName);
+    await BankAccountService.EnsureSchemaAsync(con);
     await using var cmd = con.CreateCommand();
-    cmd.CommandText = @"SELECT TOP 300 p.PaymentId,p.PaymentNo,p.VendorId,v.VendorName,p.PaymentDate,p.Amount,p.PaymentMethod,ISNULL(p.ReferenceNo,'') ReferenceNo,ISNULL(p.Remarks,'') Remarks
+    cmd.CommandText = @"SELECT TOP 300 p.PaymentId,p.PaymentNo,p.VendorId,v.VendorName,p.PaymentDate,p.Amount,p.PaymentMethod,ISNULL(p.ReferenceNo,'') ReferenceNo,ISNULL(p.Remarks,'') Remarks,
+ISNULL(p.BankAccountId,0) BankAccountId,ISNULL(b.BankCode,'') BankCode,ISNULL(b.BankName,'') BankName,
+ISNULL(p.PurchaseInvoiceId,0) PurchaseInvoiceId,ISNULL(ph.InvoiceNo,'') InvoiceNo
 FROM VendorPayments p INNER JOIN Vendors v ON v.VendorId=p.VendorId
+LEFT JOIN BankAccounts b ON b.BankAccountId=p.BankAccountId
+LEFT JOIN PurchaseInvoiceHeader ph ON ph.PurchaseInvoiceId=p.PurchaseInvoiceId
 WHERE (ISNULL(p.BranchCode,@BranchCode)=@BranchCode) AND (@Term='' OR p.PaymentNo LIKE @Like OR v.VendorName LIKE @Like OR p.ReferenceNo LIKE @Like)
 ORDER BY p.PaymentId DESC";
     var search = (term ?? string.Empty).Trim();
@@ -3262,12 +4661,20 @@ app.MapPost("/api/shifts/cash-drawer", async (HttpContext http, ConnectionFactor
     if (request.Amount <= 0) return Results.BadRequest(new { message = "Amount must be greater than zero." });
     var type = request.EntryType.Equals("Cash Out", StringComparison.OrdinalIgnoreCase) ? "Cash Out" : "Cash In";
     await using var con = await db.OpenTenantAsync(user.DatabaseName);
+    await EnsureShiftManagementSchemaAsync(con);
+    bool userWiseShift = true;
+    await using (var settingsCmd = new SqlCommand("SELECT TOP 1 ISNULL(UserWiseShift,1) UserWiseShift FROM ShiftManagementSettings WHERE SettingId=1", con))
+    {
+        var obj = await settingsCmd.ExecuteScalarAsync();
+        if (obj != null && obj != DBNull.Value) userWiseShift = Convert.ToBoolean(obj);
+    }
     await using var cmd = con.CreateCommand();
-    cmd.CommandText = @"DECLARE @ShiftId INT=(SELECT TOP 1 ShiftId FROM Shifts WHERE StoreId=@StoreId AND UserId=@UserId AND Status='Open' ORDER BY ShiftId DESC);
+    cmd.CommandText = @"DECLARE @ShiftId INT=(SELECT TOP 1 ShiftId FROM Shifts WHERE StoreId=@StoreId AND Status='Open' AND (@UserWiseShift=0 OR UserId=@UserId) ORDER BY ShiftId DESC);
 IF @ShiftId IS NULL THROW 50020, 'Open shift required.', 1;
 INSERT INTO CashDrawerLedger(ShiftId,EntryType,Amount,Remarks,CreatedBy) VALUES(@ShiftId,@EntryType,@Amount,@Remarks,@UserId);";
     cmd.Parameters.AddWithValue("@StoreId", user.StoreId);
     cmd.Parameters.AddWithValue("@UserId", user.UserId);
+    cmd.Parameters.AddWithValue("@UserWiseShift", userWiseShift ? 1 : 0);
     cmd.Parameters.AddWithValue("@EntryType", type);
     cmd.Parameters.AddWithValue("@Amount", request.Amount);
     cmd.Parameters.AddWithValue("@Remarks", request.Remarks ?? "");
@@ -3644,12 +5051,37 @@ app.MapPost("/api/settings/restore", async (HttpContext http, AuthTokenService t
 app.MapPost("/api/sales-invoices/post", async (HttpContext http, ConnectionFactory db, AuthTokenService tokens, SalesInvoicePostRequest request) =>
 {
     var user = ApiAuth.RequireUser(http, tokens); if (user == null) return Results.Unauthorized();
+    if (!HasSessionPermission(user, "sales.postInvoice") && !HasSessionPermission(user, "sales.createInvoice"))
+        return Results.Json(new { message = "Post Invoice permission is required." }, statusCode: StatusCodes.Status403Forbidden);
     user = await PosSessionHelper.EnsureTenantPosSessionAsync(db, user);
     if (request.CustomerId <= 0 || request.Lines.Count == 0) return Results.BadRequest(new { message = "Customer and invoice lines are required." });
     await using var con = await db.OpenTenantAsync(user.DatabaseName);
+    await DesktopIdempotency.EnsureSchemaAsync(con);
+    await BankAccountService.EnsureSchemaAsync(con);
+    await EnsureShiftManagementSchemaAsync(con);
+    var applicationSource = ResolveApplicationSource(http, user);
     await using var tran = (SqlTransaction)await con.BeginTransactionAsync();
     try
     {
+        var clientDocumentId = DesktopIdempotency.NormalizeClientDocumentId(request.ClientDocumentId);
+        if (!string.IsNullOrWhiteSpace(clientDocumentId))
+        {
+            var existingInvoice = await DesktopIdempotency.FindSalesInvoiceAsync(con, tran, clientDocumentId);
+            if (existingInvoice != null)
+            {
+                await tran.CommitAsync();
+                return Results.Ok(new
+                {
+                    salesInvoiceId = existingInvoice.SalesInvoiceId,
+                    invoiceNo = existingInvoice.InvoiceNo,
+                    grandTotal = existingInvoice.GrandTotal,
+                    paidAmount = existingInvoice.PaidAmount,
+                    balanceAmount = existingInvoice.BalanceAmount,
+                    duplicate = true,
+                    message = "Desktop sale was already posted. Existing InterNex document returned."
+                });
+            }
+        }
         decimal subTotal=0, discount=0, tax=0, grand=0, costTotal=0;
         var computed = new List<(SalesInvoiceLinePostRequest Req, ProductForSale Product, CalculatedSaleLine Line)>();
         foreach(var lineReq in request.Lines)
@@ -3673,17 +5105,19 @@ app.MapPost("/api/sales-invoices/post", async (HttpContext http, ConnectionFacto
                 if (existingNo == null || existingNo == DBNull.Value) throw new InvalidOperationException("Open sales invoice draft was not found or has already been posted.");
                 invoiceNo = Convert.ToString(existingNo) ?? string.Empty;
             }
-            await using var update = new SqlCommand(@"UPDATE SalesInvoiceHeader SET CustomerId=@CustomerId,InvoiceDate=@Date,UserId=@UserId,SubTotal=@SubTotal,DiscountAmount=@Discount,TaxAmount=@Tax,GrandTotal=@Grand,PaidAmount=@Paid,BalanceAmount=@Balance,Status='Posted',Remarks=@Remarks,PostedAt=SYSUTCDATETIME() WHERE SalesInvoiceId=@Id AND StoreId=@StoreId AND Status='Open';
+            await using var update = new SqlCommand(@"UPDATE SalesInvoiceHeader SET CustomerId=@CustomerId,InvoiceDate=@Date,UserId=@UserId,SubTotal=@SubTotal,DiscountAmount=@Discount,TaxAmount=@Tax,GrandTotal=@Grand,PaidAmount=@Paid,BalanceAmount=@Balance,Status='Posted',Remarks=@Remarks,ApplicationSource=@ApplicationSource,PostedAt=SYSUTCDATETIME() WHERE SalesInvoiceId=@Id AND StoreId=@StoreId AND Status='Open';
 DELETE FROM SalesInvoiceLines WHERE SalesInvoiceId=@Id;", con, tran);
-            update.Parameters.AddWithValue("@Id", invoiceId); update.Parameters.AddWithValue("@CustomerId", request.CustomerId); update.Parameters.AddWithValue("@Date", request.InvoiceDate.Date); update.Parameters.AddWithValue("@StoreId", user.StoreId); update.Parameters.AddWithValue("@UserId", user.UserId); update.Parameters.AddWithValue("@SubTotal", subTotal); update.Parameters.AddWithValue("@Discount", discount); update.Parameters.AddWithValue("@Tax", tax); update.Parameters.AddWithValue("@Grand", grand); update.Parameters.AddWithValue("@Paid", request.PaidAmount); update.Parameters.AddWithValue("@Balance", balance); update.Parameters.AddWithValue("@Remarks", request.Remarks ?? "");
+            update.Parameters.AddWithValue("@Id", invoiceId); update.Parameters.AddWithValue("@CustomerId", request.CustomerId); update.Parameters.AddWithValue("@Date", request.InvoiceDate.Date); update.Parameters.AddWithValue("@StoreId", user.StoreId); update.Parameters.AddWithValue("@UserId", user.UserId); update.Parameters.AddWithValue("@SubTotal", subTotal); update.Parameters.AddWithValue("@Discount", discount); update.Parameters.AddWithValue("@Tax", tax); update.Parameters.AddWithValue("@Grand", grand); update.Parameters.AddWithValue("@Paid", request.PaidAmount); update.Parameters.AddWithValue("@Balance", balance); update.Parameters.AddWithValue("@Remarks", request.Remarks ?? ""); update.Parameters.AddWithValue("@ApplicationSource", applicationSource);
             await update.ExecuteNonQueryAsync();
         }
         else
         {
             invoiceNo = await PosSql.NextNumberAsync(con, tran, "SALES_INVOICE");
-            await using var insert = new SqlCommand(@"INSERT INTO SalesInvoiceHeader(InvoiceNo,CustomerId,InvoiceDate,StoreId,BranchCode,UserId,SubTotal,DiscountAmount,TaxAmount,GrandTotal,PaidAmount,BalanceAmount,Status,Remarks)
-OUTPUT INSERTED.SalesInvoiceId VALUES(@No,@CustomerId,@Date,@StoreId,@BranchCode,@UserId,@SubTotal,@Discount,@Tax,@Grand,@Paid,@Balance,'Posted',@Remarks)", con, tran);
+            await using var insert = new SqlCommand(@"INSERT INTO SalesInvoiceHeader(InvoiceNo,CustomerId,InvoiceDate,StoreId,BranchCode,UserId,SubTotal,DiscountAmount,TaxAmount,GrandTotal,PaidAmount,BalanceAmount,Status,Remarks,ExternalClientDocumentId,ApplicationSource)
+OUTPUT INSERTED.SalesInvoiceId VALUES(@No,@CustomerId,@Date,@StoreId,@BranchCode,@UserId,@SubTotal,@Discount,@Tax,@Grand,@Paid,@Balance,'Posted',@Remarks,@ClientDocumentId,@ApplicationSource)", con, tran);
             insert.Parameters.AddWithValue("@No", invoiceNo); insert.Parameters.AddWithValue("@CustomerId", request.CustomerId); insert.Parameters.AddWithValue("@Date", request.InvoiceDate.Date); insert.Parameters.AddWithValue("@StoreId", user.StoreId); insert.Parameters.AddWithValue("@BranchCode", user.BranchCode); insert.Parameters.AddWithValue("@UserId", user.UserId); insert.Parameters.AddWithValue("@SubTotal", subTotal); insert.Parameters.AddWithValue("@Discount", discount); insert.Parameters.AddWithValue("@Tax", tax); insert.Parameters.AddWithValue("@Grand", grand); insert.Parameters.AddWithValue("@Paid", request.PaidAmount); insert.Parameters.AddWithValue("@Balance", balance); insert.Parameters.AddWithValue("@Remarks", request.Remarks ?? "");
+            insert.Parameters.AddWithValue("@ClientDocumentId", string.IsNullOrWhiteSpace(clientDocumentId) ? DBNull.Value : clientDocumentId);
+            insert.Parameters.AddWithValue("@ApplicationSource", applicationSource);
             invoiceId = Convert.ToInt32(await insert.ExecuteScalarAsync());
         }
         foreach(var item in computed)
@@ -3699,11 +5133,11 @@ INSERT INTO InventoryLedger(StoreId,BranchCode,ProductId,MovementType,SourceDocu
                 await cmd.ExecuteNonQueryAsync();
             }
         }
-        await using(var bal = new SqlCommand(@"UPDATE Customers SET CurrentBalance=CurrentBalance+@Balance WHERE CustomerId=@CustomerId;
+        await using(var bal = new SqlCommand(@"UPDATE Customers SET CurrentBalance=CurrentBalance+@Grand WHERE CustomerId=@CustomerId;
 DECLARE @Bal DECIMAL(18,2)=(SELECT CurrentBalance FROM Customers WHERE CustomerId=@CustomerId);
 INSERT INTO CustomerLedgerEntries(CustomerId,PostingDate,DocumentType,DocumentNo,DebitAmount,CreditAmount,BalanceAfter,Description,SourceId) VALUES(@CustomerId,@Date,'Sales Invoice',@No,@Grand,0,@Bal,'Posted sales invoice',@Id);", con, tran))
         {
-            bal.Parameters.AddWithValue("@CustomerId", request.CustomerId); bal.Parameters.AddWithValue("@Balance", balance); bal.Parameters.AddWithValue("@Date", request.InvoiceDate.Date); bal.Parameters.AddWithValue("@No", invoiceNo); bal.Parameters.AddWithValue("@Grand", grand); bal.Parameters.AddWithValue("@Id", invoiceId); await bal.ExecuteNonQueryAsync();
+            bal.Parameters.AddWithValue("@CustomerId", request.CustomerId); bal.Parameters.AddWithValue("@Date", request.InvoiceDate.Date); bal.Parameters.AddWithValue("@No", invoiceNo); bal.Parameters.AddWithValue("@Grand", grand); bal.Parameters.AddWithValue("@Id", invoiceId); await bal.ExecuteNonQueryAsync();
         }
         var setup = await GetPostingSetupAsync(con, tran);
         await InsertGlAsync(con, tran, setup["ReceivableAccount"], request.InvoiceDate.Date, "Sales Invoice", invoiceNo, grand, 0, "Accounts receivable", invoiceId, user.BranchCode);
@@ -3711,18 +5145,43 @@ INSERT INTO CustomerLedgerEntries(CustomerId,PostingDate,DocumentType,DocumentNo
         await InsertGlAsync(con, tran, setup["OutputTaxAccount"], request.InvoiceDate.Date, "Sales Invoice", invoiceNo, 0, tax, "Output tax", invoiceId, user.BranchCode);
         await InsertGlAsync(con, tran, setup["CogsAccount"], request.InvoiceDate.Date, "Sales Invoice", invoiceNo, costTotal, 0, "COGS", invoiceId, user.BranchCode);
         await InsertGlAsync(con, tran, setup["InventoryAccount"], request.InvoiceDate.Date, "Sales Invoice", invoiceNo, 0, costTotal, "Inventory issued", invoiceId, user.BranchCode);
+        var receiveNow = Math.Min(request.PaidAmount, grand);
+        if (receiveNow > 0)
+        {
+            var receiveMethod = string.IsNullOrWhiteSpace(request.ReceivePaymentMethod) ? "Cash" : request.ReceivePaymentMethod.Trim();
+            await PostCustomerReceiptAsync(con, tran, user, new CustomerPaymentPostRequest
+            {
+                CustomerId = request.CustomerId,
+                PaymentDate = request.InvoiceDate.Date,
+                Amount = receiveNow,
+                PaymentMethod = receiveMethod,
+                BankAccountId = request.BankAccountId,
+                SalesInvoiceId = invoiceId,
+                ReferenceNo = invoiceNo,
+                Remarks = string.IsNullOrWhiteSpace(request.Remarks) ? "Receive now" : request.Remarks
+            }, applyInvoiceBalance: false);
+        }
         await tran.CommitAsync();
         return Results.Ok(new { salesInvoiceId=invoiceId, invoiceNo, grandTotal=grand, paidAmount=request.PaidAmount, balanceAmount=balance, message="Sales invoice posted." });
     }
     catch(Exception ex){ await tran.RollbackAsync(); return Results.BadRequest(new { message = ex.Message }); }
 });
 
-app.MapGet("/api/sales-invoices/{id:int}/lines", async (HttpContext http, ConnectionFactory db, AuthTokenService tokens, int id) =>
+app.MapGet("/api/sales-invoices/{id:int}/lines", async (HttpContext http, ConnectionFactory db, AuthTokenService tokens, int id, string? documentType) =>
 {
     var user = ApiAuth.RequireUser(http, tokens); if (user == null) return Results.Unauthorized();
     await using var con = await db.OpenTenantAsync(user.DatabaseName);
     await using var cmd = con.CreateCommand();
-    cmd.CommandText = @"SELECT l.SalesInvoiceLineId,l.ProductId,p.ProductCode,l.ProductName,l.Quantity,l.UnitPrice,l.DiscountPercent,l.DiscountAmount,l.TaxPercent,l.TaxAmount,l.LineTotal,l.UnitCost,ISNULL(l.TaxInclusive,0) TaxInclusive,ISNULL(sb.Quantity,p.StockOnHand) StockOnHand
+    var posSale = string.Equals(documentType, "PosSale", StringComparison.OrdinalIgnoreCase);
+    cmd.CommandText = posSale
+        ? @"SELECT l.SaleLineId SalesInvoiceLineId,l.ProductId,ISNULL(p.ProductCode,'') ProductCode,ISNULL(NULLIF(LTRIM(RTRIM(l.ProductName)),''),ISNULL(p.ProductName,'')) ProductName,l.Quantity,l.UnitPrice,l.DiscountPercent,l.DiscountAmount,l.TaxPercent,l.TaxAmount,l.LineTotal,l.UnitCost,ISNULL(l.TaxInclusive,0) TaxInclusive,ISNULL(sb.Quantity,ISNULL(p.StockOnHand,0)) StockOnHand
+FROM SalesLines l
+INNER JOIN SalesHeader h ON h.SaleId=l.SaleId
+LEFT JOIN Products p ON p.ProductId=l.ProductId
+LEFT JOIN StockByStore sb ON sb.ProductId=l.ProductId AND sb.StoreId=h.StoreId
+WHERE l.SaleId=@Id AND h.StoreId=@StoreId
+ORDER BY l.SaleLineId"
+        : @"SELECT l.SalesInvoiceLineId,l.ProductId,p.ProductCode,l.ProductName,l.Quantity,l.UnitPrice,l.DiscountPercent,l.DiscountAmount,l.TaxPercent,l.TaxAmount,l.LineTotal,l.UnitCost,ISNULL(l.TaxInclusive,0) TaxInclusive,ISNULL(sb.Quantity,p.StockOnHand) StockOnHand
 FROM SalesInvoiceLines l
 INNER JOIN SalesInvoiceHeader h ON h.SalesInvoiceId=l.SalesInvoiceId
 INNER JOIN Products p ON p.ProductId=l.ProductId
@@ -3767,20 +5226,45 @@ app.MapPost("/api/sales-orders", async (HttpContext http, ConnectionFactory db, 
 app.MapPost("/api/hold-sales", async (HttpContext http, ConnectionFactory db, AuthTokenService tokens, HoldSaleRequest request) =>
 {
     var user = ApiAuth.RequireUser(http, tokens); if (user == null) return Results.Unauthorized();
-    await using var con = await db.OpenTenantAsync(user.DatabaseName); await using var tran = (SqlTransaction)await con.BeginTransactionAsync();
+    await using var con = await db.OpenTenantAsync(user.DatabaseName);
+    await EnsureShiftManagementSchemaAsync(con);
+    await EnsureTenantBranchSchemaAsync(con);
+    await using var tran = (SqlTransaction)await con.BeginTransactionAsync();
     try
     {
         var no = await PosSql.NextNumberAsync(con, tran, "HOLD");
         var shiftId = await PosSql.EnsureOpenShiftAsync(con, tran, user);
-        var payload = JsonSerializer.Serialize(request);
-        await using var cmd = new SqlCommand(@"INSERT INTO HoldSalesHeader(HoldNo,StoreId,BranchCode,TerminalId,ShiftId,UserId,CustomerId,SubTotal,DiscountAmount,TaxAmount,GrandTotal,Remarks)
-OUTPUT INSERTED.HoldId VALUES(@No,@StoreId,@BranchCode,(SELECT TOP 1 TerminalId FROM Terminals WHERE StoreId=@StoreId AND IsActive=1 ORDER BY TerminalId),@ShiftId,@UserId,@CustomerId,0,0,0,0,@Remarks)", con, tran);
+        var payload = request.Payload != null
+            ? JsonSerializer.Serialize(request.Payload)
+            : JsonSerializer.Serialize(request);
+        var subTotal = request.SubTotal;
+        var discount = request.DiscountAmount;
+        var tax = request.TaxAmount;
+        var grand = request.GrandTotal;
+        if (grand <= 0 && request.Lines.Count > 0)
+        {
+            // Best-effort totals from lines when client omitted them.
+            foreach (var line in request.Lines)
+            {
+                var gross = line.Quantity * (line.UnitPrice ?? 0m);
+                var lineDisc = gross * (line.DiscountPercent / 100m);
+                subTotal += gross;
+                discount += lineDisc;
+                grand += gross - lineDisc;
+            }
+        }
+        await using var cmd = new SqlCommand(@"INSERT INTO HoldSalesHeader(HoldNo,StoreId,BranchCode,TerminalId,ShiftId,UserId,CustomerId,SubTotal,DiscountAmount,TaxAmount,GrandTotal,Remarks,Status)
+OUTPUT INSERTED.HoldId VALUES(@No,@StoreId,@BranchCode,(SELECT TOP 1 TerminalId FROM Terminals WHERE StoreId=@StoreId AND IsActive=1 ORDER BY TerminalId),@ShiftId,@UserId,@CustomerId,@SubTotal,@Discount,@Tax,@Grand,@Remarks,'Hold')", con, tran);
         cmd.Parameters.AddWithValue("@No", no);
         cmd.Parameters.AddWithValue("@StoreId", user.StoreId);
         cmd.Parameters.AddWithValue("@BranchCode", user.BranchCode);
         cmd.Parameters.AddWithValue("@ShiftId", shiftId);
         cmd.Parameters.AddWithValue("@UserId", user.UserId);
         cmd.Parameters.AddWithValue("@CustomerId", request.CustomerId);
+        cmd.Parameters.AddWithValue("@SubTotal", subTotal);
+        cmd.Parameters.AddWithValue("@Discount", discount);
+        cmd.Parameters.AddWithValue("@Tax", tax);
+        cmd.Parameters.AddWithValue("@Grand", grand);
         cmd.Parameters.AddWithValue("@Remarks", payload);
         var id = Convert.ToInt32(await cmd.ExecuteScalarAsync());
         await tran.CommitAsync();
@@ -3793,10 +5277,99 @@ app.MapGet("/api/hold-sales", async (HttpContext http, ConnectionFactory db, Aut
 {
     var user = ApiAuth.RequireUser(http, tokens); if (user == null) return Results.Unauthorized();
     await using var con = await db.OpenTenantAsync(user.DatabaseName);
+    await EnsureShiftManagementSchemaAsync(con);
+    await EnsureTenantBranchSchemaAsync(con);
     await using var cmd = con.CreateCommand();
-    cmd.CommandText = "SELECT TOP 100 HoldId,HoldNo,HoldDate,CustomerId,GrandTotal,Remarks FROM HoldSalesHeader WHERE StoreId=@StoreId AND Status='Hold' ORDER BY HoldId DESC";
+    cmd.CommandText = "SELECT TOP 100 HoldId,HoldNo,HoldDate,CustomerId,SubTotal,DiscountAmount,TaxAmount,GrandTotal,Remarks,Status FROM HoldSalesHeader WHERE StoreId=@StoreId AND ISNULL(Status,'Hold')='Hold' ORDER BY HoldId DESC";
     cmd.Parameters.AddWithValue("@StoreId", user.StoreId);
     return Results.Ok(await SqlList.ReadAsync(cmd));
+});
+
+app.MapGet("/api/hold-sales/{id:int}", async (HttpContext http, ConnectionFactory db, AuthTokenService tokens, int id) =>
+{
+    var user = ApiAuth.RequireUser(http, tokens); if (user == null) return Results.Unauthorized();
+    await using var con = await db.OpenTenantAsync(user.DatabaseName);
+    await EnsureTenantBranchSchemaAsync(con);
+    await using var cmd = con.CreateCommand();
+    cmd.CommandText = "SELECT TOP 1 HoldId,HoldNo,HoldDate,CustomerId,SubTotal,DiscountAmount,TaxAmount,GrandTotal,Remarks,Status FROM HoldSalesHeader WHERE HoldId=@Id AND StoreId=@StoreId";
+    cmd.Parameters.AddWithValue("@Id", id);
+    cmd.Parameters.AddWithValue("@StoreId", user.StoreId);
+    var rows = await SqlList.ReadAsync(cmd);
+    var row = rows.FirstOrDefault();
+    if (row == null) return Results.NotFound(new { message = "Hold sale was not found." });
+    object? payload = null;
+    try
+    {
+        var raw = Convert.ToString(row.TryGetValue("Remarks", out var r) ? r : row.TryGetValue("remarks", out var r2) ? r2 : null) ?? "";
+        if (!string.IsNullOrWhiteSpace(raw)) payload = JsonSerializer.Deserialize<object>(raw);
+    }
+    catch { /* leave null */ }
+    return Results.Ok(new { hold = row, payload });
+});
+
+app.MapPost("/api/hold-sales/{id:int}/retrieve", async (HttpContext http, ConnectionFactory db, AuthTokenService tokens, int id) =>
+{
+    var user = ApiAuth.RequireUser(http, tokens); if (user == null) return Results.Unauthorized();
+    await using var con = await db.OpenTenantAsync(user.DatabaseName);
+    await EnsureTenantBranchSchemaAsync(con);
+    await using var tran = (SqlTransaction)await con.BeginTransactionAsync();
+    try
+    {
+        await using var find = new SqlCommand("SELECT TOP 1 HoldId,HoldNo,HoldDate,CustomerId,SubTotal,DiscountAmount,TaxAmount,GrandTotal,Remarks,Status FROM HoldSalesHeader WITH (UPDLOCK, ROWLOCK) WHERE HoldId=@Id AND StoreId=@StoreId", con, tran);
+        find.Parameters.AddWithValue("@Id", id);
+        find.Parameters.AddWithValue("@StoreId", user.StoreId);
+        await using var reader = await find.ExecuteReaderAsync();
+        if (!await reader.ReadAsync())
+        {
+            await reader.CloseAsync();
+            await tran.RollbackAsync();
+            return Results.NotFound(new { message = "Hold sale was not found." });
+        }
+        var status = Convert.ToString(reader["Status"]) ?? "";
+        if (!string.Equals(status, "Hold", StringComparison.OrdinalIgnoreCase))
+        {
+            await reader.CloseAsync();
+            await tran.RollbackAsync();
+            return Results.BadRequest(new { message = "This hold was already retrieved or cancelled." });
+        }
+        var holdNo = Convert.ToString(reader["HoldNo"]);
+        var customerId = Convert.ToInt32(reader["CustomerId"]);
+        var remarks = Convert.ToString(reader["Remarks"]) ?? "";
+        var subTotal = Convert.ToDecimal(reader["SubTotal"]);
+        var discount = Convert.ToDecimal(reader["DiscountAmount"]);
+        var tax = Convert.ToDecimal(reader["TaxAmount"]);
+        var grand = Convert.ToDecimal(reader["GrandTotal"]);
+        await reader.CloseAsync();
+
+        await using var upd = new SqlCommand("UPDATE HoldSalesHeader SET Status='Retrieved' WHERE HoldId=@Id AND Status='Hold'", con, tran);
+        upd.Parameters.AddWithValue("@Id", id);
+        if (await upd.ExecuteNonQueryAsync() != 1)
+        {
+            await tran.RollbackAsync();
+            return Results.BadRequest(new { message = "This hold was already retrieved." });
+        }
+        await tran.CommitAsync();
+
+        object? payload = null;
+        try { if (!string.IsNullOrWhiteSpace(remarks)) payload = JsonSerializer.Deserialize<object>(remarks); } catch { /* ignore */ }
+        return Results.Ok(new
+        {
+            holdId = id,
+            holdNo,
+            customerId,
+            subTotal,
+            discountAmount = discount,
+            taxAmount = tax,
+            grandTotal = grand,
+            payload,
+            message = "Hold retrieved."
+        });
+    }
+    catch (Exception ex)
+    {
+        await tran.RollbackAsync();
+        return Results.BadRequest(new { message = ex.Message });
+    }
 });
 
 app.MapGet("/api/dashboard/analytics", async (HttpContext http, ConnectionFactory db, AuthTokenService tokens, ExpenseManagementService expenseService, int? months) =>
@@ -4074,14 +5647,22 @@ app.MapGet("/api/shifts/z-report", async (HttpContext http, ConnectionFactory db
 {
     var user = ApiAuth.RequireUser(http, tokens); if (user == null) return Results.Unauthorized();
     await using var con = await db.OpenTenantAsync(user.DatabaseName);
+    await EnsureShiftManagementSchemaAsync(con);
+    bool userWiseShift = true;
+    await using (var settingsCmd = new SqlCommand("SELECT TOP 1 ISNULL(UserWiseShift,1) UserWiseShift FROM ShiftManagementSettings WHERE SettingId=1", con))
+    {
+        var obj = await settingsCmd.ExecuteScalarAsync();
+        if (obj != null && obj != DBNull.Value) userWiseShift = Convert.ToBoolean(obj);
+    }
     await using var cmd = con.CreateCommand();
     cmd.CommandText = @"SELECT TOP 1 s.ShiftId,s.OpeningCash,ISNULL(s.ExpectedCash,0) ExpectedCash,ISNULL(s.ClosingCash,0) ClosingCash,ISNULL(s.DifferenceAmount,0) DifferenceAmount,s.Status,s.OpenedAt,s.ClosedAt,
 ISNULL((SELECT SUM(pl.Amount) FROM PaymentLines pl JOIN SalesHeader h ON h.SaleId=pl.SaleId JOIN PaymentMethods pm ON pm.PaymentMethodId=pl.PaymentMethodId WHERE h.ShiftId=s.ShiftId AND pm.PaymentMethodName='Cash'),0) CashSales,
 ISNULL((SELECT SUM(GrandTotal) FROM SalesHeader WHERE ShiftId=s.ShiftId AND Status='Posted'),0) TotalSales,
 ISNULL((SELECT COUNT(1) FROM SalesHeader WHERE ShiftId=s.ShiftId AND Status='Posted'),0) InvoiceCount,
 ISNULL((SELECT SUM(RefundAmount) FROM ReturnHeader WHERE ShiftId=s.ShiftId AND Status='Posted'),0) Refunds
-FROM Shifts s WHERE (@ShiftId=0 OR s.ShiftId=@ShiftId) AND s.StoreId=@StoreId AND s.UserId=@UserId ORDER BY s.ShiftId DESC";
+FROM Shifts s WHERE (@ShiftId=0 OR s.ShiftId=@ShiftId) AND s.StoreId=@StoreId AND (@UserWiseShift=0 OR s.UserId=@UserId) ORDER BY s.ShiftId DESC";
     cmd.Parameters.AddWithValue("@ShiftId", shiftId ?? 0); cmd.Parameters.AddWithValue("@StoreId", user.StoreId); cmd.Parameters.AddWithValue("@UserId", user.UserId);
+    cmd.Parameters.AddWithValue("@UserWiseShift", userWiseShift ? 1 : 0);
     return Results.Ok(await SqlList.ReadSingleAsync(cmd));
 });
 // =================== END FINAL REQUIREMENT ENDPOINTS ===================
@@ -4165,6 +5746,94 @@ IF NOT EXISTS(SELECT 1 FROM sys.indexes WHERE object_id=OBJECT_ID('Currencies') 
     await cmd.ExecuteNonQueryAsync();
 }
 
+static async Task EnsureShiftManagementSchemaAsync(SqlConnection con)
+{
+    await using var cmd = con.CreateCommand();
+    cmd.CommandText = @"
+IF OBJECT_ID('ShiftManagementSettings') IS NULL
+BEGIN
+    CREATE TABLE ShiftManagementSettings(
+        SettingId INT NOT NULL PRIMARY KEY CHECK (SettingId = 1),
+        EnableShiftManagement BIT NOT NULL DEFAULT 0,
+        EnableShift BIT NOT NULL DEFAULT 1,
+        UserWiseShift BIT NOT NULL DEFAULT 1,
+        UpdatedAt DATETIME2 NOT NULL DEFAULT SYSUTCDATETIME()
+    );
+    INSERT INTO ShiftManagementSettings(SettingId,EnableShiftManagement,EnableShift,UserWiseShift) VALUES(1,0,1,1);
+END;
+
+IF OBJECT_ID('SalesHeader') IS NOT NULL AND COL_LENGTH('SalesHeader','ApplicationSource') IS NULL
+    ALTER TABLE SalesHeader ADD ApplicationSource NVARCHAR(20) NOT NULL DEFAULT 'Cloud';
+
+IF OBJECT_ID('ReturnHeader') IS NOT NULL AND COL_LENGTH('ReturnHeader','ApplicationSource') IS NULL
+    ALTER TABLE ReturnHeader ADD ApplicationSource NVARCHAR(20) NOT NULL DEFAULT 'Cloud';
+
+IF OBJECT_ID('SalesInvoiceHeader') IS NOT NULL AND COL_LENGTH('SalesInvoiceHeader','ApplicationSource') IS NULL
+    ALTER TABLE SalesInvoiceHeader ADD ApplicationSource NVARCHAR(20) NOT NULL DEFAULT 'Cloud';
+
+IF OBJECT_ID('ShiftManagementSettings') IS NOT NULL AND NOT EXISTS(SELECT 1 FROM ShiftManagementSettings WHERE SettingId=1)
+    INSERT INTO ShiftManagementSettings(SettingId,EnableShiftManagement,EnableShift,UserWiseShift) VALUES(1,0,1,1);
+
+IF COL_LENGTH('SalesHeader','ApplicationSource') IS NOT NULL
+    EXEC('UPDATE SalesHeader SET ApplicationSource=''Cloud'' WHERE ApplicationSource IS NULL OR LTRIM(RTRIM(ApplicationSource))=''''');
+
+IF COL_LENGTH('ReturnHeader','ApplicationSource') IS NOT NULL
+    EXEC('UPDATE ReturnHeader SET ApplicationSource=''Cloud'' WHERE ApplicationSource IS NULL OR LTRIM(RTRIM(ApplicationSource))=''''');
+
+IF COL_LENGTH('SalesInvoiceHeader','ApplicationSource') IS NOT NULL
+    EXEC('UPDATE SalesInvoiceHeader SET ApplicationSource=''Cloud'' WHERE ApplicationSource IS NULL OR LTRIM(RTRIM(ApplicationSource))=''''');
+
+IF OBJECT_ID('SalesHeader') IS NOT NULL AND NOT EXISTS(SELECT 1 FROM sys.indexes WHERE name='IX_SalesHeader_Shift_Source' AND object_id=OBJECT_ID('SalesHeader'))
+    CREATE INDEX IX_SalesHeader_Shift_Source ON SalesHeader(ShiftId, ApplicationSource) INCLUDE(GrandTotal,PaidAmount,Status);
+IF OBJECT_ID('ReturnHeader') IS NOT NULL AND NOT EXISTS(SELECT 1 FROM sys.indexes WHERE name='IX_ReturnHeader_Shift_Source' AND object_id=OBJECT_ID('ReturnHeader'))
+    CREATE INDEX IX_ReturnHeader_Shift_Source ON ReturnHeader(ShiftId, ApplicationSource) INCLUDE(RefundAmount,Status);
+IF OBJECT_ID('Shifts') IS NOT NULL AND NOT EXISTS(SELECT 1 FROM sys.indexes WHERE name='IX_Shifts_Store_Status_User' AND object_id=OBJECT_ID('Shifts'))
+    CREATE INDEX IX_Shifts_Store_Status_User ON Shifts(StoreId, Status, UserId, ShiftId DESC);
+";
+    await cmd.ExecuteNonQueryAsync();
+}
+
+static string ResolveApplicationSource(HttpContext http, UserSession user)
+    => ApiAuth.ResolveApplicationSource(http, user);
+
+static bool ReadFlag(Dictionary<string, object?> row, string key, bool fallback = false)
+{
+    if (!row.TryGetValue(key, out var value) || value == null || value == DBNull.Value) return fallback;
+    if (value is bool b) return b;
+    if (value is byte by) return by != 0;
+    if (value is short s) return s != 0;
+    if (value is int i) return i != 0;
+    if (value is long l) return l != 0;
+    var text = Convert.ToString(value);
+    if (bool.TryParse(text, out var parsed)) return parsed;
+    return text == "1";
+}
+
+static object ShiftRowSnapshot(Dictionary<string, object?> row)
+{
+    object? Get(params string[] keys)
+    {
+        foreach (var key in keys)
+        {
+            if (row.TryGetValue(key, out var value) && value != null && value != DBNull.Value)
+                return value;
+        }
+        return null;
+    }
+
+    return new
+    {
+        shiftId = Convert.ToInt32(Get("ShiftId", "shiftId") ?? 0),
+        storeId = Convert.ToInt32(Get("StoreId", "storeId") ?? 0),
+        terminalId = Convert.ToInt32(Get("TerminalId", "terminalId") ?? 0),
+        userId = Convert.ToInt32(Get("UserId", "userId") ?? 0),
+        openingCash = Convert.ToDecimal(Get("OpeningCash", "openingCash") ?? 0m),
+        status = Convert.ToString(Get("Status", "status") ?? "Open"),
+        openedAt = Get("OpenedAt", "openedAt"),
+        closedAt = Get("ClosedAt", "closedAt")
+    };
+}
+
 static Task<Dictionary<string, object?>> ReadBaseCurrencyAsync(SqlConnection con) =>
     SqlList.ReadSingleAsync(con, @"SELECT TOP 1 CurrencyId,CurrencyCode,CurrencyName,Symbol,DecimalPlaces,ExchangeRate,IsBase,IsActive
 FROM Currencies WHERE IsBase=1 AND IsActive=1 ORDER BY CurrencyId");
@@ -4223,6 +5892,108 @@ END", con, tran);
     if (await cmd.ExecuteNonQueryAsync() == 0) throw new InvalidOperationException($"G/L account missing: {accountNo}");
 }
 
+static async Task<(int PaymentId, string PaymentNo)> PostCustomerReceiptAsync(
+    SqlConnection con, SqlTransaction tran, UserSession user, CustomerPaymentPostRequest request, bool applyInvoiceBalance)
+{
+    var paymentNo = await PosSql.NextNumberAsync(con, tran, "CUSTOMER_PAYMENT");
+    var setup = await GetPostingSetupAsync(con, tran);
+    var dest = await BankAccountService.ResolvePaymentGlAsync(con, tran, request.PaymentMethod, request.BankAccountId, setup["CashAccount"]);
+    var invoiceId = request.SalesInvoiceId is > 0 ? request.SalesInvoiceId : null;
+    if (applyInvoiceBalance && invoiceId is > 0)
+        await BankAccountService.ApplySalesInvoicePaymentAsync(con, tran, request.CustomerId, invoiceId.Value, request.Amount);
+
+    int id;
+    var clientDocumentId = DesktopIdempotency.NormalizeClientDocumentId(request.ClientDocumentId);
+    await using (var cmd = new SqlCommand(@"
+INSERT INTO CustomerPayments(PaymentNo,CustomerId,PaymentDate,Amount,PaymentMethod,ReferenceNo,Remarks,CreatedBy,BranchCode,BankAccountId,SalesInvoiceId,ExternalClientDocumentId)
+OUTPUT INSERTED.PaymentId VALUES(@PaymentNo,@CustomerId,@PaymentDate,@Amount,@PaymentMethod,@ReferenceNo,@Remarks,@UserId,@BranchCode,@BankAccountId,@SalesInvoiceId,@ClientDocumentId)", con, tran))
+    {
+        cmd.Parameters.AddWithValue("@PaymentNo", paymentNo);
+        cmd.Parameters.AddWithValue("@CustomerId", request.CustomerId);
+        cmd.Parameters.AddWithValue("@PaymentDate", request.PaymentDate.Date);
+        cmd.Parameters.AddWithValue("@Amount", request.Amount);
+        cmd.Parameters.AddWithValue("@PaymentMethod", string.IsNullOrWhiteSpace(request.PaymentMethod) ? "Cash" : request.PaymentMethod.Trim());
+        cmd.Parameters.AddWithValue("@ReferenceNo", request.ReferenceNo ?? "");
+        cmd.Parameters.AddWithValue("@Remarks", request.Remarks ?? "");
+        cmd.Parameters.AddWithValue("@UserId", user.UserId);
+        cmd.Parameters.AddWithValue("@BranchCode", user.BranchCode);
+        cmd.Parameters.Add(new SqlParameter("@BankAccountId", SqlDbType.Int) { Value = dest.BankAccountId ?? (object)DBNull.Value });
+        cmd.Parameters.Add(new SqlParameter("@SalesInvoiceId", SqlDbType.Int) { Value = invoiceId ?? (object)DBNull.Value });
+        cmd.Parameters.AddWithValue("@ClientDocumentId", string.IsNullOrWhiteSpace(clientDocumentId) ? DBNull.Value : clientDocumentId);
+        id = Convert.ToInt32(await cmd.ExecuteScalarAsync());
+    }
+    await using (var cmd = new SqlCommand(@"
+UPDATE Customers SET CurrentBalance=CurrentBalance-@Amount WHERE CustomerId=@CustomerId;
+DECLARE @Bal DECIMAL(18,2)=(SELECT CurrentBalance FROM Customers WHERE CustomerId=@CustomerId);
+INSERT INTO CustomerLedgerEntries(CustomerId,PostingDate,DocumentType,DocumentNo,DebitAmount,CreditAmount,BalanceAfter,Description,SourceId)
+VALUES(@CustomerId,@PaymentDate,'Customer Payment',@PaymentNo,0,@Amount,@Bal,@Remarks,@Id);", con, tran))
+    {
+        cmd.Parameters.AddWithValue("@Amount", request.Amount);
+        cmd.Parameters.AddWithValue("@CustomerId", request.CustomerId);
+        cmd.Parameters.AddWithValue("@PaymentDate", request.PaymentDate.Date);
+        cmd.Parameters.AddWithValue("@PaymentNo", paymentNo);
+        cmd.Parameters.AddWithValue("@Remarks", request.Remarks ?? "");
+        cmd.Parameters.AddWithValue("@Id", id);
+        await cmd.ExecuteNonQueryAsync();
+    }
+    await InsertGlAsync(con, tran, dest.AccountNo, request.PaymentDate.Date, "Customer Payment", paymentNo, request.Amount, 0, "Customer payment received", id, user.BranchCode);
+    await InsertGlAsync(con, tran, setup["ReceivableAccount"], request.PaymentDate.Date, "Customer Payment", paymentNo, 0, request.Amount, "Receivable cleared", id, user.BranchCode);
+    if (dest.BankAccountId is int bankId)
+        await BankAccountService.InsertBankLedgerAsync(con, tran, bankId, request.PaymentDate.Date, "Customer Payment", paymentNo, request.Amount, 0, request.Remarks ?? "Customer payment received", id);
+    return (id, paymentNo);
+}
+
+static async Task<(int PaymentId, string PaymentNo)> PostVendorReceiptAsync(
+    SqlConnection con, SqlTransaction tran, UserSession user, VendorPaymentPostRequest request, bool applyInvoiceBalance)
+{
+    var paymentNo = await PosSql.NextNumberAsync(con, tran, "VENDOR_PAYMENT");
+    var setup = await GetPostingSetupAsync(con, tran);
+    var dest = await BankAccountService.ResolvePaymentGlAsync(con, tran, request.PaymentMethod, request.BankAccountId, setup["CashAccount"]);
+    var invoiceId = request.PurchaseInvoiceId is > 0 ? request.PurchaseInvoiceId : null;
+    if (applyInvoiceBalance && invoiceId is > 0)
+        await BankAccountService.ApplyPurchaseInvoicePaymentAsync(con, tran, request.VendorId, invoiceId.Value, request.Amount);
+
+    int id;
+    var clientDocumentId = DesktopIdempotency.NormalizeClientDocumentId(request.ClientDocumentId);
+    await using (var cmd = new SqlCommand(@"
+INSERT INTO VendorPayments(PaymentNo,VendorId,PaymentDate,Amount,PaymentMethod,ReferenceNo,Remarks,CreatedBy,BranchCode,BankAccountId,PurchaseInvoiceId,ExternalClientDocumentId)
+OUTPUT INSERTED.PaymentId VALUES(@PaymentNo,@VendorId,@PaymentDate,@Amount,@PaymentMethod,@ReferenceNo,@Remarks,@UserId,@BranchCode,@BankAccountId,@PurchaseInvoiceId,@ClientDocumentId)", con, tran))
+    {
+        cmd.Parameters.AddWithValue("@PaymentNo", paymentNo);
+        cmd.Parameters.AddWithValue("@VendorId", request.VendorId);
+        cmd.Parameters.AddWithValue("@PaymentDate", request.PaymentDate.Date);
+        cmd.Parameters.AddWithValue("@Amount", request.Amount);
+        cmd.Parameters.AddWithValue("@PaymentMethod", string.IsNullOrWhiteSpace(request.PaymentMethod) ? "Cash" : request.PaymentMethod.Trim());
+        cmd.Parameters.AddWithValue("@ReferenceNo", request.ReferenceNo ?? "");
+        cmd.Parameters.AddWithValue("@Remarks", request.Remarks ?? "");
+        cmd.Parameters.AddWithValue("@UserId", user.UserId);
+        cmd.Parameters.AddWithValue("@BranchCode", user.BranchCode);
+        cmd.Parameters.Add(new SqlParameter("@BankAccountId", SqlDbType.Int) { Value = dest.BankAccountId ?? (object)DBNull.Value });
+        cmd.Parameters.Add(new SqlParameter("@PurchaseInvoiceId", SqlDbType.Int) { Value = invoiceId ?? (object)DBNull.Value });
+        cmd.Parameters.AddWithValue("@ClientDocumentId", string.IsNullOrWhiteSpace(clientDocumentId) ? DBNull.Value : clientDocumentId);
+        id = Convert.ToInt32(await cmd.ExecuteScalarAsync());
+    }
+    await using (var cmd = new SqlCommand(@"
+UPDATE Vendors SET CurrentBalance=CurrentBalance-@Amount WHERE VendorId=@VendorId;
+DECLARE @Bal DECIMAL(18,2)=(SELECT CurrentBalance FROM Vendors WHERE VendorId=@VendorId);
+INSERT INTO VendorLedgerEntries(VendorId,PostingDate,DocumentType,DocumentNo,DebitAmount,CreditAmount,BalanceAfter,Description,SourceId)
+VALUES(@VendorId,@PaymentDate,'Vendor Payment',@PaymentNo,@Amount,0,@Bal,@Remarks,@Id);", con, tran))
+    {
+        cmd.Parameters.AddWithValue("@Amount", request.Amount);
+        cmd.Parameters.AddWithValue("@VendorId", request.VendorId);
+        cmd.Parameters.AddWithValue("@PaymentDate", request.PaymentDate.Date);
+        cmd.Parameters.AddWithValue("@PaymentNo", paymentNo);
+        cmd.Parameters.AddWithValue("@Remarks", request.Remarks ?? "");
+        cmd.Parameters.AddWithValue("@Id", id);
+        await cmd.ExecuteNonQueryAsync();
+    }
+    await InsertGlAsync(con, tran, setup["PayableAccount"], request.PaymentDate.Date, "Vendor Payment", paymentNo, request.Amount, 0, "Payable cleared", id, user.BranchCode);
+    await InsertGlAsync(con, tran, dest.AccountNo, request.PaymentDate.Date, "Vendor Payment", paymentNo, 0, request.Amount, "Vendor payment paid", id, user.BranchCode);
+    if (dest.BankAccountId is int bankId)
+        await BankAccountService.InsertBankLedgerAsync(con, tran, bankId, request.PaymentDate.Date, "Vendor Payment", paymentNo, 0, request.Amount, request.Remarks ?? "Vendor payment paid", id);
+    return (id, paymentNo);
+}
+
 
 app.MapGet("/api/reports/templates", (IWebHostEnvironment env, CloudReportHtmlService reports) => Results.Ok(reports.GetTemplateNames(env)));
 
@@ -4251,6 +6022,13 @@ app.MapGet("/api/reports/pos-receipt/{saleId:int}/html", async (HttpContext http
     var user = ApiAuth.RequireUser(http, tokens); if (user == null) return Results.Unauthorized();
     await using var con = await db.OpenTenantAsync(user.DatabaseName);
     return Results.Content(await reports.PosReceiptHtmlAsync(con, saleId, layout), "text/html; charset=utf-8");
+});
+
+app.MapGet("/api/reports/cashier-invoice/{saleId:int}/html", async (HttpContext http, ConnectionFactory db, AuthTokenService tokens, CloudReportHtmlService reports, int saleId, string? layout) =>
+{
+    var user = ApiAuth.RequireUser(http, tokens); if (user == null) return Results.Unauthorized();
+    await using var con = await db.OpenTenantAsync(user.DatabaseName);
+    return Results.Content(await reports.CashierSalesInvoiceHtmlAsync(con, saleId, layout), "text/html; charset=utf-8");
 });
 
 app.MapGet("/api/reports/purchase-invoice/{purchaseInvoiceId:int}/html", async (HttpContext http, ConnectionFactory db, AuthTokenService tokens, CloudReportHtmlService reports, int purchaseInvoiceId, string? layout) =>
@@ -4359,8 +6137,7 @@ static Dictionary<string, bool> ReadSessionPermissionMap(UserSession user)
     if (IsCompanySecurityAdmin(user)) return PermissionMap(true);
     try
     {
-        var map = JsonSerializer.Deserialize<Dictionary<string, bool>>(user.PermissionsJson ?? "{}", new JsonSerializerOptions { PropertyNameCaseInsensitive = true })
-            ?? new Dictionary<string, bool>(StringComparer.OrdinalIgnoreCase);
+        var map = RolePermissionService.ParseBoolPermissionMap(user.PermissionsJson);
         foreach (var p in PermissionCatalog()) if (!map.ContainsKey(p.Key)) map[p.Key] = false;
         return new Dictionary<string, bool>(map, StringComparer.OrdinalIgnoreCase);
     }
@@ -4443,34 +6220,11 @@ static async Task SaveUserBranchAssignmentsAsync(SqlConnection con, int userId, 
     }
 }
 
-static async Task<List<Dictionary<string, object?>>> FilterBranchesForUserAsync(SqlConnection con, int userId, List<Dictionary<string, object?>> branches)
-{
-    await EnsureTenantUserSecuritySchemaAsync(con);
-    await using var cmd = con.CreateCommand();
-    cmd.CommandText = "SELECT StoreId FROM UserBranchAssignments WHERE UserId=@UserId";
-    cmd.Parameters.AddWithValue("@UserId", userId);
-    var allowed = new HashSet<int>();
-    await using var r = await cmd.ExecuteReaderAsync();
-    while (await r.ReadAsync()) allowed.Add(Convert.ToInt32(r["StoreId"]));
-    if (allowed.Count == 0) return branches.Take(1).ToList();
-    return branches.Where(b => allowed.Contains(Convert.ToInt32(b.GetValueOrDefault("BranchId") ?? b.GetValueOrDefault("StoreId") ?? 0))).ToList();
-}
+static async Task<List<Dictionary<string, object?>>> FilterBranchesForUserAsync(SqlConnection con, int userId, List<Dictionary<string, object?>> branches) =>
+    await BranchAccessHelper.FilterBranchesForUserAsync(con, userId, branches, isSecurityAdmin: false);
 
-static async Task<bool> IsBranchAssignedToUserAsync(SqlConnection con, int userId, int branchId)
-{
-    await EnsureTenantUserSecuritySchemaAsync(con);
-    await using var cmd = con.CreateCommand();
-    cmd.CommandText = "SELECT COUNT(1) FROM UserBranchAssignments WHERE UserId=@UserId AND StoreId=@StoreId";
-    cmd.Parameters.AddWithValue("@UserId", userId);
-    cmd.Parameters.AddWithValue("@StoreId", branchId);
-    var count = Convert.ToInt32(await cmd.ExecuteScalarAsync());
-    if (count > 0) return true;
-
-    await using var empty = con.CreateCommand();
-    empty.CommandText = "SELECT COUNT(1) FROM UserBranchAssignments WHERE UserId=@UserId";
-    empty.Parameters.AddWithValue("@UserId", userId);
-    return Convert.ToInt32(await empty.ExecuteScalarAsync()) == 0;
-}
+static async Task<bool> IsBranchAssignedToUserAsync(SqlConnection con, int userId, int branchId) =>
+    await BranchAccessHelper.IsBranchAssignedToUserAsync(con, userId, branchId, isSecurityAdmin: false);
 
 
 static async Task<IResult> LoginFailureAsync(AuthenticationSecurityService authSecurity, string loginKey, string ipAddress, string userAgent, string reason)
@@ -4519,6 +6273,164 @@ static async Task<IResult> StartOrCompleteLoginAsync(HttpContext http, Connectio
     {
         return Results.BadRequest(new { message = ex.Message });
     }
+}
+
+static async Task<IResult> CompleteMobileLoginAsync(
+    HttpContext http,
+    ConnectionFactory db,
+    AuthTokenService tokens,
+    AuthenticationSecurityService authSecurity,
+    UserSession pendingSession,
+    long mobileAppUserId,
+    string? mobile,
+    string? appName,
+    string? platform,
+    string? apiKey,
+    string? appStatus,
+    string? deviceName,
+    string? appVersion,
+    object[]? branchesPayload = null)
+{
+    if (mobileAppUserId <= 0) mobileAppUserId = ReadMobileAppUserId(pendingSession);
+    await MarkMobileEmailVerifiedAsync(db, mobileAppUserId, pendingSession.Email, pendingSession.CompanyCode);
+
+    var sessionId = "MOB-" + Guid.NewGuid().ToString("N");
+    var permissionsJson = BuildMobilePermissionsJson(mobileAppUserId);
+    var session = pendingSession with { SessionId = sessionId, PermissionsJson = permissionsJson };
+
+    // Ensure branch list is present (OTP path may not have precomputed payload).
+    if (branchesPayload == null || branchesPayload.Length == 0)
+    {
+        try
+        {
+            if (!string.IsNullOrWhiteSpace(session.DatabaseName) && session.UserId > 0)
+            {
+                await using var tenantCon = await db.OpenTenantAsync(session.DatabaseName);
+                var isAdmin = IsCompanySecurityAdmin(session);
+                var (preferred, assigned) = await BranchAccessHelper.ResolveBranchesForUserAsync(tenantCon, session.UserId, isAdmin);
+                session = session with
+                {
+                    StoreId = preferred.BranchId,
+                    StoreName = preferred.BranchName,
+                    BranchId = preferred.BranchId,
+                    BranchCode = preferred.BranchCode,
+                    BranchName = preferred.BranchName
+                };
+                branchesPayload = BranchAccessHelper.ToPayload(assigned);
+            }
+        }
+        catch { /* keep session branch as-is */ }
+    }
+
+    if (branchesPayload == null || branchesPayload.Length == 0)
+    {
+        branchesPayload = BranchAccessHelper.ToPayload(new[]
+        {
+            new BranchAccessHelper.BranchInfo(
+                session.BranchId > 0 ? session.BranchId : 1,
+                string.IsNullOrWhiteSpace(session.BranchCode) ? "MAIN" : session.BranchCode,
+                string.IsNullOrWhiteSpace(session.BranchName) ? "Main Store" : session.BranchName,
+                true)
+        });
+    }
+
+    var token = tokens.Create(session);
+    var refresh = await authSecurity.ReplaceRefreshTokenAsync(null, session);
+
+    // Best-effort enrichment when verify-otp path did not pass app metadata.
+    if (string.IsNullOrWhiteSpace(appName) || string.IsNullOrWhiteSpace(apiKey))
+    {
+        try
+        {
+            await using var master = await db.OpenMasterAsync();
+            await using var cmd = master.CreateCommand();
+            cmd.CommandText = @"
+SELECT TOP 1 u.Mobile, a.AppName, a.Platform, a.ApiKey, a.Status
+FROM CompanyMobileAppUsers u
+INNER JOIN CompanyMobileApps a ON a.AppId=u.AppId AND a.CompanyCode=u.CompanyCode
+WHERE u.CompanyCode=@CompanyCode AND (u.MobileAppUserId=@MobileAppUserId OR LOWER(LTRIM(RTRIM(ISNULL(u.Email,''))))=@Email)
+ORDER BY u.MobileAppUserId";
+            cmd.Parameters.AddWithValue("@CompanyCode", session.CompanyCode);
+            cmd.Parameters.AddWithValue("@MobileAppUserId", mobileAppUserId);
+            cmd.Parameters.AddWithValue("@Email", NormalizeCloudEmail(session.Email));
+            await using var reader = await cmd.ExecuteReaderAsync();
+            if (await reader.ReadAsync())
+            {
+                mobile ??= SqlRead.String(reader, "Mobile");
+                appName ??= SqlRead.String(reader, "AppName");
+                platform ??= SqlRead.String(reader, "Platform");
+                apiKey ??= SqlRead.String(reader, "ApiKey");
+                appStatus ??= SqlRead.String(reader, "Status");
+            }
+        }
+        catch { /* keep nulls */ }
+    }
+
+    var allowMulti = session.AllowMultipleBranches && branchesPayload.Length > 1;
+    return Results.Ok(new
+    {
+        ok = true,
+        code = "LOGIN_OK",
+        message = "Login successful. Company resolved automatically from email.",
+        requiresVerification = false,
+        token,
+        refreshToken = refresh.PlainToken,
+        expiresInMinutes = authSecurity.AccessTokenExpiryMinutes,
+        allowMultipleBranches = session.AllowMultipleBranches,
+        showSelector = allowMulti,
+        branches = branchesPayload,
+        storeId = session.StoreId,
+        branchId = session.BranchId,
+        branchCode = session.BranchCode,
+        branchName = session.BranchName,
+        company = new
+        {
+            companyCode = session.CompanyCode,
+            companyName = session.CompanyName
+        },
+        user = new
+        {
+            mobileAppUserId,
+            userId = session.UserId,
+            userName = session.UserName,
+            displayName = session.DisplayName,
+            email = session.Email,
+            mobile,
+            roleName = session.RoleName,
+            storeId = session.StoreId,
+            branchId = session.BranchId,
+            branchCode = session.BranchCode,
+            branchName = session.BranchName
+        },
+        app = new
+        {
+            appName,
+            platform,
+            apiKey,
+            status = appStatus
+        },
+        device = new
+        {
+            deviceName,
+            appVersion
+        },
+        sync = new
+        {
+            autoConnect = true,
+            noClientSetupRequired = true,
+            authHeader = "Authorization: Bearer {token}",
+            endpoints = new
+            {
+                health = "/api/mobile/health",
+                me = "/api/mobile/me",
+                company = "/api/mobile/company",
+                logout = "/api/mobile/logout",
+                refresh = "/api/mobile/refresh",
+                branchContext = "/api/branches/context",
+                switchBranch = "/api/branches/switch"
+            }
+        }
+    });
 }
 
 static async Task<AuthenticatedLoginResponse> CompleteAuthenticationAsync(HttpContext http, ConnectionFactory db, AuthTokenService tokens, AuthenticationSecurityService authSecurity, UserSession pendingSession)
@@ -4728,12 +6640,158 @@ static bool IsAcceptablePassword(string? password)
     return password.Any(char.IsUpper) && password.Any(char.IsLower) && password.Any(char.IsDigit);
 }
 
+static async Task<int> ResolvePosCustomerIdAsync(SqlConnection con, SqlTransaction tran, int requestedCustomerId)
+{
+    if (requestedCustomerId > 0)
+    {
+        await using var find = new SqlCommand("SELECT TOP 1 CustomerId FROM Customers WHERE CustomerId=@Id AND IsActive=1", con, tran);
+        find.Parameters.AddWithValue("@Id", requestedCustomerId);
+        var found = await find.ExecuteScalarAsync();
+        if (found != null && found != DBNull.Value) return Convert.ToInt32(found);
+    }
+    return await PosSql.GetWalkInCustomerIdAsync(con, tran);
+}
+
 static string NormalizeCloudEmail(string? email)
 {
     var value = (email ?? string.Empty).Trim().ToLowerInvariant();
     if (value.Length < 6 || value.Length > 180) return string.Empty;
     if (!value.Contains('@') || !value.Contains('.') || value.Contains(' ')) return string.Empty;
     return value;
+}
+
+/// <summary>
+/// Email may be used on Cloud, Desktop, and Mobile inside one company.
+/// Conflict only when the same email already belongs to a different company.
+/// </summary>
+static async Task<string?> FindGlobalEmailConflictAsync(
+    ConnectionFactory db,
+    string email,
+    string? forCompanyCode = null,
+    int? excludeTenantUserId = null,
+    bool allowSameCompanyDirectory = false)
+{
+    email = NormalizeCloudEmail(email);
+    if (string.IsNullOrWhiteSpace(email))
+        return "A valid email address is required.";
+
+    await EnsureMasterUserDirectorySchemaAsync(db);
+    await EnsureCompanyMobileAppSchemaAsync(db);
+    await using var master = await db.OpenMasterAsync();
+    var company = (forCompanyCode ?? string.Empty).Trim();
+
+    await using (var cmd = master.CreateCommand())
+    {
+        cmd.CommandText = @"
+SELECT TOP 1 CompanyCode
+FROM CentralUserDirectory
+WHERE LOWER(LTRIM(RTRIM(Email))) = @Email
+  AND (@ForCompanyCode = '' OR CompanyCode <> @ForCompanyCode)";
+        cmd.Parameters.AddWithValue("@Email", email);
+        cmd.Parameters.AddWithValue("@ForCompanyCode", company);
+        var hit = Convert.ToString(await cmd.ExecuteScalarAsync());
+        if (!string.IsNullOrWhiteSpace(hit))
+            return $"This email is already registered for company {hit}. An email can be used on Cloud, Desktop, and Mobile for one company only.";
+    }
+
+    await using (var cmd = master.CreateCommand())
+    {
+        cmd.CommandText = @"
+SELECT TOP 1 CompanyCode
+FROM CompanyMobileAppUsers
+WHERE LOWER(LTRIM(RTRIM(ISNULL(Email,'')))) = @Email
+  AND (@ForCompanyCode = '' OR CompanyCode <> @ForCompanyCode)";
+        cmd.Parameters.AddWithValue("@Email", email);
+        cmd.Parameters.AddWithValue("@ForCompanyCode", company);
+        var hit = Convert.ToString(await cmd.ExecuteScalarAsync());
+        if (!string.IsNullOrWhiteSpace(hit))
+            return $"This email is already registered for company {hit}. An email can be used on Cloud, Desktop, and Mobile for one company only.";
+    }
+
+    if (!allowSameCompanyDirectory && !string.IsNullOrWhiteSpace(company))
+    {
+        await using var cmd = master.CreateCommand();
+        cmd.CommandText = @"
+SELECT TOP 1 CompanyCode
+FROM CentralUserDirectory
+WHERE LOWER(LTRIM(RTRIM(Email))) = @Email
+  AND CompanyCode = @ForCompanyCode
+  AND (@ExcludeUserId IS NULL OR UserId <> @ExcludeUserId)";
+        cmd.Parameters.AddWithValue("@Email", email);
+        cmd.Parameters.AddWithValue("@ForCompanyCode", company);
+        cmd.Parameters.AddWithValue("@ExcludeUserId", (object?)excludeTenantUserId ?? DBNull.Value);
+        var hit = Convert.ToString(await cmd.ExecuteScalarAsync());
+        if (!string.IsNullOrWhiteSpace(hit))
+            return "This email is already a Cloud/Desktop login for this company.";
+    }
+
+    return null;
+}
+
+static string BuildMobilePermissionsJson(long mobileAppUserId)
+{
+    var payload = new Dictionary<string, object?>(StringComparer.OrdinalIgnoreCase)
+    {
+        ["mobile.access"] = true,
+        ["mobile.sync"] = true,
+        ["sales.createInvoice"] = true,
+        ["sales.editInvoice"] = true,
+        ["sales.postInvoice"] = true,
+        ["sales.createReturn"] = true,
+        ["purchase.createInvoice"] = true,
+        ["purchase.editInvoice"] = true,
+        ["purchase.postInvoice"] = true,
+        ["finance.createExpense"] = true,
+        ["__authChannel"] = "mobile",
+        ["__mobileAppUserId"] = mobileAppUserId
+    };
+    return JsonSerializer.Serialize(payload);
+}
+
+static string? ReadAuthChannel(UserSession session)
+{
+    try
+    {
+        using var doc = JsonDocument.Parse(string.IsNullOrWhiteSpace(session.PermissionsJson) ? "{}" : session.PermissionsJson);
+        if (doc.RootElement.TryGetProperty("__authChannel", out var ch) && ch.ValueKind == JsonValueKind.String)
+            return ch.GetString();
+    }
+    catch { /* ignore */ }
+    if (session.SessionId.StartsWith("MOB-", StringComparison.OrdinalIgnoreCase)) return "mobile";
+    if (session.SessionId.StartsWith("DESK-", StringComparison.OrdinalIgnoreCase)) return "desktop";
+    return null;
+}
+
+static long ReadMobileAppUserId(UserSession session)
+{
+    try
+    {
+        using var doc = JsonDocument.Parse(string.IsNullOrWhiteSpace(session.PermissionsJson) ? "{}" : session.PermissionsJson);
+        if (doc.RootElement.TryGetProperty("__mobileAppUserId", out var id))
+        {
+            if (id.ValueKind == JsonValueKind.Number && id.TryGetInt64(out var n)) return n;
+            if (id.ValueKind == JsonValueKind.String && long.TryParse(id.GetString(), out var s)) return s;
+        }
+    }
+    catch { /* ignore */ }
+    return 0;
+}
+
+static async Task MarkMobileEmailVerifiedAsync(ConnectionFactory db, long mobileAppUserId, string email, string companyCode)
+{
+    if (mobileAppUserId <= 0 && string.IsNullOrWhiteSpace(email)) return;
+    await EnsureCompanyMobileAppSchemaAsync(db);
+    await using var master = await db.OpenMasterAsync();
+    await using var cmd = master.CreateCommand();
+    cmd.CommandText = @"
+UPDATE CompanyMobileAppUsers
+SET EmailVerified=1, UpdatedAt=SYSUTCDATETIME()
+WHERE (@MobileAppUserId > 0 AND MobileAppUserId=@MobileAppUserId)
+   OR (CompanyCode=@CompanyCode AND LOWER(LTRIM(RTRIM(ISNULL(Email,''))))=@Email)";
+    cmd.Parameters.AddWithValue("@MobileAppUserId", mobileAppUserId);
+    cmd.Parameters.AddWithValue("@CompanyCode", companyCode ?? string.Empty);
+    cmd.Parameters.AddWithValue("@Email", NormalizeCloudEmail(email));
+    await cmd.ExecuteNonQueryAsync();
 }
 
 static bool IsPlatformOwnerEmail(string? email, PayNexOptions options) =>
@@ -4794,6 +6852,7 @@ CREATE TABLE CompanyMobileAppUsers(
     Email NVARCHAR(180) NULL,
     Mobile NVARCHAR(40) NULL,
     PasswordHash NVARCHAR(500) NOT NULL,
+    OwnerVisiblePassword NVARCHAR(128) NULL,
     RoleName NVARCHAR(80) NOT NULL DEFAULT 'Mobile User',
     IsBlocked BIT NOT NULL DEFAULT 0,
     IsActive BIT NOT NULL DEFAULT 1,
@@ -4803,7 +6862,13 @@ CREATE TABLE CompanyMobileAppUsers(
     BlockedAt DATETIME2 NULL,
     CONSTRAINT UQ_CompanyMobileAppUsers_CompanyUser UNIQUE(CompanyCode, UserName)
 );
-END;";
+END;
+IF COL_LENGTH('CompanyMobileAppUsers','OwnerVisiblePassword') IS NULL ALTER TABLE CompanyMobileAppUsers ADD OwnerVisiblePassword NVARCHAR(128) NULL;
+IF COL_LENGTH('CompanyMobileAppUsers','EmailVerified') IS NULL ALTER TABLE CompanyMobileAppUsers ADD EmailVerified BIT NOT NULL CONSTRAINT DF_CompanyMobileAppUsers_EmailVerified DEFAULT 0;
+BEGIN TRY
+    IF NOT EXISTS (SELECT 1 FROM sys.indexes WHERE name='UX_CompanyMobileAppUsers_Email' AND object_id=OBJECT_ID('CompanyMobileAppUsers'))
+        EXEC(N'CREATE UNIQUE INDEX UX_CompanyMobileAppUsers_Email ON CompanyMobileAppUsers(Email) WHERE Email IS NOT NULL AND LTRIM(RTRIM(Email)) <> ''''');
+END TRY BEGIN CATCH END CATCH";
     await cmd.ExecuteNonQueryAsync();
 }
 
@@ -4838,6 +6903,10 @@ IF COL_LENGTH('CentralUserDirectory','IsCompanySuperAdmin') IS NULL ALTER TABLE 
 IF COL_LENGTH('CentralUserDirectory','IsDefaultCompany') IS NULL ALTER TABLE CentralUserDirectory ADD IsDefaultCompany BIT NOT NULL CONSTRAINT DF_CUD_IsDefaultCompany DEFAULT 1;
 IF COL_LENGTH('CentralUserDirectory','LastLoginAt') IS NULL ALTER TABLE CentralUserDirectory ADD LastLoginAt DATETIME2 NULL;
 IF COL_LENGTH('CentralUserDirectory','UpdatedAt') IS NULL ALTER TABLE CentralUserDirectory ADD UpdatedAt DATETIME2 NULL;
+BEGIN TRY
+    IF NOT EXISTS (SELECT 1 FROM sys.indexes WHERE name='UX_CentralUserDirectory_Email' AND object_id=OBJECT_ID('CentralUserDirectory'))
+        EXEC(N'CREATE UNIQUE INDEX UX_CentralUserDirectory_Email ON CentralUserDirectory(Email)');
+END TRY BEGIN CATCH END CATCH;
 IF OBJECT_ID('AuthSessionAudit') IS NULL
 BEGIN
 CREATE TABLE AuthSessionAudit(
@@ -4922,6 +6991,60 @@ EXEC(N'UPDATE Users SET IsCompanySuperAdmin=1 WHERE UserName=''admin'' OR UserId
     await cmd.ExecuteNonQueryAsync();
 }
 
+static async Task<string> AllocateNextCustomerCodeAsync(SqlConnection con)
+{
+    await using var cmd = con.CreateCommand();
+    cmd.CommandText = @"
+SELECT ISNULL(MAX(TRY_CONVERT(INT,
+    CASE
+        WHEN CustomerCode LIKE 'C-%' THEN SUBSTRING(CustomerCode, 3, 32)
+        WHEN CustomerCode LIKE 'C[0-9]%' THEN SUBSTRING(CustomerCode, 2, 32)
+        ELSE NULL
+    END)), 0) + 1
+FROM Customers
+WHERE CustomerCode LIKE 'C-%' OR CustomerCode LIKE 'C[0-9]%'";
+    var next = Convert.ToInt32(await cmd.ExecuteScalarAsync() ?? 1);
+    if (next < 1) next = 1;
+    string code;
+    do
+    {
+        code = $"C-{next:0000}";
+        await using var exists = con.CreateCommand();
+        exists.CommandText = "SELECT CASE WHEN EXISTS(SELECT 1 FROM Customers WHERE UPPER(LTRIM(RTRIM(CustomerCode)))=UPPER(@Code)) THEN 1 ELSE 0 END";
+        exists.Parameters.AddWithValue("@Code", code);
+        if (Convert.ToInt32(await exists.ExecuteScalarAsync()) == 0) return code;
+        next++;
+    } while (next < 1_000_000);
+    return $"C-{DateTime.UtcNow:HHmmss}";
+}
+
+static async Task<string> AllocateNextVendorCodeAsync(SqlConnection con)
+{
+    await using var cmd = con.CreateCommand();
+    cmd.CommandText = @"
+SELECT ISNULL(MAX(TRY_CONVERT(INT,
+    CASE
+        WHEN VendorCode LIKE 'V-%' THEN SUBSTRING(VendorCode, 3, 32)
+        WHEN VendorCode LIKE 'V[0-9]%' THEN SUBSTRING(VendorCode, 2, 32)
+        ELSE NULL
+    END)), 0) + 1
+FROM Vendors
+WHERE VendorCode LIKE 'V-%' OR VendorCode LIKE 'V[0-9]%'";
+    var next = Convert.ToInt32(await cmd.ExecuteScalarAsync() ?? 1);
+    if (next < 1) next = 1;
+    string code;
+    do
+    {
+        code = $"V-{next:0000}";
+        await using var exists = con.CreateCommand();
+        exists.CommandText = "SELECT CASE WHEN EXISTS(SELECT 1 FROM Vendors WHERE UPPER(LTRIM(RTRIM(VendorCode)))=UPPER(@Code)) THEN 1 ELSE 0 END";
+        exists.Parameters.AddWithValue("@Code", code);
+        if (Convert.ToInt32(await exists.ExecuteScalarAsync()) == 0) return code;
+        next++;
+    } while (next < 1_000_000);
+    return $"V-{DateTime.UtcNow:HHmmss}";
+}
+
 static async Task UpsertCentralUserDirectoryAsync(ConnectionFactory db, UserSession actor, int tenantUserId, string email, string userName, string displayName, string passwordHash, string roleName, bool emailVerified, bool isCompanySuperAdmin, bool isActive)
 {
     await EnsureMasterUserDirectorySchemaAsync(db);
@@ -4998,6 +7121,9 @@ END");
     await ExecAsync(con, "IF OBJECT_ID('StockTransfers') IS NOT NULL AND COL_LENGTH('StockTransfers','FromBranchCode') IS NULL ALTER TABLE StockTransfers ADD FromBranchCode NVARCHAR(30) NULL;");
     await ExecAsync(con, "IF OBJECT_ID('StockTransfers') IS NOT NULL AND COL_LENGTH('StockTransfers','ToBranchCode') IS NULL ALTER TABLE StockTransfers ADD ToBranchCode NVARCHAR(30) NULL;");
     await ExecAsync(con, "IF OBJECT_ID('HoldSalesHeader') IS NOT NULL AND COL_LENGTH('HoldSalesHeader','BranchCode') IS NULL ALTER TABLE HoldSalesHeader ADD BranchCode NVARCHAR(30) NULL;");
+    await ExecAsync(con, "IF OBJECT_ID('HoldSalesHeader') IS NOT NULL AND COL_LENGTH('HoldSalesHeader','Status') IS NULL ALTER TABLE HoldSalesHeader ADD Status NVARCHAR(30) NOT NULL CONSTRAINT DF_HoldSalesHeader_Status DEFAULT 'Hold';");
+    await ExecAsync(con, "IF OBJECT_ID('HoldSalesHeader') IS NOT NULL AND COL_LENGTH('HoldSalesHeader','Remarks') IS NULL ALTER TABLE HoldSalesHeader ADD Remarks NVARCHAR(MAX) NULL;");
+    await ExecAsync(con, "IF OBJECT_ID('HoldSalesHeader') IS NOT NULL AND COL_LENGTH('HoldSalesHeader','HoldDate') IS NULL ALTER TABLE HoldSalesHeader ADD HoldDate DATETIME2 NOT NULL CONSTRAINT DF_HoldSalesHeader_HoldDate DEFAULT SYSUTCDATETIME();");
     await ExecAsync(con, "IF OBJECT_ID('ReturnHeader') IS NOT NULL AND COL_LENGTH('ReturnHeader','BranchCode') IS NULL ALTER TABLE ReturnHeader ADD BranchCode NVARCHAR(30) NULL;");
 
     await ExecAsync(con, "IF OBJECT_ID('SalesHeader') IS NOT NULL UPDATE h SET BranchCode=s.StoreCode FROM SalesHeader h INNER JOIN Stores s ON s.StoreId=h.StoreId WHERE h.BranchCode IS NULL OR h.BranchCode='';");
@@ -5008,6 +7134,7 @@ END");
     await ExecAsync(con, "IF OBJECT_ID('ReturnHeader') IS NOT NULL UPDATE rh SET BranchCode=s.StoreCode FROM ReturnHeader rh INNER JOIN Stores s ON s.StoreId=rh.StoreId WHERE rh.BranchCode IS NULL OR rh.BranchCode='';");
     await ExecAsync(con, "IF OBJECT_ID('StockAdjustments') IS NOT NULL UPDATE a SET BranchCode=s.StoreCode FROM StockAdjustments a INNER JOIN Stores s ON s.StoreId=a.StoreId WHERE a.BranchCode IS NULL OR a.BranchCode='';");
     await ExecAsync(con, "IF OBJECT_ID('StockTransfers') IS NOT NULL UPDATE t SET FromBranchCode=fs.StoreCode, ToBranchCode=ts.StoreCode FROM StockTransfers t INNER JOIN Stores fs ON fs.StoreId=t.FromStoreId INNER JOIN Stores ts ON ts.StoreId=t.ToStoreId WHERE t.FromBranchCode IS NULL OR t.FromBranchCode='' OR t.ToBranchCode IS NULL OR t.ToBranchCode='';");
+    await BankAccountService.EnsureSchemaAsync(con);
 }
 
 static async Task<List<Dictionary<string, object?>>> ReadBranchesAsync(SqlConnection con)
@@ -5059,4 +7186,13 @@ static string ResolveTenantDatabase(TenantInfo tenant, string environmentName)
 }
 
 app.MapFallbackToFile("index.html");
+try
+{
+    await app.Services.GetRequiredService<CredentialUniquenessService>().RepairSharedPasswordsAsync();
+}
+catch (Exception ex)
+{
+    app.Logger.LogWarning(ex, "Credential uniqueness repair did not complete.");
+}
+
 app.Run();

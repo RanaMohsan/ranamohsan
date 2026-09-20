@@ -1,0 +1,21 @@
+<?xml version="1.0" encoding="utf-8"?>
+<Report xmlns="http://schemas.microsoft.com/sqlserver/reporting/2016/01/reportdefinition" xmlns:rd="http://schemas.microsoft.com/SQLServer/reporting/reportdesigner">
+  <Description>Vendor Ledger Entries layout is rendered by the WPF FixedDocument print preview service.</Description>
+  <ReportSections>
+    <ReportSection>
+      <Body>
+        <ReportItems />
+        <Height>1in</Height>
+      </Body>
+      <Width>7.5in</Width>
+      <Page>
+        <PageHeight>11.69in</PageHeight>
+        <PageWidth>8.27in</PageWidth>
+        <LeftMargin>0.4in</LeftMargin>
+        <RightMargin>0.4in</RightMargin>
+        <TopMargin>0.4in</TopMargin>
+        <BottomMargin>0.4in</BottomMargin>
+      </Page>
+    </ReportSection>
+  </ReportSections>
+</Report>

@@ -1,0 +1,137 @@
+<!doctype html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <link rel="stylesheet" href="/css/app.css?v=avatar-fix-20260812d">
+  <title>InterNex Owner - Client Subscriptions</title>
+  <style>
+    .subscription-kpis{display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:10px;margin:0 0 14px}
+    .subscription-kpis > div{background:#fff;border:1px solid #d7dee8;border-radius:10px;padding:12px 14px}
+    .subscription-kpis span{display:block;font-size:12px;color:#64748b;margin-bottom:4px}
+    .subscription-kpis strong{font-size:18px;color:#0f172a}
+    .subscription-charts{display:grid;grid-template-columns:repeat(auto-fit,minmax(240px,1fr));gap:12px;margin:0 0 14px}
+    .subscription-chart{background:#fff;border:1px solid #d7dee8;border-radius:10px;padding:12px 14px}
+    .subscription-chart h3{margin:0 0 10px;font-size:14px}
+    .sub-bar-row{display:flex;align-items:center;gap:8px;margin:6px 0;font-size:12px}
+    .sub-bar-row span{min-width:72px;color:#475569}
+    .sub-bar-track{flex:1;height:8px;background:#e2e8f0;border-radius:99px;overflow:hidden}
+    .sub-bar-fill{height:100%;background:#2563eb;border-radius:99px}
+    .sub-bar-row b{min-width:56px;text-align:right}
+  </style>
+</head>
+<body>
+  <main class="shell bc-list-page owner-company-list-page" data-page-role="owner-subscription-list">
+    <section class="bc-page-heading">
+      <div>
+        <div class="bc-breadcrumb">Owner Portal / Client Subscriptions</div>
+        <h1>Client Subscriptions</h1>
+        <p id="who" class="muted">Loading InterNex owner profile...</p>
+      </div>
+      <span class="bc-page-badge">List</span>
+    </section>
+
+    <section class="bc-command-bar" aria-label="Subscription list actions">
+      <button id="newBtn" class="bc-command-primary" type="button"><span>＋</span> New Subscription</button>
+      <button id="openBtn" class="secondary" type="button"><span>↗</span> Open Card</button>
+      <button id="renewBtn" class="secondary" type="button"><span>↻</span> Renew</button>
+      <button id="reportBtn" class="secondary" type="button"><span>▣</span> Reports</button>
+      <button id="refreshBtn" class="secondary" type="button"><span>↻</span> Refresh</button>
+    </section>
+
+    <section class="subscription-kpis" aria-label="Subscription KPIs">
+      <div><span>Total Clients</span><strong id="kpiTotalClients">0</strong></div>
+      <div><span>Active</span><strong id="kpiActive">0</strong></div>
+      <div><span>Expired</span><strong id="kpiExpired">0</strong></div>
+      <div><span>Expiring ≤30d</span><strong id="kpiExpiring">0</strong></div>
+      <div><span>Pending Payments</span><strong id="kpiPending">0</strong></div>
+      <div><span>Cancelled</span><strong id="kpiCancelled">0</strong></div>
+      <div><span>Monthly Revenue</span><strong id="kpiMonthly">0.00</strong></div>
+      <div><span>Annual Revenue</span><strong id="kpiAnnual">0.00</strong></div>
+    </section>
+
+    <section class="subscription-charts" aria-label="Subscription charts">
+      <div class="subscription-chart">
+        <h3>Status breakdown</h3>
+        <div id="statusChart"></div>
+      </div>
+      <div class="subscription-chart">
+        <h3>Renewal forecast</h3>
+        <div id="renewalChart"></div>
+      </div>
+      <div class="subscription-chart">
+        <h3>Monthly revenue</h3>
+        <div id="revenueChart"></div>
+      </div>
+    </section>
+
+    <section class="bc-filter-pane owner-company-filter">
+      <div class="bc-filter-title">Filter</div>
+      <label>Search
+        <input id="searchInput" type="search" placeholder="Subscription no, company, plan...">
+      </label>
+      <label>Status
+        <select id="statusFilter" data-no-lookup="1">
+          <option value="">All statuses</option>
+          <option value="Active">Active</option>
+          <option value="Expired">Expired</option>
+          <option value="Cancelled">Cancelled</option>
+          <option value="Suspended">Suspended</option>
+        </select>
+      </label>
+      <label>Plan
+        <select id="planFilter" data-no-lookup="1">
+          <option value="0">All plans</option>
+        </select>
+      </label>
+      <label>Expiring
+        <select id="expiringFilter" data-no-lookup="1">
+          <option value="0">Any time</option>
+          <option value="30">Next 30 days</option>
+          <option value="60">Next 60 days</option>
+          <option value="90">Next 90 days</option>
+        </select>
+      </label>
+      <button id="applyFilterBtn" type="button">Apply</button>
+      <button id="clearFilterBtn" class="secondary" type="button">Clear</button>
+    </section>
+
+    <section class="bc-list-card">
+      <div class="bc-list-caption">
+        <div><strong>Subscription Register</strong><span id="recordCount" class="muted">0 records</span></div>
+        <div id="selectedCaption" class="muted">No subscription selected</div>
+      </div>
+      <div class="bc-table-wrap">
+        <table class="bc-data-table owner-company-data-table" aria-label="Client subscription list">
+          <thead>
+            <tr>
+              <th class="bc-select-col"></th>
+              <th>Subscription No</th>
+              <th>Client</th>
+              <th>Plan</th>
+              <th class="number">Amount</th>
+              <th>Start</th>
+              <th>Expiry</th>
+              <th>Payment</th>
+              <th>Status</th>
+            </tr>
+          </thead>
+          <tbody id="rows">
+            <tr><td colspan="9" class="bc-empty-row">Loading subscriptions...</td></tr>
+          </tbody>
+        </table>
+      </div>
+      <div class="bc-list-footer">
+        <span id="footerSummary">0 active subscriptions</span>
+        <span>Double-click a row to open the subscription card.</span>
+      </div>
+    </section>
+
+    <p id="status" class="bc-status-line" aria-live="polite"></p>
+  </main>
+
+  <script src="/js/api.js?v=avatar-fix-20260812d"></script>
+  <script src="/js/platform-subscriptions.js?v=owner-sub-20260915"></script>
+  <script src="/js/app-shell.js?v=owner-sub-20260915"></script>
+</body>
+</html>

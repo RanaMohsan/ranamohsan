@@ -1,0 +1,52 @@
+<!doctype html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>InterNex Cloud ERP</title>
+  <link rel="icon" type="image/png" href="/images/favicon.png?v=internex-tab-20260913">
+  <link rel="shortcut icon" href="/images/favicon.ico?v=internex-tab-20260913">
+  <link rel="stylesheet" href="/css/app.css?v=internex-tab-20260913">
+</head>
+<body class="fo-home-page">
+  <main class="shell fo-home-shell">
+    <div id="subscriptionRenewBanner" class="fo-subscription-renew-banner" hidden role="alert"></div>
+    <section class="fo-workspace-title">
+      <h1 id="homeCompanyName">InterNex Cloud ERP</h1>
+      <p class="muted">Core SMB ERP actions: master data, invoices, payments and ledger entries.</p>
+    </section>
+
+    <section class="fo-dashboard-layout fo-home-compact">
+      <aside class="fo-home-left-card">
+        <div class="fo-company-avatar" id="foCompanyAvatar" title="Company">
+          <img id="foCompanyAvatarImg" alt="" hidden>
+          <span id="foCompanyAvatarFallback">PN</span>
+        </div>
+        <div class="fo-calendar-card fo-calendar-compact">
+          <div class="fo-calendar-head">
+            <button type="button" class="fo-calendar-nav" aria-label="Previous month">‹</button>
+            <strong id="foCalendarMonth">July&nbsp;&nbsp;2027</strong>
+            <button type="button" class="fo-calendar-nav" aria-label="Next month">›</button>
+          </div>
+          <div class="fo-calendar-weekdays">
+            <span>Su</span><span>Mo</span><span>Tu</span><span>We</span><span>Th</span><span>Fr</span><span>Sa</span>
+          </div>
+          <div class="fo-calendar-grid" id="foCalendarGrid"></div>
+        </div>
+        <div class="fo-workitems-card fo-workitems-compact">
+          <div class="fo-workitems-head">
+            <h2>Work items</h2>
+          </div>
+          <p class="muted">Assigned items appear here.</p>
+        </div>
+      </aside>
+
+      <section class="fo-module-grid" id="tiles" aria-label="Core ERP actions"></section>
+    </section>
+  </main>
+
+  <script src="/js/api.js?v=avatar-fix-20260812d"></script>
+  <script src="/js/workspace.js?v=subscription-grace-20260917"></script>
+  <script src="/js/app-shell.js?v=avatar-fix-20260812d"></script>
+</body>
+</html>

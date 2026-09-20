@@ -304,3 +304,99 @@ CREATE TABLE CompanyMobileAppUsers(
 );
 END;
 GO
+
+-- Owner-only SaaS client subscription management (PayNex_MasterDB).
+IF OBJECT_ID('SubscriptionPlans') IS NULL
+BEGIN
+CREATE TABLE SubscriptionPlans(
+    SubscriptionPlanId INT IDENTITY(1,1) PRIMARY KEY,
+    PlanCode NVARCHAR(30) NOT NULL UNIQUE,
+    PlanName NVARCHAR(100) NOT NULL,
+    DurationType NVARCHAR(20) NOT NULL CONSTRAINT DF_SubscriptionPlans_DurationType DEFAULT 'Month',
+    DurationValue INT NOT NULL CONSTRAINT DF_SubscriptionPlans_DurationValue DEFAULT 1,
+    DefaultAmount DECIMAL(18,2) NULL,
+    IsActive BIT NOT NULL CONSTRAINT DF_SubscriptionPlans_IsActive DEFAULT 1,
+    CreatedAt DATETIME2 NOT NULL CONSTRAINT DF_SubscriptionPlans_CreatedAt DEFAULT SYSUTCDATETIME()
+);
+END;
+
+IF NOT EXISTS (SELECT 1 FROM SubscriptionPlans WHERE PlanCode = 'MONTHLY')
+    INSERT INTO SubscriptionPlans(PlanCode, PlanName, DurationType, DurationValue, DefaultAmount, IsActive)
+    VALUES ('MONTHLY', 'Monthly', 'Month', 1, NULL, 1);
+IF NOT EXISTS (SELECT 1 FROM SubscriptionPlans WHERE PlanCode = 'QUARTERLY')
+    INSERT INTO SubscriptionPlans(PlanCode, PlanName, DurationType, DurationValue, DefaultAmount, IsActive)
+    VALUES ('QUARTERLY', 'Quarterly', 'Month', 3, NULL, 1);
+IF NOT EXISTS (SELECT 1 FROM SubscriptionPlans WHERE PlanCode = 'HALFYEARLY')
+    INSERT INTO SubscriptionPlans(PlanCode, PlanName, DurationType, DurationValue, DefaultAmount, IsActive)
+    VALUES ('HALFYEARLY', 'Half Yearly', 'Month', 6, NULL, 1);
+IF NOT EXISTS (SELECT 1 FROM SubscriptionPlans WHERE PlanCode = 'ANNUAL')
+    INSERT INTO SubscriptionPlans(PlanCode, PlanName, DurationType, DurationValue, DefaultAmount, IsActive)
+    VALUES ('ANNUAL', 'Annual', 'Month', 12, NULL, 1);
+
+IF OBJECT_ID('ClientSubscriptions') IS NULL
+BEGIN
+CREATE TABLE ClientSubscriptions(
+    SubscriptionId INT IDENTITY(1,1) PRIMARY KEY,
+    SubscriptionNo NVARCHAR(30) NOT NULL UNIQUE,
+    TenantId UNIQUEIDENTIFIER NOT NULL,
+    CompanyCode NVARCHAR(40) NOT NULL,
+    SubscriptionPlanId INT NOT NULL,
+    StartDate DATE NOT NULL,
+    ExpiryDate DATE NOT NULL,
+    Amount DECIMAL(18,2) NOT NULL CONSTRAINT DF_ClientSubscriptions_Amount DEFAULT 0,
+    Currency NVARCHAR(10) NOT NULL CONSTRAINT DF_ClientSubscriptions_Currency DEFAULT 'PKR',
+    PaymentStatus NVARCHAR(20) NOT NULL CONSTRAINT DF_ClientSubscriptions_PaymentStatus DEFAULT 'Pending',
+    SubscriptionStatus NVARCHAR(20) NOT NULL CONSTRAINT DF_ClientSubscriptions_Status DEFAULT 'Active',
+    CancellationDate DATE NULL,
+    CancellationReason NVARCHAR(250) NULL,
+    CreatedBy NVARCHAR(100) NULL,
+    CreatedAt DATETIME2 NOT NULL CONSTRAINT DF_ClientSubscriptions_CreatedAt DEFAULT SYSUTCDATETIME(),
+    UpdatedAt DATETIME2 NULL,
+    CONSTRAINT FK_ClientSubscriptions_Plan FOREIGN KEY(SubscriptionPlanId) REFERENCES SubscriptionPlans(SubscriptionPlanId)
+);
+CREATE INDEX IX_ClientSubscriptions_CompanyCode ON ClientSubscriptions(CompanyCode, SubscriptionStatus);
+CREATE INDEX IX_ClientSubscriptions_ExpiryDate ON ClientSubscriptions(ExpiryDate, SubscriptionStatus);
+END;
+
+IF OBJECT_ID('SubscriptionHistory') IS NULL
+BEGIN
+CREATE TABLE SubscriptionHistory(
+    HistoryId BIGINT IDENTITY(1,1) PRIMARY KEY,
+    SubscriptionId INT NOT NULL,
+    TenantId UNIQUEIDENTIFIER NOT NULL,
+    CompanyCode NVARCHAR(40) NOT NULL,
+    ActionType NVARCHAR(40) NOT NULL,
+    PreviousExpiryDate DATE NULL,
+    NewExpiryDate DATE NULL,
+    Amount DECIMAL(18,2) NOT NULL CONSTRAINT DF_SubscriptionHistory_Amount DEFAULT 0,
+    PlanId INT NULL,
+    Notes NVARCHAR(500) NULL,
+    CreatedBy NVARCHAR(100) NULL,
+    CreatedAt DATETIME2 NOT NULL CONSTRAINT DF_SubscriptionHistory_CreatedAt DEFAULT SYSUTCDATETIME(),
+    CONSTRAINT FK_SubscriptionHistory_Subscription FOREIGN KEY(SubscriptionId) REFERENCES ClientSubscriptions(SubscriptionId)
+);
+CREATE INDEX IX_SubscriptionHistory_SubscriptionId ON SubscriptionHistory(SubscriptionId, HistoryId DESC);
+END;
+
+IF OBJECT_ID('SubscriptionPayments') IS NULL
+BEGIN
+CREATE TABLE SubscriptionPayments(
+    PaymentId BIGINT IDENTITY(1,1) PRIMARY KEY,
+    SubscriptionId INT NOT NULL,
+    HistoryId BIGINT NULL,
+    PaymentDate DATE NOT NULL,
+    Amount DECIMAL(18,2) NOT NULL CONSTRAINT DF_SubscriptionPayments_Amount DEFAULT 0,
+    PaymentMethod NVARCHAR(40) NOT NULL CONSTRAINT DF_SubscriptionPayments_Method DEFAULT 'Cash',
+    ReferenceNo NVARCHAR(80) NULL,
+    Status NVARCHAR(20) NOT NULL CONSTRAINT DF_SubscriptionPayments_Status DEFAULT 'Paid',
+    CreatedBy NVARCHAR(100) NULL,
+    CreatedAt DATETIME2 NOT NULL CONSTRAINT DF_SubscriptionPayments_CreatedAt DEFAULT SYSUTCDATETIME(),
+    CONSTRAINT FK_SubscriptionPayments_Subscription FOREIGN KEY(SubscriptionId) REFERENCES ClientSubscriptions(SubscriptionId)
+);
+CREATE INDEX IX_SubscriptionPayments_SubscriptionId ON SubscriptionPayments(SubscriptionId, PaymentDate DESC);
+CREATE INDEX IX_SubscriptionPayments_PaymentDate ON SubscriptionPayments(PaymentDate, Status);
+END;
+
+IF COL_LENGTH('Tenants','LastSubscriptionAmount') IS NULL
+    ALTER TABLE Tenants ADD LastSubscriptionAmount DECIMAL(18,2) NULL;
+GO

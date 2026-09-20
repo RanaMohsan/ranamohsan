@@ -1,0 +1,110 @@
+<!doctype html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>Web POS</title>
+  <link rel="stylesheet" href="/css/app.css?v=pos-no-top-20260813">
+</head>
+<body class="sidebar-collapsed pos-page-body">
+  <div class="shell pos-page">
+    <div class="pos-layout">
+      <div class="panel">
+        <div class="setup-section-title">
+          <h2>Product Entry</h2>
+          <span class="lookup-chip">Scan / Search / Lookup</span>
+        </div>
+        <div class="row product-search-row">
+          <input id="term" placeholder="Barcode / product code / item name" oninput="loadProducts()">
+          <select id="customer" data-no-lookup="1" disabled title="POS uses Walk-in Customer only."></select>
+          <button class="accent" onclick="loadProducts()">Search</button>
+        </div>
+        <table class="table pos-products-table">
+          <thead>
+            <tr><th>Product</th><th>Price</th><th>Stock</th><th>Action</th></tr>
+          </thead>
+          <tbody id="products"></tbody>
+        </table>
+        <div class="shortcuts">Shortcuts: Scan barcode to search - product selection - Pay/Post Sale generates A4 invoice and thermal receipt.</div>
+      </div>
+      <div class="panel pos-cart-panel">
+        <div class="pos-cart-top">
+          <div class="setup-section-title">
+            <h2>Cart & Payment</h2>
+            <span class="lookup-chip">Counter Sale</span>
+          </div>
+          <div class="pos-cart-scan">
+            <input id="cartBarcode" type="text" placeholder="Scan / type barcode — auto add" autocomplete="off">
+          </div>
+        </div>
+        <div id="cart" class="cart-list"></div>
+        <div class="pos-cart-footer">
+          <div class="pos-total-box">
+            <div>Grand Total</div>
+            <div class="amount total" id="total">Rs. 0.00</div>
+          </div>
+          <div class="row">
+            <label>Paid Amount<input id="paid" type="number" placeholder="Paid Amount"></label>
+            <label>Payment
+              <select id="payMethod" data-no-lookup="1">
+                <option value="Cash">Cash</option>
+                <option value="Bank">Bank</option>
+              </select>
+            </label>
+          </div>
+          <div class="row pos-bank-row" id="bankRow" hidden>
+            <label>Bank Account
+              <select id="bankAccount" data-no-lookup="1">
+                <option value="">Select bank</option>
+              </select>
+            </label>
+          </div>
+          <div class="actions">
+            <button class="success" onclick="postSale()">Pay / Post Sale</button>
+            <button class="secondary" onclick="cart=[];renderCart()">New Sale</button>
+            <button class="secondary" onclick="printLastReceipt()">Print Last Receipt</button>
+            <button class="secondary" onclick="alert('Hold sale ready for workflow')">Hold</button>
+            <button class="secondary" onclick="alert('Recall hold ready for workflow')">Recall</button>
+          </div>
+          <p id="status"></p>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div id="productModal" class="modal-backdrop">
+    <div class="modal">
+      <div class="modal-head">
+        <h2 id="modalName">Product</h2>
+        <div id="modalCode" class="mini"></div>
+        <span id="modalStock" class="badge"></span>
+      </div>
+      <div class="modal-body">
+        <label>Quantity</label>
+        <div class="row">
+          <button class="secondary" onclick="modalQty.value=Math.max(1,Number(modalQty.value||1)-1);calcModal()">-</button>
+          <input id="modalQty" type="number" min="1" value="1" oninput="calcModal()">
+          <button class="accent" onclick="modalQty.value=Number(modalQty.value||1)+1;calcModal()">+</button>
+        </div>
+        <label>Price</label>
+        <input id="modalPrice" type="number" oninput="calcModal()">
+        <label>Discount %</label>
+        <input id="modalDiscount" type="number" value="0" oninput="calcModal()">
+        <div class="summary-panel">
+          <b>Line Total: <span id="modalTotal">Rs. 0.00</span></b><br>
+          <span id="modalTax" class="muted"></span>
+        </div>
+        <p id="modalError" class="bad"></p>
+      </div>
+      <div class="modal-foot">
+        <button class="secondary" onclick="closeProductModal()">Cancel</button>
+        <button class="success" onclick="confirmProductModal()">Entry / Add to Cart</button>
+      </div>
+    </div>
+  </div>
+
+  <script src="/js/api.js?v=avatar-fix-20260812d"></script>
+  <script src="/js/pos.js?v=pos-no-top-20260813"></script>
+  <script src="/js/app-shell.js?v=avatar-fix-20260812d"></script>
+</body>
+</html>

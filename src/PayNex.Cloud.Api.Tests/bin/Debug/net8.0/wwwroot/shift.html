@@ -1,0 +1,75 @@
+<!doctype html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <link rel="stylesheet" href="/css/app.css?v=avatar-fix-20260812d">
+  <title>Shift Cash Drawer</title>
+</head>
+<body>
+  <div class="shell shift-simple-page">
+    <div class="top">
+      <div>
+        <h1>Shift / Cash Drawer</h1>
+        <p id="who" class="muted">Simple cashier shift: open shift, cash in/out, close shift and print Z summary.</p>
+      </div>
+      <div class="nav"><a href="/workspace.html">Workspace</a><a href="/pos.html">POS</a><a href="/reports.html">Print Center</a></div>
+    </div>
+
+    <div class="shift-status-card panel">
+      <div>
+        <span id="shiftBadge" class="status-pill neutral">Checking</span>
+        <h2 id="shiftTitle">Current Shift</h2>
+        <p id="shiftText" class="muted">Loading shift status...</p>
+      </div>
+      <div class="shift-kpis">
+        <div><span>Opening Cash</span><b id="kOpening">Rs. 0.00</b></div>
+        <div><span>Expected Cash</span><b id="kExpected">Rs. 0.00</b></div>
+        <div><span>Difference</span><b id="kDifference">Rs. 0.00</b></div>
+      </div>
+    </div>
+
+    <div class="shift-flow-grid">
+      <div class="panel shift-step">
+        <span class="step-no">1</span>
+        <h2>Open Shift</h2>
+        <p class="muted">Enter starting cash in drawer.</p>
+        <label>Opening Cash<input id="openingCash" type="number" placeholder="Opening Cash" value="0"></label>
+        <button onclick="openShift()">Open Shift</button>
+      </div>
+
+      <div class="panel shift-step">
+        <span class="step-no">2</span>
+        <h2>Cash In / Out</h2>
+        <p class="muted">Use this only for manual cash movement, not sales.</p>
+        <label>Type<select id="entryType" data-no-lookup="1"><option>Cash In</option><option>Cash Out</option></select></label>
+        <label>Amount<input id="cashAmount" type="number" placeholder="Amount"></label>
+        <label>Remarks<input id="cashRemarks" placeholder="Reason / Remarks"></label>
+        <button class="secondary" onclick="cashDrawer()">Post Cash Entry</button>
+        <p id="cashStatus"></p>
+      </div>
+
+      <div class="panel shift-step">
+        <span class="step-no">3</span>
+        <h2>Close Shift</h2>
+        <p class="muted">Enter actual cash counted before closing.</p>
+        <label>Actual Closing Cash<input id="closingCash" type="number" placeholder="Actual Closing Cash"></label>
+        <label>Closing Remarks<input id="closingRemarks" placeholder="Optional remarks"></label>
+        <button class="danger" onclick="closeShift()">Close Shift</button>
+        <p id="shiftStatus"></p>
+      </div>
+    </div>
+
+    <div class="panel z-report-card">
+      <div class="setup-section-title">
+        <h2>Z Report Summary</h2>
+        <div class="actions"><button class="secondary" onclick="loadZ()">Refresh</button><button onclick="window.print()">Print</button></div>
+      </div>
+      <div id="zreport" class="z-summary-grid"></div>
+    </div>
+  </div>
+  <script src="/js/api.js?v=avatar-fix-20260812d"></script>
+  <script src="/js/shift.js?v=shift-simple-20260708"></script>
+  <script src="/js/app-shell.js?v=avatar-fix-20260812d"></script>
+</body>
+</html>

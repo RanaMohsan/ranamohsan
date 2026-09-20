@@ -1,0 +1,482 @@
+/* Cashier POS — match Desktop screenshot 100% (Cloud + Desktop) */
+:root {
+  --pos-navy: #004578;
+  --pos-navy-2: #0b3d6b;
+  --pos-header-bg: #004578;
+  --pos-panel-bg: #ffffff;
+  --pos-grid-header: #f3eee3;
+  --pos-grid-row: #ffffff;
+  --pos-grid-row-alt: #dbeefe;
+  --pos-grid-selected: #c5e4f8;
+  --pos-cube: #c9d7e4;
+  --pos-cube-hover: #b7c9da;
+  --pos-cube-border: #8ea6bb;
+  --pos-cube-text: #1a3348;
+  --pos-total-bg: #004578;
+  --pos-subtotal-bg: #1565a8;
+  --pos-payment-bg: #2b86c8;
+  --pos-change-bg: #ffffff;
+  --pos-change-text: #c0392b;
+  --pos-danger: #a84848;
+  --pos-success: #188a4e;
+  --pos-entry-bg: #f3eee3;
+  --pos-fkey-bg: #004578;
+  --pos-fkey-hover: #0b3d6b;
+  --pos-fkey-exit: #b85c5c;
+  --pos-page-bg: #ffffff;
+  --pos-border: #c5d0da;
+  --pos-text: #1a3340;
+  --pos-muted: #5a6e7c;
+  --pos-label: #334155;
+  --pos-radius: 3px;
+  --pos-font: "Segoe UI", Inter, Arial, sans-serif;
+}
+
+html, body.pos-cashier-body {
+  margin: 0;
+  height: 100%;
+  overflow: hidden;
+  font-family: var(--pos-font);
+  color: var(--pos-text);
+  background: var(--pos-page-bg);
+}
+body.pos-cashier-body .app-sidebar,
+body.pos-cashier-body .app-header { display: none !important; }
+body.pos-cashier-body .shell { margin: 0 !important; max-width: none !important; padding: 0 !important; }
+body.pos-cashier-body .bc-column-filter-toolbar,
+body.pos-cashier-body .bc-column-filter-trigger,
+body.pos-cashier-body .bc-filter-toolbar,
+body.pos-cashier-body [class*="bc-filter-toggle"],
+body.pos-cashier-body .pos-grid-wrap .bc-list-filter-host { display: none !important; }
+
+.pos-cashier {
+  display: grid;
+  grid-template-rows: 72px auto minmax(0, 1fr) auto auto auto;
+  height: 100vh;
+  height: 100dvh;
+  min-height: 0;
+  background: #fff;
+}
+
+.pos-cashier-header {
+  display: grid;
+  grid-template-columns: 220px 1fr 220px;
+  align-items: center;
+  height: 72px;
+  background: var(--pos-header-bg);
+  color: #fff;
+  padding: 0 12px;
+}
+.pos-cashier-header .store-name {
+  grid-column: 2;
+  font-size: 30px;
+  font-weight: 800;
+  text-align: center;
+  line-height: 1.1;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.pos-cashier-header .bill-meta {
+  grid-column: 3;
+  font-size: 12px;
+  line-height: 1.3;
+  text-align: right;
+  white-space: nowrap;
+}
+.pos-cashier-header .bill-meta .clock {
+  font-size: 16px;
+  font-weight: 800;
+  color: #fff;
+  font-variant-numeric: tabular-nums;
+}
+
+.pos-entry-bar {
+  display: grid;
+  grid-template-columns: 23% 33% 10% 13% 11% minmax(72px, 1fr);
+  gap: 6px;
+  padding: 6px 8px 7px;
+  background: var(--pos-entry-bg);
+  border-bottom: 1px solid #ddd4c4;
+}
+.pos-entry-bar label {
+  display: flex;
+  flex-direction: column;
+  font-size: 10px;
+  font-weight: 700;
+  color: var(--pos-label);
+  gap: 2px;
+  min-width: 0;
+}
+.pos-entry-bar input {
+  height: 32px;
+  border: 1px solid #c5d0da;
+  border-radius: var(--pos-radius);
+  padding: 0 8px;
+  font-size: 13px;
+  font-weight: 600;
+  background: #fff;
+  color: var(--pos-text);
+}
+.pos-entry-bar input:focus { outline: 2px solid #004578; outline-offset: 0; }
+.pos-entry-bar button {
+  align-self: end;
+  height: 32px;
+  padding: 0 12px;
+  border: 1px solid #00365e !important;
+  background: #004578 !important;
+  color: #fff !important;
+  font-size: 12px;
+  font-weight: 800;
+  border-radius: var(--pos-radius);
+  cursor: pointer;
+  box-shadow: none !important;
+}
+.pos-entry-bar button:hover { background: #0b3d6b !important; }
+
+.pos-main {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 168px;
+  min-height: 0;
+  overflow: hidden;
+}
+
+.pos-grid-wrap {
+  overflow: auto;
+  background: #fff;
+  min-height: 0;
+  border-right: 1px solid var(--pos-border);
+}
+.pos-grid {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 13px;
+  table-layout: fixed;
+}
+.pos-grid thead th {
+  position: sticky;
+  top: 0;
+  background: var(--pos-grid-header);
+  color: #1a3340;
+  font-size: 11px;
+  font-weight: 800;
+  padding: 6px 6px;
+  text-align: left;
+  z-index: 1;
+  border-bottom: 1px solid #ddd4c4;
+}
+.pos-grid thead th.num { text-align: right; }
+.pos-grid thead th.status { text-align: center; }
+.pos-grid td {
+  height: 32px;
+  padding: 0 6px;
+  border-bottom: 1px solid #e6eef3;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  vertical-align: middle;
+}
+.pos-grid tbody tr { background: var(--pos-grid-row); }
+.pos-grid tbody tr:nth-child(even) { background: var(--pos-grid-row-alt); }
+.pos-grid tbody tr.selected { background: var(--pos-grid-selected); }
+.pos-grid tbody tr:hover { background: #eaf5fb; cursor: pointer; }
+.pos-grid .num { text-align: right; font-variant-numeric: tabular-nums; }
+.pos-grid .status { text-align: center; font-weight: 700; }
+.pos-grid .voided { opacity: 0.45; text-decoration: line-through; }
+
+.pos-actions {
+  display: flex;
+  flex-direction: column;
+  background: #fff;
+  overflow: hidden;
+  min-height: 0;
+  width: 168px;
+}
+.pos-actions .act-grid {
+  flex: 1;
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  grid-template-rows: repeat(7, minmax(0, 1fr)) auto;
+  gap: 4px;
+  padding: 4px;
+  min-height: 0;
+}
+.pos-actions button {
+  min-height: 0;
+  height: 100%;
+  border: 1px solid var(--pos-cube-border) !important;
+  background: var(--pos-cube) !important;
+  color: var(--pos-cube-text) !important;
+  font-size: 10px;
+  font-weight: 800;
+  line-height: 1.15;
+  border-radius: 4px;
+  cursor: pointer;
+  padding: 3px 2px;
+  box-shadow: none !important;
+}
+.pos-actions button small {
+  display: block;
+  font-size: 9px;
+  font-weight: 700;
+  opacity: 0.8;
+}
+.pos-actions button:hover:not(:disabled) { background: var(--pos-cube-hover) !important; }
+.pos-actions button:disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
+}
+.pos-actions button.danger {
+  background: #d7b8b8 !important;
+  border-color: #b88a8a !important;
+  color: #7a2e2e !important;
+}
+.pos-actions button.post-btn {
+  grid-column: 1 / -1;
+  min-height: 46px;
+  height: 46px;
+  background: #188a4e !important;
+  border-color: #0e6b3c !important;
+  color: #fff !important;
+  font-size: 13px;
+}
+.pos-actions button.post-btn:hover:not(:disabled) { background: #147a44 !important; }
+.pos-actions button[data-act="payment"] {
+  background: var(--pos-cube) !important;
+  color: var(--pos-cube-text) !important;
+  border-color: var(--pos-cube-border) !important;
+}
+.pos-actions .quick-items { display: none; }
+
+.pos-totals {
+  display: grid;
+  grid-template-columns: 1fr 1.35fr 1.35fr 1.55fr 200px;
+  min-height: 70px;
+}
+.pos-total-card {
+  padding: 6px 10px;
+  color: #fff;
+  border-right: 1px solid rgba(255,255,255,0.18);
+}
+.pos-total-card .lbl { font-size: 11px; font-weight: 800; letter-spacing: 0.04em; }
+.pos-total-card .val { font-size: 26px; font-weight: 800; font-variant-numeric: tabular-nums; line-height: 1.12; }
+.pos-total-card .val-input {
+  width: 100%;
+  border: 1px solid rgba(255,255,255,0.45);
+  background: rgba(0,0,0,0.12);
+  color: #fff;
+  font-size: 26px;
+  font-weight: 800;
+  font-variant-numeric: tabular-nums;
+  line-height: 1.12;
+  padding: 0 4px;
+  border-radius: 3px;
+  outline: none;
+  box-sizing: border-box;
+}
+.pos-total-card .val-input:focus {
+  background: #fff;
+  color: #0b2a45;
+  border-color: #fff;
+}
+.pos-total-card.items { background: var(--pos-total-bg); }
+.pos-total-card.subtotal { background: var(--pos-subtotal-bg); }
+.pos-total-card.payment { background: var(--pos-payment-bg); }
+.pos-total-card.change {
+  background: var(--pos-change-bg);
+  color: var(--pos-change-text);
+  border-right: 1px solid var(--pos-border);
+}
+.pos-disc-box {
+  background: #fff;
+  padding: 6px 10px;
+  font-size: 11px;
+  color: var(--pos-text);
+  display: grid;
+  gap: 3px;
+  align-content: center;
+  border-left: 1px solid var(--pos-border);
+}
+.pos-disc-box div { display: flex; justify-content: space-between; gap: 8px; }
+.pos-disc-box b { font-variant-numeric: tabular-nums; }
+
+.pos-customer-strip {
+  display: grid;
+  grid-template-columns: repeat(9, minmax(0, 1fr));
+  gap: 4px;
+  padding: 4px 6px;
+  background: var(--pos-entry-bg);
+  font-size: 12px;
+  min-height: 46px;
+  box-sizing: border-box;
+}
+.pos-customer-strip .cell {
+  background: #fff;
+  border: 1px solid #d3cbbd;
+  border-radius: var(--pos-radius);
+  padding: 2px 6px;
+  overflow: hidden;
+}
+.pos-customer-strip .cell span {
+  display: block;
+  font-size: 9px;
+  color: var(--pos-muted);
+  font-weight: 700;
+}
+.pos-customer-strip .cell b {
+  font-variant-numeric: tabular-nums;
+  color: var(--pos-text);
+  font-size: 12px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  display: block;
+}
+.pos-customer-strip .cell-edit input,
+.pos-customer-strip .cell-edit select {
+  width: 100%;
+  border: 1px solid #c5d0dc;
+  background: #f7fafc;
+  color: var(--pos-text);
+  font-size: 12px;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+  padding: 1px 4px;
+  border-radius: 2px;
+  box-sizing: border-box;
+  outline: none;
+}
+.pos-customer-strip .cell-edit input:focus,
+.pos-customer-strip .cell-edit select:focus {
+  border-color: #0b6e99;
+  background: #fff;
+}
+.pos-customer-strip .cell-edit select:disabled {
+  opacity: 0.55;
+  background: #eceff3;
+  cursor: not-allowed;
+}
+
+.pos-fkeys {
+  display: grid;
+  grid-template-columns: repeat(7, 1fr);
+  gap: 3px;
+  padding: 4px;
+  background: #e8eef3;
+}
+.pos-fkeys button {
+  min-height: 46px;
+  border: 1px solid #00365e !important;
+  background: var(--pos-fkey-bg) !important;
+  color: #fff !important;
+  font-size: 11px;
+  font-weight: 800;
+  line-height: 1.15;
+  border-radius: 3px;
+  cursor: pointer;
+  padding: 4px;
+  box-shadow: none !important;
+}
+.pos-fkeys button small {
+  display: block;
+  font-size: 10px;
+  font-weight: 700;
+  color: #cfe4f5;
+}
+.pos-fkeys button.exit {
+  background: var(--pos-fkey-exit) !important;
+  border-color: #8e3d3d !important;
+}
+.pos-fkeys button.exit small { color: #ffe0dc; }
+.pos-fkeys button:hover { background: var(--pos-fkey-hover) !important; }
+.pos-fkeys button.exit:hover { background: #a84848 !important; }
+
+.pos-status {
+  position: fixed;
+  left: 8px;
+  bottom: 58px;
+  max-width: 420px;
+  padding: 6px 10px;
+  background: #16323a;
+  color: #fff;
+  font-size: 12px;
+  border-radius: var(--pos-radius);
+  z-index: 40;
+  display: none;
+}
+.pos-status.show { display: block; }
+.pos-status.ok { background: var(--pos-success); }
+.pos-status.err { background: var(--pos-danger); }
+
+.pos-modal-backdrop {
+  position: fixed;
+  inset: 0;
+  background: rgba(10, 30, 36, 0.5);
+  display: none;
+  align-items: center;
+  justify-content: center;
+  z-index: 50;
+}
+.pos-modal-backdrop.open { display: flex; }
+.pos-modal {
+  background: #fff;
+  border: 1px solid var(--pos-border);
+  border-radius: 4px;
+  width: min(720px, 94vw);
+  max-height: 86vh;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+.pos-modal.sm { width: min(420px, 94vw); }
+.pos-modal-head {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 8px 12px;
+  background: var(--pos-navy);
+  color: #fff;
+  font-weight: 700;
+}
+.pos-modal-body { padding: 10px 12px; overflow: auto; }
+.pos-modal-foot {
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+  padding: 8px 12px;
+  border-top: 1px solid var(--pos-border);
+  background: #f4f7f8;
+}
+.pos-modal input, .pos-modal select {
+  width: 100%;
+  height: 34px;
+  border: 1px solid #b7c9d0;
+  border-radius: var(--pos-radius);
+  padding: 0 10px;
+  box-sizing: border-box;
+  margin: 4px 0 8px;
+  background: #fff;
+}
+.pos-modal table { width: 100%; border-collapse: collapse; font-size: 12px; }
+.pos-modal th, .pos-modal td { border-bottom: 1px solid #d0e6f7; padding: 6px 8px; text-align: left; }
+.pos-modal th { background: #eaf4fc; color: #5a7a85; font-size: 11px; }
+.pos-modal tr.sel { background: var(--pos-grid-selected); }
+.pos-modal tr:hover { background: #e0f0ff; cursor: pointer; }
+.pos-modal button {
+  height: 32px;
+  padding: 0 14px;
+  border: 1px solid #00365e;
+  background: var(--pos-navy);
+  color: #fff;
+  border-radius: var(--pos-radius);
+  font-weight: 700;
+  cursor: pointer;
+}
+.pos-modal button.primary { background: var(--pos-success); border-color: #0e6b3c; }
+
+@media (max-width: 1366px) {
+  .pos-cashier { grid-template-rows: 66px auto minmax(0, 1fr) auto auto auto; }
+  .pos-cashier-header { height: 66px; }
+  .pos-cashier-header .store-name { font-size: 24px; }
+  .pos-total-card .val { font-size: 22px; }
+}

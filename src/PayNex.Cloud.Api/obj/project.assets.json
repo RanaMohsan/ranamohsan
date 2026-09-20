@@ -351,6 +351,22 @@
           }
         }
       },
+      "SixLabors.ImageSharp/3.1.11": {
+        "type": "package",
+        "compile": {
+          "lib/net6.0/SixLabors.ImageSharp.dll": {
+            "related": ".xml"
+          }
+        },
+        "runtime": {
+          "lib/net6.0/SixLabors.ImageSharp.dll": {
+            "related": ".xml"
+          }
+        },
+        "build": {
+          "build/SixLabors.ImageSharp.props": {}
+        }
+      },
       "Swashbuckle.AspNetCore/6.6.2": {
         "type": "package",
         "dependencies": {
@@ -1418,6 +1434,22 @@
         "microsoft.sqlserver.server.nuspec"
       ]
     },
+    "SixLabors.ImageSharp/3.1.11": {
+      "sha512": "JfPLyigLthuE50yi6tMt7Amrenr/fA31t2CvJyhy/kQmfulIBAqo5T/YFUSRHtuYPXRSaUHygFeh6Qd933EoSw==",
+      "type": "package",
+      "path": "sixlabors.imagesharp/3.1.11",
+      "files": [
+        ".nupkg.metadata",
+        ".signature.p7s",
+        "LICENSE",
+        "build/SixLabors.ImageSharp.props",
+        "lib/net6.0/SixLabors.ImageSharp.dll",
+        "lib/net6.0/SixLabors.ImageSharp.xml",
+        "sixlabors.imagesharp.128.png",
+        "sixlabors.imagesharp.3.1.11.nupkg.sha512",
+        "sixlabors.imagesharp.nuspec"
+      ]
+    },
     "Swashbuckle.AspNetCore/6.6.2": {
       "sha512": "+NB4UYVYN6AhDSjW0IJAd1AGD8V33gemFNLPaxKTtPkHB+HaKAKf9MGAEUPivEWvqeQfcKIw8lJaHq6LHljRuw==",
       "type": "package",
@@ -2154,6 +2186,7 @@
     "net8.0": [
       "BCrypt.Net-Next >= 4.2.0",
       "Microsoft.Data.SqlClient >= 5.2.2",
+      "SixLabors.ImageSharp >= 3.1.11",
       "Swashbuckle.AspNetCore >= 6.6.2"
     ]
   },
@@ -2163,11 +2196,11 @@
   "project": {
     "version": "1.0.0",
     "restore": {
-      "projectUniqueName": "C:\\Users\\Hamid\\Documents\\POS\\owner_portal_work_BC_list___After__filters\\owner_portal_work\\src\\PayNex.Cloud.Api\\PayNex.Cloud.Api.csproj",
+      "projectUniqueName": "C:\\Users\\Hamid\\Documents\\POS\\PayNex ERP Mohsin\\owner_portal_work_BC_list___After__filters\\owner_portal_work\\src\\PayNex.Cloud.Api\\PayNex.Cloud.Api.csproj",
       "projectName": "PayNex.Cloud.Api",
-      "projectPath": "C:\\Users\\Hamid\\Documents\\POS\\owner_portal_work_BC_list___After__filters\\owner_portal_work\\src\\PayNex.Cloud.Api\\PayNex.Cloud.Api.csproj",
+      "projectPath": "C:\\Users\\Hamid\\Documents\\POS\\PayNex ERP Mohsin\\owner_portal_work_BC_list___After__filters\\owner_portal_work\\src\\PayNex.Cloud.Api\\PayNex.Cloud.Api.csproj",
       "packagesPath": "C:\\Users\\Hamid\\.nuget\\packages\\",
-      "outputPath": "C:\\Users\\Hamid\\Documents\\POS\\owner_portal_work_BC_list___After__filters\\owner_portal_work\\src\\PayNex.Cloud.Api\\obj\\",
+      "outputPath": "C:\\Users\\Hamid\\Documents\\POS\\PayNex ERP Mohsin\\owner_portal_work_BC_list___After__filters\\owner_portal_work\\src\\PayNex.Cloud.Api\\obj\\",
       "projectStyle": "PackageReference",
       "configFilePaths": [
         "C:\\Users\\Hamid\\AppData\\Roaming\\NuGet\\NuGet.Config"
@@ -2206,6 +2239,10 @@
           "Microsoft.Data.SqlClient": {
             "target": "Package",
             "version": "[5.2.2, )"
+          },
+          "SixLabors.ImageSharp": {
+            "target": "Package",
+            "version": "[3.1.11, )"
           },
           "Swashbuckle.AspNetCore": {
             "target": "Package",

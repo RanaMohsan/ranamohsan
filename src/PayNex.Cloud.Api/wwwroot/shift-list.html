@@ -1,0 +1,108 @@
+<!doctype html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <link rel="stylesheet" href="/css/app.css?v=avatar-fix-20260812d">
+  <title>Shift List</title>
+</head>
+<body>
+  <main class="shell bc-list-page shift-list-page" data-page-role="shift-list">
+    <section class="bc-page-heading">
+      <div>
+        <div class="bc-breadcrumb">POS / Shift Management</div>
+        <h1>Shift List</h1>
+        <p id="who" class="muted">Loading company and user...</p>
+      </div>
+      <span class="bc-page-badge">List</span>
+    </section>
+
+    <section class="bc-command-bar" aria-label="Shift list actions">
+      <button id="newShiftBtn" class="bc-command-primary" type="button"><span>＋</span> New</button>
+      <button id="refreshBtn" class="secondary" type="button"><span>↻</span> Refresh</button>
+      <span class="bc-command-separator"></span>
+      <button id="setupBtn" class="secondary" type="button">⚙ Setup</button>
+    </section>
+
+    <section id="setupPanel" class="panel" hidden>
+      <h2>Shift Management Setup</h2>
+      <p class="muted">If Shift Management is OFF, POS sales can be posted without opening a shift. If ON, an active shift is mandatory for Picture Sales, Cloud POS, Desktop POS, and Mobile POS only. Standard sales/purchase documents are never blocked.</p>
+      <div class="setup-grid">
+        <label>
+          Enable Shift Management
+          <select id="smEnableShiftManagement" data-no-lookup="1">
+            <option value="false">No</option>
+            <option value="true">Yes</option>
+          </select>
+        </label>
+        <label>
+          User Wise Shift / User-to-User
+          <select id="smUserWiseShift" data-no-lookup="1">
+            <option value="true">Yes (one active shift per user)</option>
+            <option value="false">No (shared shift for all users)</option>
+          </select>
+        </label>
+      </div>
+      <div class="actions">
+        <button id="saveSettingsBtn" type="button">Save</button>
+        <button id="cancelSettingsBtn" class="secondary" type="button">Cancel</button>
+      </div>
+      <p id="settingsStatus" class="muted" aria-live="polite"></p>
+    </section>
+
+    <section class="bc-filter-pane" aria-label="Shift filters">
+      <div class="bc-filter-title">From / To</div>
+      <label>
+        From date
+        <input id="fromDate" type="date">
+      </label>
+      <label>
+        To date
+        <input id="toDate" type="date">
+      </label>
+      <button id="applyFilterBtn" type="button">Apply</button>
+      <button id="clearFilterBtn" class="secondary" type="button">Clear</button>
+    </section>
+
+    <section class="bc-list-card">
+      <div class="bc-list-caption">
+        <div><strong>Shifts</strong><span id="recordCount" class="muted">0 records</span></div>
+        <div id="selectedCaption" class="muted">No shift selected</div>
+      </div>
+
+      <div class="bc-table-wrap">
+        <table class="bc-data-table" aria-label="Shift list">
+          <thead>
+            <tr>
+              <th>Shift No.</th>
+              <th>Opening Date</th>
+              <th>Opening Time</th>
+              <th>Closing Date</th>
+              <th>Closing Time</th>
+              <th class="number">Opening Balance</th>
+              <th class="number">Closing Balance</th>
+              <th>Shift Status</th>
+              <th class="number">Total Sales</th>
+              <th class="number">Total Returns</th>
+            </tr>
+          </thead>
+          <tbody id="shiftBody">
+            <tr><td colspan="10" class="bc-empty-row">Loading shifts...</td></tr>
+          </tbody>
+        </table>
+      </div>
+
+      <div class="bc-list-footer">
+        <span id="footerSummary" class="muted">Ready</span>
+        <span>Click a row to open Shift Card.</span>
+      </div>
+    </section>
+
+    <p id="status" class="bc-status-line" aria-live="polite"></p>
+  </main>
+
+  <script src="/js/api.js?v=avatar-fix-20260812d"></script>
+  <script src="/js/shift-list.js?v=shift-list-20260903b"></script>
+  <script src="/js/app-shell.js?v=avatar-fix-20260812d"></script>
+</body>
+</html>

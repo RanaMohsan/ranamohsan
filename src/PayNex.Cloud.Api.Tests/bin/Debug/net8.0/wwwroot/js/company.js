@@ -1,0 +1,7 @@
+
+let logoBase64=null, removeFlag=false;
+async function loadCompany(){try{const c=await api.get('/api/company');companyName.value=c.CompanyName||'';addressLine.value=c.AddressLine||'';phoneNo.value=c.PhoneNo||'';email.value=c.Email||'';website.value=c.Website||'';taxRegistrationNo.value=c.TaxRegistrationNo||'';logoPath.value=c.LogoPath||'';logoBase64=null;removeFlag=false;if(c.LogoBase64){logoPreview.src='data:image/png;base64,'+c.LogoBase64;logoPreview.style.display='block';noLogo.style.display='none'}else{logoPreview.style.display='none';noLogo.style.display='inline-block'}}catch(e){location.href='/login.html'}}
+logoFile.addEventListener('change',()=>{const f=logoFile.files[0];if(!f)return;const r=new FileReader();r.onload=()=>{logoBase64=String(r.result).split(',')[1];logoPath.value=f.name;logoPreview.src=String(r.result);logoPreview.style.display='block';noLogo.style.display='none';removeFlag=false};r.readAsDataURL(f)});
+function removeLogo(){logoBase64=null;removeFlag=true;logoPath.value='';logoPreview.style.display='none';noLogo.style.display='inline-block'}
+async function saveCompany(){try{const body={companyName:companyName.value,addressLine:addressLine.value,phoneNo:phoneNo.value,email:email.value,website:website.value,taxRegistrationNo:taxRegistrationNo.value,logoPath:logoPath.value,logoBase64,removeLogo:removeFlag};const r=await api.put('/api/company',body);msg('status',r.message,true);await loadCompany()}catch(e){msg('status',e.message,false)}}
+loadCompany();

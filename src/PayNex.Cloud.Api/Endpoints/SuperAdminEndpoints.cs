@@ -40,9 +40,11 @@ public static class SuperAdminEndpoints
             return Results.Ok(await tenants.GetTenantAsync(companyCode));
         });
 
-        group.MapPut("/tenants/{companyCode}", async (HttpContext http, TenantProvisioningService tenants, AuthTokenService tokens, string companyCode, TenantCardUpdateRequest request) =>
+        group.MapPut("/tenants/{companyCode}", async (HttpContext http, TenantProvisioningService tenants, AuthTokenService tokens, RequestValidationService validator, string companyCode, TenantCardUpdateRequest request) =>
         {
             if (ApiAuth.RequireSuperAdmin(http, tokens) == null) return Results.Unauthorized();
+            var validation = validator.ValidateTenantCardUpdate(request);
+            if (!validation.Ok) return Results.BadRequest(new { message = validation.Message });
             await tenants.UpdateTenantCardAsync(companyCode, request);
             return Results.Ok(await tenants.GetTenantAsync(companyCode));
         });

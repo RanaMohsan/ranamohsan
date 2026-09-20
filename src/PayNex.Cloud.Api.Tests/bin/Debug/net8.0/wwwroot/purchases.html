@@ -1,0 +1,96 @@
+<!doctype html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <link rel="stylesheet" href="/css/app.css?v=avatar-fix-20260812d">
+  <title>Purchase Invoices</title>
+</head>
+<body>
+  <main class="shell bc-list-page" data-page-role="purchase-invoice-list">
+    <section class="bc-page-heading">
+      <div>
+        <div class="bc-breadcrumb">Purchases / Purchase Invoices</div>
+        <h1>Purchase Invoices</h1>
+        <p id="who" class="muted">Loading company and user...</p>
+      </div>
+      <span class="bc-page-badge">List</span>
+    </section>
+
+    <section class="bc-command-bar" aria-label="Purchase invoice actions">
+      <button id="newInvoiceBtn" class="bc-command-primary" type="button"><span>＋</span> New</button>
+      <button id="openInvoiceBtn" class="secondary" type="button"><span>↗</span> Open</button>
+      <button id="printInvoiceBtn" class="secondary" type="button"><span>▣</span> Print</button>
+      <button id="refreshBtn" class="secondary" type="button"><span>↻</span> Refresh</button>
+      <span class="bc-command-separator"></span>
+      <label class="bc-inline-control">Print layout
+        <select id="printLayout" data-no-lookup="1">
+          <option value="bc">Professional A4</option>
+          <option value="standard">Standard A4</option>
+          <option value="compact">Compact A4</option>
+        </select>
+      </label>
+    </section>
+
+    <section class="bc-filter-pane bc-invoice-filter">
+      <div class="bc-filter-title">Filter</div>
+      <label>Search
+        <input id="searchTerm" type="search" placeholder="Invoice no., vendor, status...">
+      </label>
+      <label>From date
+        <input id="fromDate" type="date">
+      </label>
+      <label>To date
+        <input id="toDate" type="date">
+      </label>
+      <label>Document view
+        <select id="documentStatus" data-no-lookup="1">
+          <option value="OpenDraft">Open / Draft</option>
+          <option value="Open">Open</option>
+          <option value="Draft">Draft</option>
+          <option value="Posted">Posted</option>
+        </select>
+      </label>
+      <button id="applyFilterBtn" type="button">Apply</button>
+      <button id="clearFilterBtn" class="secondary" type="button">Clear</button>
+    </section>
+
+    <section class="bc-list-card">
+      <div class="bc-list-caption">
+        <div><strong>Purchase Invoice List</strong><span id="recordCount" class="muted">0 records</span></div>
+        <div id="selectedCaption" class="muted">No invoice selected</div>
+      </div>
+      <div class="bc-table-wrap">
+        <table class="bc-data-table" aria-label="Purchase invoice list">
+          <thead>
+            <tr>
+              <th class="bc-select-col"></th>
+              <th>No.</th>
+              <th>Vendor No.</th>
+              <th>Vendor Name</th>
+              <th>Vendor Invoice No.</th>
+              <th>Invoice Date</th>
+              <th>Status</th>
+              <th class="number">Amount</th>
+              <th class="number">Balance</th>
+              <th>Prepared By</th>
+            </tr>
+          </thead>
+          <tbody id="invoiceBody">
+            <tr><td colspan="10" class="bc-empty-row">Loading purchase invoices...</td></tr>
+          </tbody>
+        </table>
+      </div>
+      <div class="bc-list-footer">
+        <span id="footerSummary">Total amount: Rs. 0.00</span>
+        <span>Double-click a row or select the invoice number to open its card.</span>
+      </div>
+    </section>
+
+    <p id="status" class="bc-status-line" aria-live="polite"></p>
+  </main>
+  <script src="/js/api.js?v=avatar-fix-20260812d"></script>
+  <script src="/js/purchases.js?v=bc-invoice-pages-20260710"></script>
+  <script src="/js/app-shell.js?v=avatar-fix-20260812d"></script>
+</body>
+</html>

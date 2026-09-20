@@ -28,6 +28,12 @@ public static class InvoiceDraftEndpoints
             return Results.BadRequest(new { message = "Customer and at least one invoice line are required to create the draft." });
 
         await using var con = await db.OpenTenantAsync(user.DatabaseName);
+        await using var ensure = con.CreateCommand();
+        ensure.CommandText = @"
+IF OBJECT_ID('SalesInvoiceHeader') IS NOT NULL AND COL_LENGTH('SalesInvoiceHeader','ApplicationSource') IS NULL
+    ALTER TABLE SalesInvoiceHeader ADD ApplicationSource NVARCHAR(20) NOT NULL CONSTRAINT DF_SalesInvoiceHeader_ApplicationSource DEFAULT 'Cloud';";
+        await ensure.ExecuteNonQueryAsync();
+        var applicationSource = ApiAuth.ResolveApplicationSource(http, user);
         await using var tran = (SqlTransaction)await con.BeginTransactionAsync();
         try
         {
@@ -74,7 +80,7 @@ public static class InvoiceDraftEndpoints
 UPDATE SalesInvoiceHeader
 SET CustomerId=@CustomerId,InvoiceDate=@Date,UserId=@UserId,SubTotal=@SubTotal,
     DiscountAmount=@Discount,TaxAmount=@Tax,GrandTotal=@Grand,PaidAmount=@Paid,
-    BalanceAmount=@Balance,Remarks=@Remarks
+    BalanceAmount=@Balance,Remarks=@Remarks,ApplicationSource=@ApplicationSource
 WHERE SalesInvoiceId=@Id AND StoreId=@StoreId AND Status='Open';
 DELETE FROM SalesInvoiceLines WHERE SalesInvoiceId=@Id;", con, tran);
                 update.Parameters.AddWithValue("@Id", invoiceId);
@@ -89,6 +95,7 @@ DELETE FROM SalesInvoiceLines WHERE SalesInvoiceId=@Id;", con, tran);
                 update.Parameters.AddWithValue("@Paid", request.PaidAmount);
                 update.Parameters.AddWithValue("@Balance", balance);
                 update.Parameters.AddWithValue("@Remarks", request.Remarks ?? string.Empty);
+                update.Parameters.AddWithValue("@ApplicationSource", applicationSource);
                 await update.ExecuteNonQueryAsync();
             }
             else
@@ -97,10 +104,10 @@ DELETE FROM SalesInvoiceLines WHERE SalesInvoiceId=@Id;", con, tran);
                 await using var insert = new SqlCommand(@"
 INSERT INTO SalesInvoiceHeader(
     InvoiceNo,CustomerId,InvoiceDate,StoreId,BranchCode,UserId,SubTotal,DiscountAmount,
-    TaxAmount,GrandTotal,PaidAmount,BalanceAmount,Status,Remarks)
+    TaxAmount,GrandTotal,PaidAmount,BalanceAmount,Status,Remarks,ApplicationSource)
 OUTPUT INSERTED.SalesInvoiceId
 VALUES(@No,@CustomerId,@Date,@StoreId,@BranchCode,@UserId,@SubTotal,@Discount,
-    @Tax,@Grand,@Paid,@Balance,'Open',@Remarks);", con, tran);
+    @Tax,@Grand,@Paid,@Balance,'Open',@Remarks,@ApplicationSource);", con, tran);
                 insert.Parameters.AddWithValue("@No", invoiceNo);
                 insert.Parameters.AddWithValue("@CustomerId", request.CustomerId);
                 insert.Parameters.AddWithValue("@Date", request.InvoiceDate.Date);
@@ -114,6 +121,7 @@ VALUES(@No,@CustomerId,@Date,@StoreId,@BranchCode,@UserId,@SubTotal,@Discount,
                 insert.Parameters.AddWithValue("@Paid", request.PaidAmount);
                 insert.Parameters.AddWithValue("@Balance", balance);
                 insert.Parameters.AddWithValue("@Remarks", request.Remarks ?? string.Empty);
+                insert.Parameters.AddWithValue("@ApplicationSource", applicationSource);
                 invoiceId = Convert.ToInt32(await insert.ExecuteScalarAsync());
             }
 
@@ -164,8 +172,9 @@ VALUES(@Id,@ProductId,@Name,@Qty,@Price,@DiscPct,@Disc,@TaxPct,@Tax,@Total,@Cost
     {
         var user = ApiAuth.RequireUser(http, tokens);
         if (user == null) return Results.Unauthorized();
-        if (request.PurchaseInvoiceId <= 0 && request.Lines.Count == 0)
-            return Results.BadRequest(new { message = "At least one invoice line is required to create the draft." });
+        user = await PosSessionHelper.EnsureTenantPosSessionAsync(db, user);
+        if (request.PurchaseInvoiceId <= 0 && request.VendorId <= 0)
+            return Results.BadRequest(new { message = "Vendor is required to create the draft." });
 
         await using var con = await db.OpenTenantAsync(user.DatabaseName);
         await EnsurePurchaseDraftSchemaAsync(con);

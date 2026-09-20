@@ -12,7 +12,7 @@ public sealed class PayNexOptions
     // Security / deployment-hardening options. Override from environment variables in production.
     public string[] AllowedCorsOrigins { get; set; } = Array.Empty<string>();
     public string SuperAdminUserName { get; set; } = "Mohsin-PayNex";
-    public string SuperAdminDisplayName { get; set; } = "Mohsin PayNex Super Admin";
+    public string SuperAdminDisplayName { get; set; } = "Mohsin InterNex Super Admin";
     public string SuperAdminEmail { get; set; } = "mohsin@paynex.local";
     public string SuperAdminBootstrapPassword { get; set; } = "PayNex@123";
     public string SuperAdminCompanyId { get; set; } = "3032720768";
@@ -25,9 +25,13 @@ public sealed class PayNexOptions
     public int LoginLockoutMinutes { get; set; } = 15;
     public string BackupFolder { get; set; } = "App_Data/Backups";
     public bool EnablePhysicalSqlBackup { get; set; } = true;
+    /// <summary>
+    /// When false (production default), existing Super Admin / owner passwords are never overwritten on app start.
+    /// </summary>
+    public bool ResetBootstrapPasswordsOnStartup { get; set; } = false;
     public string PlatformOwnerEmail { get; set; } = "ranamohsanali3@gmail.com";
     public string PlatformOwnerUserName { get; set; } = "ranamohsanali3@gmail.com";
-    public string PlatformOwnerDisplayName { get; set; } = "PayNex Owner";
+    public string PlatformOwnerDisplayName { get; set; } = "InterNex Owner";
     public string PlatformOwnerBootstrapPassword { get; set; } = "2720768@Ali";
 }
 
@@ -82,7 +86,7 @@ public sealed class CreateTenantRequest
     public int MaxUsers { get; set; } = 5;
     public int MaxCounters { get; set; } = 2;
     public string AdminUserName { get; set; } = "admin";
-    public string AdminPassword { get; set; } = "Admin@123";
+    public string AdminPassword { get; set; } = "";
     public string? AdminEmail { get; set; }
     public DateTime? CompanyStartDate { get; set; }
     public DateTime? LicenseExpiryDate { get; set; }
@@ -102,12 +106,10 @@ public sealed record TenantCreatedResponse(
     string CredentialsEmailStatus = "");
 public sealed class LoginRequest
 {
-    // Modern cloud ERP login: users enter only email + password. Company is resolved from CentralUserDirectory.
+    // Cloud ERP login: users enter User Name + password (email also works). Company is resolved from CentralUserDirectory.
     public string? Email { get; set; }
     public string Password { get; set; } = string.Empty;
     public string? Environment { get; set; } = "Production";
-
-    // Legacy compatibility only. The login UI no longer asks for these values.
     public string? CompanyCode { get; set; }
     public string? UserName { get; set; }
 }
@@ -137,7 +139,7 @@ public sealed class ResetUserPasswordRequest
 
 public sealed class MobileAppRegisterRequest
 {
-    public string AppName { get; set; } = "PayNex Mobile";
+    public string AppName { get; set; } = "InterNex Mobile";
     public string Platform { get; set; } = "Both";
     public string? PackageName { get; set; }
     public string? BundleId { get; set; }
@@ -147,7 +149,7 @@ public sealed class MobileAppRegisterRequest
 
 public sealed class MobileAppUpdateRequest
 {
-    public string AppName { get; set; } = "PayNex Mobile";
+    public string AppName { get; set; } = "InterNex Mobile";
     public string Platform { get; set; } = "Both";
     public string? PackageName { get; set; }
     public string? BundleId { get; set; }
@@ -177,6 +179,26 @@ public sealed class MobileAppUserBlockRequest
     public string? Reason { get; set; }
 }
 
+public sealed class DesktopAppRegisterRequest
+{
+    public string? AppName { get; set; }
+    public string? AppVersion { get; set; }
+    public string? Notes { get; set; }
+}
+
+public sealed class DesktopAppBlockRequest
+{
+    public bool IsBlocked { get; set; }
+    public string? Reason { get; set; }
+    public string? UserName { get; set; }
+}
+
+public sealed class DesktopUserAccessRequest
+{
+    public bool IsAllowed { get; set; }
+    public string? UserName { get; set; }
+}
+
 public sealed class MobileLoginRequest
 {
     public string UserName { get; set; } = string.Empty;
@@ -186,6 +208,25 @@ public sealed class MobileLoginRequest
 }
 
 public sealed class MobileRefreshRequest
+{
+    public string? RefreshToken { get; set; }
+}
+
+public sealed class DesktopLoginRequest
+{
+    public string UserName { get; set; } = string.Empty;
+    public string Password { get; set; } = string.Empty;
+    public string? Environment { get; set; }
+    public string? DeviceName { get; set; }
+    public string? AppVersion { get; set; }
+}
+
+public sealed class DesktopRefreshRequest
+{
+    public string? RefreshToken { get; set; }
+}
+
+public sealed class DesktopLogoutRequest
 {
     public string? RefreshToken { get; set; }
 }
@@ -202,7 +243,7 @@ public sealed record SuperAdminSession(int SuperAdminUserId, string UserName, st
 public sealed record ApprovalActionRequest(string? Remarks);
 public sealed record DatabaseRestoreRequest(string BackupReference, string ConfirmText, string? Remarks);
 
-public sealed record UserSession(string CompanyCode, string CompanyName, string DatabaseName, int UserId, string UserName, string DisplayName, int RoleId, string RoleName, int StoreId, string StoreName, string Environment = "Production", int BranchId = 1, string BranchCode = "MAIN", string BranchName = "Main Branch", bool AllowMultipleBranches = false, string Email = "", bool IsCompanySuperAdmin = false, bool IsPlatformOwner = false, string PermissionsJson = "{}", string SessionId = "");
+public sealed record UserSession(string CompanyCode, string CompanyName, string DatabaseName, int UserId, string UserName, string DisplayName, int RoleId, string RoleName, int StoreId, string StoreName, string Environment = "Production", int BranchId = 1, string BranchCode = "MAIN", string BranchName = "Main Branch", bool AllowMultipleBranches = false, string Email = "", bool IsCompanySuperAdmin = false, bool IsPlatformOwner = false, string PermissionsJson = "{}", string SessionId = "", bool SandboxReady = false);
 
 public sealed class ProductUpsertRequest
 {
@@ -223,6 +264,11 @@ public sealed class ProductUpsertRequest
     public string? ImageBase64 { get; set; }
     public string? ImagePath { get; set; }
 }
+
+public sealed class OptimizeItemImageRequest
+{
+    public string? ImageBase64 { get; set; }
+}
 public sealed record CustomerUpsertRequest(int CustomerId, string CustomerCode, string CustomerName, string? Mobile, string? Email, string? AddressLine, decimal CreditLimit, decimal OpeningBalance, bool IsActive);
 public sealed record VendorUpsertRequest(int VendorId, string VendorCode, string VendorName, string? ContactPerson, string? Mobile, string? Email, string? AddressLine, string? PaymentTerms, decimal OpeningBalance, bool IsActive);
 
@@ -242,6 +288,8 @@ public sealed record SaleLineRequest(int ProductId, decimal Quantity, decimal Di
 public sealed record SalePaymentRequest(int PaymentMethodId, string PaymentMethodName, decimal Amount, string? ReferenceNo);
 public sealed class SalePostRequest
 {
+    public string? ClientDocumentId { get; set; }
+    public int ShiftId { get; set; }
     public int CustomerId { get; set; }
     public string? Remarks { get; set; }
     public List<SaleLineRequest> Lines { get; set; } = new();
@@ -251,6 +299,7 @@ public sealed class SalePostRequest
 public sealed record PurchaseLineRequest(int ProductId, decimal Quantity, decimal UnitCost, decimal TaxPercent);
 public sealed class PurchasePostRequest
 {
+    public string? ClientDocumentId { get; set; }
     public int PurchaseInvoiceId { get; set; }
     public int VendorId { get; set; }
     public DateTime InvoiceDate { get; set; } = DateTime.Today;
@@ -273,6 +322,8 @@ public sealed class BranchUpsertRequest
 public sealed class BranchSwitchRequest
 {
     public int BranchId { get; set; }
+    /// <summary>Optional for Desktop/Mobile bearer clients so refresh rotation can revoke the previous token.</summary>
+    public string? RefreshToken { get; set; }
 }
 
 public sealed record ProductForSale(int ProductId, string ProductName, string ProductCode, string Barcode, decimal SalePrice, decimal PurchasePrice, decimal StockOnHand, decimal TaxPercent, bool TaxInclusive, bool DiscountAllowed);
@@ -294,6 +345,13 @@ public sealed class CompanyInformationUpdateRequest
 public sealed record OpenShiftRequest(decimal OpeningCash, int TerminalId = 1);
 public sealed record CloseShiftRequest(decimal ClosingCash, string? Remarks);
 
+public sealed class ShiftManagementSettingsUpdateRequest
+{
+    public bool EnableShiftManagement { get; set; } = false;
+    public bool EnableShift { get; set; } = true;
+    public bool UserWiseShift { get; set; } = true;
+}
+
 public sealed record ReturnLineRequest(int SaleLineId, decimal ReturnQuantity);
 public sealed class ReturnPostRequest
 {
@@ -310,6 +368,9 @@ public sealed class CustomerPaymentPostRequest
     public string PaymentMethod { get; set; } = "Cash";
     public string? ReferenceNo { get; set; }
     public string? Remarks { get; set; }
+    public int? BankAccountId { get; set; }
+    public int? SalesInvoiceId { get; set; }
+    public string? ClientDocumentId { get; set; }
 }
 
 public sealed class VendorPaymentPostRequest
@@ -320,6 +381,9 @@ public sealed class VendorPaymentPostRequest
     public string PaymentMethod { get; set; } = "Cash";
     public string? ReferenceNo { get; set; }
     public string? Remarks { get; set; }
+    public int? BankAccountId { get; set; }
+    public int? PurchaseInvoiceId { get; set; }
+    public string? ClientDocumentId { get; set; }
 }
 
 public sealed class ChartAccountUpsertRequest
@@ -369,11 +433,14 @@ public sealed class InventoryAdjustmentRequest
 
 public sealed class SalesInvoicePostRequest
 {
+    public string? ClientDocumentId { get; set; }
     public int SalesInvoiceId { get; set; }
     public int CustomerId { get; set; }
     public DateTime InvoiceDate { get; set; } = DateTime.Today;
     public decimal PaidAmount { get; set; }
     public string? Remarks { get; set; }
+    public string? ReceivePaymentMethod { get; set; }
+    public int? BankAccountId { get; set; }
     public List<SalesInvoiceLinePostRequest> Lines { get; set; } = new();
 }
 public sealed record SalesInvoiceLinePostRequest(int ProductId, decimal Quantity, decimal UnitPrice, decimal DiscountPercent, decimal TaxPercent);
@@ -434,7 +501,13 @@ public sealed class HoldSaleRequest
 {
     public int CustomerId { get; set; }
     public string? Remarks { get; set; }
+    public decimal SubTotal { get; set; }
+    public decimal DiscountAmount { get; set; }
+    public decimal TaxAmount { get; set; }
+    public decimal GrandTotal { get; set; }
     public List<SaleLineRequest> Lines { get; set; } = new();
+    /// <summary>Optional rich cart JSON for cashier restore (lines with names/prices).</summary>
+    public object? Payload { get; set; }
 }
 
 public sealed class BackupActionRequest
@@ -462,7 +535,7 @@ public sealed class ResendLoginOtpRequest
 public sealed class OwnerEmailSecuritySettingsRequest
 {
     public string FromEmail { get; set; } = string.Empty;
-    public string FromName { get; set; } = "PayNex Cloud ERP";
+    public string FromName { get; set; } = "InterNex Cloud ERP";
     public string SmtpHost { get; set; } = string.Empty;
     public int SmtpPort { get; set; } = 587;
     public string SmtpUser { get; set; } = string.Empty;
@@ -500,6 +573,21 @@ public sealed record LoginChallengeCreated(
     int ExpiresInSeconds,
     string? DevOtp,
     EmailDeliveryResult Delivery);
+
+public sealed record DeleteClientChallengeCreated(
+    string ChallengeId,
+    string MaskedEmail,
+    int ExpiresInSeconds,
+    string? DevOtp,
+    EmailDeliveryResult Delivery);
+
+public sealed record DeleteClientChallengeVerified(string DeleteToken, string CompanyCode, string MaskedEmail);
+
+public sealed class DeleteClientRequest
+{
+    public string DeleteToken { get; set; } = string.Empty;
+    public string ConfirmCompanyCode { get; set; } = string.Empty;
+}
 
 public sealed record VerifiedLoginChallenge(UserSession PendingSession, string Email, string CompanyCode);
 

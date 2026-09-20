@@ -279,7 +279,8 @@ CREATE TABLE SalesHeader(
     PaidAmount DECIMAL(18,2) NOT NULL,
     ChangeAmount DECIMAL(18,2) NOT NULL,
     Status NVARCHAR(20) NOT NULL DEFAULT 'Posted',
-    Remarks NVARCHAR(250) NULL
+    Remarks NVARCHAR(250) NULL,
+    ApplicationSource NVARCHAR(20) NOT NULL DEFAULT 'Cloud'
 );
 END;
 
@@ -328,7 +329,8 @@ CREATE TABLE ReturnHeader(
     ReturnDate DATETIME2 NOT NULL DEFAULT SYSUTCDATETIME(),
     RefundAmount DECIMAL(18,2) NOT NULL,
     Reason NVARCHAR(250) NULL,
-    Status NVARCHAR(20) NOT NULL DEFAULT 'Posted'
+    Status NVARCHAR(20) NOT NULL DEFAULT 'Posted',
+    ApplicationSource NVARCHAR(20) NOT NULL DEFAULT 'Cloud'
 );
 END;
 
@@ -883,6 +885,17 @@ BEGIN
         UpdatedAt DATETIME2 NOT NULL DEFAULT SYSUTCDATETIME()
     );
 END;
+IF OBJECT_ID('ShiftManagementSettings') IS NULL
+BEGIN
+    CREATE TABLE ShiftManagementSettings(
+        SettingId INT NOT NULL PRIMARY KEY CHECK (SettingId = 1),
+        EnableShiftManagement BIT NOT NULL DEFAULT 0,
+        EnableShift BIT NOT NULL DEFAULT 1,
+        UserWiseShift BIT NOT NULL DEFAULT 1,
+        UpdatedAt DATETIME2 NOT NULL DEFAULT SYSUTCDATETIME()
+    );
+    INSERT INTO ShiftManagementSettings(SettingId,EnableShiftManagement,EnableShift,UserWiseShift) VALUES(1,0,1,1);
+END;
 MERGE NumberSeries AS t USING (VALUES('SALES_QUOTE','SQ'),('SALES_ORDER','SO'),('BACKUP','BKP')) s(SeriesCode,Prefix)
 ON t.SeriesCode=s.SeriesCode
 WHEN NOT MATCHED THEN INSERT(SeriesCode,Prefix,LastNumber,NumberLength,IncludeDate) VALUES(s.SeriesCode,s.Prefix,0,6,1);
@@ -1047,4 +1060,26 @@ MERGE ExpenseCategories AS t USING(VALUES
  ('MARKETING','Marketing'),('MAINTENANCE','Repairs & Maintenance'),('OFFICE','Office Supplies')
 ) s(CategoryCode,CategoryName) ON t.CategoryCode=s.CategoryCode
 WHEN NOT MATCHED THEN INSERT(CategoryCode,CategoryName,IsActive) VALUES(s.CategoryCode,s.CategoryName,1);
+GO
+
+-- Shift Management: source tracking + setup (existing tenant upgrades).
+IF OBJECT_ID('SalesHeader') IS NOT NULL AND COL_LENGTH('SalesHeader','ApplicationSource') IS NULL
+    ALTER TABLE SalesHeader ADD ApplicationSource NVARCHAR(20) NOT NULL CONSTRAINT DF_SalesHeader_ApplicationSource DEFAULT 'Cloud';
+IF OBJECT_ID('ReturnHeader') IS NOT NULL AND COL_LENGTH('ReturnHeader','ApplicationSource') IS NULL
+    ALTER TABLE ReturnHeader ADD ApplicationSource NVARCHAR(20) NOT NULL CONSTRAINT DF_ReturnHeader_ApplicationSource DEFAULT 'Cloud';
+IF OBJECT_ID('ShiftManagementSettings') IS NULL
+BEGIN
+    CREATE TABLE ShiftManagementSettings(
+        SettingId INT NOT NULL PRIMARY KEY CHECK (SettingId = 1),
+        EnableShiftManagement BIT NOT NULL DEFAULT 0,
+        EnableShift BIT NOT NULL DEFAULT 1,
+        UserWiseShift BIT NOT NULL DEFAULT 1,
+        UpdatedAt DATETIME2 NOT NULL DEFAULT SYSUTCDATETIME()
+    );
+    INSERT INTO ShiftManagementSettings(SettingId,EnableShiftManagement,EnableShift,UserWiseShift) VALUES(1,0,1,1);
+END;
+IF COL_LENGTH('SalesHeader','ApplicationSource') IS NOT NULL
+    EXEC('UPDATE SalesHeader SET ApplicationSource=''Cloud'' WHERE ApplicationSource IS NULL OR LTRIM(RTRIM(ApplicationSource))=''''');
+IF COL_LENGTH('ReturnHeader','ApplicationSource') IS NOT NULL
+    EXEC('UPDATE ReturnHeader SET ApplicationSource=''Cloud'' WHERE ApplicationSource IS NULL OR LTRIM(RTRIM(ApplicationSource))=''''');
 GO

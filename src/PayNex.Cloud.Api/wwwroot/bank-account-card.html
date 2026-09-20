@@ -1,0 +1,112 @@
+<!doctype html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <link rel="stylesheet" href="/css/app.css?v=avatar-fix-20260812d">
+  <title>Bank Account Card</title>
+</head>
+<body>
+  <main class="shell bc-card-page bc-master-card-page" data-page-role="bank-account-card">
+    <section class="bc-page-heading bc-document-heading">
+      <div>
+        <div class="bc-breadcrumb"><a href="/bank-accounts.html">Bank Accounts</a> / Card</div>
+        <div class="bc-title-line">
+          <h1 id="cardTitle">New Bank Account</h1>
+          <span id="recordStatus" class="bc-status-pill draft">New</span>
+        </div>
+        <p id="who" class="muted">Loading company and user...</p>
+      </div>
+      <div class="bc-document-number"><span>No.</span><strong id="recordNo">NEW</strong></div>
+    </section>
+    <section class="bc-command-bar">
+      <button id="backBtn" class="secondary"><span>←</span> Bank Accounts</button>
+      <button id="newBtn" class="secondary"><span>＋</span> New</button>
+      <button id="saveBtn" class="bc-command-primary"><span>✓</span> Save</button>
+      <button id="printBtn" class="secondary"><span>▣</span> Print</button>
+      <span class="bc-command-separator"></span>
+      <button id="deleteBtn" class="secondary">Delete</button>
+    </section>
+    <div class="bc-card-layout">
+      <div class="bc-card-main">
+        <section class="bc-fasttab open">
+          <div class="bc-fasttab-title"><span>Bank Information</span><span>⌃</span></div>
+          <div class="bc-fasttab-body bc-form-grid">
+            <input id="bankAccountId" type="hidden" value="0">
+            <label>Bank Code<input id="bankCode"></label>
+            <label class="span-2">Bank Name<input id="bankName"></label>
+            <label>Status
+              <select id="isActive" data-no-lookup="1">
+                <option value="true">Active</option>
+                <option value="false">Inactive</option>
+              </select>
+            </label>
+            <label>Account Number<input id="accountNumber"></label>
+            <label>IBAN<input id="iban"></label>
+            <label>Branch Name<input id="branchName"></label>
+            <label>Currency<input id="currency" value="PKR"></label>
+            <label>Bank Type
+              <select id="bankType" data-no-lookup="1">
+                <option value="Bank">Bank</option>
+                <option value="Cash">Cash</option>
+              </select>
+            </label>
+          </div>
+        </section>
+        <section class="bc-fasttab open">
+          <div class="bc-fasttab-title"><span>Posting Setup</span><span>⌃</span></div>
+          <div class="bc-fasttab-body bc-form-grid">
+            <label class="span-2">Linked G/L Account
+              <select id="glAccountId" data-lookup-title="G/L Account Lookup"></select>
+            </label>
+            <p class="muted mini span-4">Select an active Asset account. This G/L is used when Customer or Vendor payments are posted with Payment Method Bank.</p>
+          </div>
+        </section>
+        <section class="bc-fasttab open" id="ledgerSection" hidden>
+          <div class="bc-fasttab-title"><span>Bank Ledger Entries</span><span>⌃</span></div>
+          <div class="bc-fasttab-body">
+            <div class="bc-table-wrap">
+              <table class="bc-data-table">
+                <thead>
+                  <tr>
+                    <th>Date</th>
+                    <th>Document Type</th>
+                    <th>Document No.</th>
+                    <th class="number">Debit</th>
+                    <th class="number">Credit</th>
+                    <th class="number">Balance</th>
+                    <th>Description</th>
+                  </tr>
+                </thead>
+                <tbody id="ledgerBody"><tr><td colspan="7" class="bc-empty-row">No bank ledger entries.</td></tr></tbody>
+              </table>
+            </div>
+          </div>
+        </section>
+      </div>
+      <aside class="bc-factbox-column">
+        <section class="bc-factbox">
+          <h2>Bank Account</h2>
+          <div><span>Bank Code</span><strong id="factCode">NEW</strong></div>
+          <div><span>Currency</span><strong id="factCurrency">PKR</strong></div>
+          <div><span>Linked G/L</span><strong id="factGl">—</strong></div>
+          <div class="total"><span>Balance</span><strong id="factBalance">Rs. 0.00</strong></div>
+        </section>
+        <section class="bc-factbox">
+          <h2>Record Details</h2>
+          <dl>
+            <dt>Status</dt><dd id="factStatus">New</dd>
+            <dt>Bank Type</dt><dd id="factType">Bank</dd>
+            <dt>Account Number</dt><dd id="factAccount">—</dd>
+            <dt>Created At</dt><dd id="factCreated">—</dd>
+          </dl>
+        </section>
+      </aside>
+    </div>
+    <p id="status" class="bc-status-line"></p>
+  </main>
+  <script src="/js/api.js?v=avatar-fix-20260812d"></script>
+  <script src="/js/bank-account-card.js?v=bank-balance-20260911"></script>
+  <script src="/js/app-shell.js?v=avatar-fix-20260812d"></script>
+</body>
+</html>

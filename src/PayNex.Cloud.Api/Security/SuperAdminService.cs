@@ -32,7 +32,7 @@ public sealed class SuperAdminService
         {
             await UpsertSuperAdminAsync(
                 string.IsNullOrWhiteSpace(_options.PlatformOwnerUserName) ? ownerEmail : _options.PlatformOwnerUserName.Trim(),
-                string.IsNullOrWhiteSpace(_options.PlatformOwnerDisplayName) ? "PayNex Owner" : _options.PlatformOwnerDisplayName.Trim(),
+                string.IsNullOrWhiteSpace(_options.PlatformOwnerDisplayName) ? "InterNex Owner" : _options.PlatformOwnerDisplayName.Trim(),
                 ownerEmail,
                 string.IsNullOrWhiteSpace(_options.PlatformOwnerBootstrapPassword) ? _options.SuperAdminBootstrapPassword : _options.PlatformOwnerBootstrapPassword);
         }
@@ -49,7 +49,7 @@ BEGIN
     SET UserName=@UserName,
         DisplayName=@DisplayName,
         Email=@Email,
-        PasswordHash=@PasswordHash,
+        PasswordHash=CASE WHEN @ResetPassword=1 THEN @PasswordHash ELSE PasswordHash END,
         RoleName='SuperAdmin',
         IsActive=1
     WHERE UserName=@UserName OR LOWER(ISNULL(Email,''))=@Email;
@@ -63,6 +63,7 @@ END";
         cmd.Parameters.AddWithValue("@DisplayName", displayName);
         cmd.Parameters.AddWithValue("@Email", NormalizeEmail(email));
         cmd.Parameters.AddWithValue("@PasswordHash", _passwords.Hash(password));
+        cmd.Parameters.AddWithValue("@ResetPassword", _options.ResetBootstrapPasswordsOnStartup ? 1 : 0);
         await cmd.ExecuteNonQueryAsync();
     }
 

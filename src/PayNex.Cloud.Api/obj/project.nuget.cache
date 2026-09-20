@@ -1,8 +1,8 @@
 {
   "version": 2,
-  "dgSpecHash": "mNagXsN1VD0=",
+  "dgSpecHash": "he4Wg+ONhXA=",
   "success": true,
-  "projectFilePath": "C:\\Users\\Hamid\\Documents\\POS\\owner_portal_work_BC_list___After__filters\\owner_portal_work\\src\\PayNex.Cloud.Api\\PayNex.Cloud.Api.csproj",
+  "projectFilePath": "C:\\Users\\Hamid\\Documents\\POS\\PayNex ERP Mohsin\\owner_portal_work_BC_list___After__filters\\owner_portal_work\\src\\PayNex.Cloud.Api\\PayNex.Cloud.Api.csproj",
   "expectedPackageFiles": [
     "C:\\Users\\Hamid\\.nuget\\packages\\azure.core\\1.38.0\\azure.core.1.38.0.nupkg.sha512",
     "C:\\Users\\Hamid\\.nuget\\packages\\azure.identity\\1.11.4\\azure.identity.1.11.4.nupkg.sha512",
@@ -24,6 +24,7 @@
     "C:\\Users\\Hamid\\.nuget\\packages\\microsoft.netcore.targets\\1.1.0\\microsoft.netcore.targets.1.1.0.nupkg.sha512",
     "C:\\Users\\Hamid\\.nuget\\packages\\microsoft.openapi\\1.6.14\\microsoft.openapi.1.6.14.nupkg.sha512",
     "C:\\Users\\Hamid\\.nuget\\packages\\microsoft.sqlserver.server\\1.0.0\\microsoft.sqlserver.server.1.0.0.nupkg.sha512",
+    "C:\\Users\\Hamid\\.nuget\\packages\\sixlabors.imagesharp\\3.1.11\\sixlabors.imagesharp.3.1.11.nupkg.sha512",
     "C:\\Users\\Hamid\\.nuget\\packages\\swashbuckle.aspnetcore\\6.6.2\\swashbuckle.aspnetcore.6.6.2.nupkg.sha512",
     "C:\\Users\\Hamid\\.nuget\\packages\\swashbuckle.aspnetcore.swagger\\6.6.2\\swashbuckle.aspnetcore.swagger.6.6.2.nupkg.sha512",
     "C:\\Users\\Hamid\\.nuget\\packages\\swashbuckle.aspnetcore.swaggergen\\6.6.2\\swashbuckle.aspnetcore.swaggergen.6.6.2.nupkg.sha512",

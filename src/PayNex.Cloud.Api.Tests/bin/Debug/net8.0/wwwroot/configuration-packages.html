@@ -1,0 +1,54 @@
+<!doctype html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>Configuration Packages</title>
+  <link rel="stylesheet" href="/css/app.css?v=avatar-fix-20260812d">
+</head>
+<body>
+<main class="shell bc-list-page bc-master-list-page package-list-page">
+  <section class="bc-page-heading">
+    <div>
+      <div class="bc-breadcrumb">Data Management / Configuration Packages</div>
+      <h1>Configuration Packages</h1>
+      <p id="who" class="muted">Loading company and user...</p>
+    </div>
+    <span class="bc-page-badge">List</span>
+  </section>
+
+  <section class="bc-command-bar" aria-label="Configuration package actions">
+    <button id="openBtn" class="bc-command-primary" type="button"><span>↗</span> Open</button>
+    <button id="refreshBtn" class="secondary" type="button"><span>↻</span> Refresh</button>
+  </section>
+
+  <section class="bc-filter-pane bc-master-filter">
+    <div class="bc-filter-title">Filter</div>
+    <label>Search<input id="searchTerm" type="search" placeholder="Customer, Vendor or Item..."></label>
+    <button id="applyFilterBtn" type="button">Apply</button>
+    <button id="clearFilterBtn" class="secondary" type="button">Clear</button>
+  </section>
+
+  <section class="bc-list-card">
+    <div class="bc-list-caption">
+      <div><strong>Master Data Packages</strong><span id="recordCount" class="muted">3 records</span></div>
+      <div id="selectedCaption" class="muted">No package selected</div>
+    </div>
+    <div class="bc-table-wrap">
+      <table class="bc-data-table">
+        <thead><tr><th class="bc-select-col"></th><th>Code</th><th>Master Data</th><th>Description</th><th>Current Records</th><th>Last Import</th><th>Status</th></tr></thead>
+        <tbody id="recordBody"><tr><td colspan="7" class="bc-empty-row">Loading Customer, Vendor and Item packages...</td></tr></tbody>
+      </table>
+    </div>
+    <div class="bc-list-footer">
+      <span>Customer, Vendor and Item are created automatically.</span>
+      <span>Open any line to Export, Import, Validate and Save.</span>
+    </div>
+  </section>
+  <p id="status" class="bc-status-line" aria-live="polite"></p>
+</main>
+<script src="/js/api.js?v=avatar-fix-20260812d"></script>
+<script src="/js/configuration-packages.js?v=configuration-package-simple-20260712"></script>
+<script src="/js/app-shell.js?v=avatar-fix-20260812d"></script>
+</body>
+</html>

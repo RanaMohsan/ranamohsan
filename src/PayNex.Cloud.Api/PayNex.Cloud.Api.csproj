@@ -10,6 +10,7 @@
     <PackageReference Include="Microsoft.Data.SqlClient" Version="5.2.2" />
     <PackageReference Include="Swashbuckle.AspNetCore" Version="6.6.2" />
     <PackageReference Include="BCrypt.Net-Next" Version="4.2.0" />
+    <PackageReference Include="SixLabors.ImageSharp" Version="3.1.11" />
   </ItemGroup>
   <ItemGroup>
     <Content Include="..\..\database\*.sql" CopyToOutputDirectory="PreserveNewest" Link="database\%(Filename)%(Extension)" />
@@ -17,5 +18,7 @@
   <ItemGroup>
     <Content Include="Reports\*.rdlc" CopyToOutputDirectory="PreserveNewest" />
     <Content Include="..\..\database\addons\*.sql" CopyToOutputDirectory="PreserveNewest" Link="database\addons\%(Filename)%(Extension)" />
+    <!-- Ensure wwwroot is present when running the apphost from bin/ (not only via dotnet run). -->
+    <Content Update="wwwroot\**\*" CopyToOutputDirectory="PreserveNewest" />
   </ItemGroup>
 </Project>

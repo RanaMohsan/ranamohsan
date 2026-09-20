@@ -1,0 +1,72 @@
+<!doctype html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <link rel="stylesheet" href="/css/app.css?v=avatar-fix-20260812d">
+  <title>Bank Accounts</title>
+</head>
+<body>
+  <main class="shell bc-list-page bc-master-list-page" data-page-role="bank-account-list">
+    <section class="bc-page-heading">
+      <div>
+        <div class="bc-breadcrumb">Finance / Bank Accounts</div>
+        <h1>Bank Accounts</h1>
+        <p id="who" class="muted">Loading company and user...</p>
+      </div>
+      <span class="bc-page-badge">List</span>
+    </section>
+    <section class="bc-command-bar">
+      <button id="newBtn" class="bc-command-primary"><span>＋</span> New</button>
+      <button id="openBtn" class="secondary"><span>↗</span> Open</button>
+      <button id="refreshBtn" class="secondary"><span>↻</span> Refresh</button>
+      <span class="bc-command-separator"></span>
+      <button id="deleteBtn" class="secondary">Delete</button>
+    </section>
+    <section class="bc-filter-pane bc-master-filter">
+      <div class="bc-filter-title">Filter</div>
+      <label>Search<input id="searchTerm" type="search" placeholder="Bank code, name, account number or G/L..."></label>
+      <label>Status
+        <select id="statusFilter" data-no-lookup="1">
+          <option value="">All statuses</option>
+          <option value="active">Active</option>
+          <option value="inactive">Inactive</option>
+        </select>
+      </label>
+      <button id="applyFilterBtn">Apply</button>
+      <button id="clearFilterBtn" class="secondary">Clear</button>
+    </section>
+    <section class="bc-list-card">
+      <div class="bc-list-caption">
+        <div><strong>Bank Account List</strong><span id="recordCount" class="muted">0 records</span></div>
+        <div id="selectedCaption" class="muted">No bank account selected</div>
+      </div>
+      <div class="bc-table-wrap">
+        <table class="bc-data-table">
+          <thead>
+            <tr>
+              <th class="bc-select-col"></th>
+              <th>Bank Code</th>
+              <th>Bank Name</th>
+              <th>Account Number</th>
+              <th>Currency</th>
+              <th>Linked G/L Account</th>
+              <th class="number">Balance</th>
+              <th>Status</th>
+            </tr>
+          </thead>
+          <tbody id="recordBody"><tr><td colspan="8" class="bc-empty-row">Loading bank accounts...</td></tr></tbody>
+        </table>
+      </div>
+      <div class="bc-list-footer">
+        <span id="footerSummary">0 active bank accounts</span>
+        <span>Click the bank code/name, or double-click a row, to open its Bank Account Card.</span>
+      </div>
+    </section>
+    <p id="status" class="bc-status-line"></p>
+  </main>
+  <script src="/js/api.js?v=avatar-fix-20260812d"></script>
+  <script src="/js/bank-accounts.js?v=bank-balance-20260911"></script>
+  <script src="/js/app-shell.js?v=avatar-fix-20260812d"></script>
+</body>
+</html>

@@ -1,0 +1,32 @@
+<!doctype html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <link rel="stylesheet" href="/css/app.css?v=avatar-fix-20260812d">
+  <title>Shift Management</title>
+</head>
+<body>
+  <main class="shell shift-management-entry-page">
+    <section class="bc-page-heading">
+      <div>
+        <div class="bc-breadcrumb">POS / Shift Management</div>
+        <h1>Shift Management</h1>
+        <p id="smWho" class="muted">Loading...</p>
+      </div>
+      <span class="bc-page-badge">Open / Close</span>
+    </section>
+
+    <section class="panel" aria-live="polite">
+      <h2>Checking current shift...</h2>
+      <p id="smRedirectText" class="muted">Please wait.</p>
+      <p id="smRedirectError" class="muted" style="color:#b00020;"></p>
+    </section>
+  </main>
+
+  <script src="/js/api.js?v=avatar-fix-20260812d"></script>
+  <script src="/js/shift-management.js?v=shift-mgmt-20260903"></script>
+  <script src="/js/app-shell.js?v=avatar-fix-20260812d"></script>
+</body>
+</html>
+

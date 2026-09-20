@@ -116,13 +116,33 @@ BEGIN
         ReplacedByTokenHash CHAR(64) NULL,
         CreatedAt DATETIME2 NOT NULL DEFAULT SYSUTCDATETIME()
     );
+END;
+IF OBJECT_ID('PlatformDeleteClientChallenges') IS NULL
+BEGIN
+    CREATE TABLE PlatformDeleteClientChallenges(
+        ChallengeId NVARCHAR(64) NOT NULL PRIMARY KEY,
+        CompanyCode NVARCHAR(40) NOT NULL,
+        OwnerEmail NVARCHAR(180) NOT NULL,
+        CodeHash NVARCHAR(500) NOT NULL,
+        DeleteTokenHash CHAR(64) NULL,
+        AttemptCount INT NOT NULL DEFAULT 0,
+        MaxAttempts INT NOT NULL DEFAULT 5,
+        ExpiresAt DATETIME2 NOT NULL,
+        VerifiedAt DATETIME2 NULL,
+        UsedAt DATETIME2 NULL,
+        IpAddress NVARCHAR(80) NULL,
+        UserAgent NVARCHAR(500) NULL,
+        CreatedAt DATETIME2 NOT NULL DEFAULT SYSUTCDATETIME()
+    );
 END;";
         await cmd.ExecuteNonQueryAsync();
+        await SeedDefaultSmtpIfMissingAsync();
     }
 
     public async Task<EffectiveEmailSecuritySettings> GetEffectiveEmailSettingsAsync()
     {
         await EnsureSchemaAsync();
+        var config = ReadConfigEmailSettings();
         await using var con = await _db.OpenMasterAsync();
         await using var cmd = con.CreateCommand();
         cmd.CommandText = @"SELECT TOP 1 FromEmail,FromName,SmtpHost,SmtpPort,ISNULL(SmtpUser,'') SmtpUser,
@@ -132,32 +152,90 @@ FROM PlatformEmailSecuritySettings WHERE SettingId=1";
         if (await r.ReadAsync())
         {
             var protectedPassword = SqlRead.String(r, "SmtpPasswordProtected");
+            var fromEmail = SqlRead.String(r, "FromEmail");
+            var fromName = SqlRead.String(r, "FromName");
+            var host = SqlRead.String(r, "SmtpHost");
+            var port = SqlRead.Int(r, "SmtpPort");
+            var smtpUser = SqlRead.String(r, "SmtpUser");
+            var password = string.IsNullOrWhiteSpace(protectedPassword) ? string.Empty : Unprotect(protectedPassword);
+            var enableSsl = SqlRead.Bool(r, "EnableSsl");
+            if (string.IsNullOrWhiteSpace(host))
+            {
+                fromEmail = string.IsNullOrWhiteSpace(fromEmail) || fromEmail.Equals("no-reply@paynex.local", StringComparison.OrdinalIgnoreCase)
+                    ? config.FromEmail : fromEmail;
+                fromName = string.IsNullOrWhiteSpace(fromName) ? config.FromName : fromName;
+                host = config.SmtpHost;
+                if (port < 1) port = config.SmtpPort;
+                if (string.IsNullOrWhiteSpace(smtpUser)) smtpUser = config.SmtpUser;
+                if (string.IsNullOrWhiteSpace(password)) password = config.SmtpPassword;
+                enableSsl = config.EnableSsl;
+            }
             return new EffectiveEmailSecuritySettings(
-                SqlRead.String(r, "FromEmail"),
-                SqlRead.String(r, "FromName"),
-                SqlRead.String(r, "SmtpHost"),
-                SqlRead.Int(r, "SmtpPort"),
-                SqlRead.String(r, "SmtpUser"),
-                string.IsNullOrWhiteSpace(protectedPassword) ? string.Empty : Unprotect(protectedPassword),
-                SqlRead.Bool(r, "EnableSsl"),
+                fromEmail,
+                fromName,
+                host,
+                port < 1 ? 587 : port,
+                smtpUser,
+                password,
+                enableSsl,
                 SqlRead.Bool(r, "ReturnDevOtp"),
                 Math.Clamp(SqlRead.Int(r, "LoginOtpExpiryMinutes"), 5, 30),
                 Math.Clamp(SqlRead.Int(r, "TrustedDeviceDays"), 1, 90),
                 true);
         }
 
-        return new EffectiveEmailSecuritySettings(
-            _configuration["OtpEmail:FromEmail"] ?? "no-reply@paynex.local",
-            _configuration["OtpEmail:FromName"] ?? "PayNex Cloud ERP",
-            _configuration["OtpEmail:SmtpHost"] ?? string.Empty,
-            _configuration.GetValue<int?>("OtpEmail:SmtpPort") ?? 587,
-            _configuration["OtpEmail:SmtpUser"] ?? string.Empty,
-            _configuration["OtpEmail:SmtpPassword"] ?? string.Empty,
-            _configuration.GetValue<bool?>("OtpEmail:EnableSsl") ?? true,
-            _configuration.GetValue<bool?>("OtpEmail:ReturnDevOtp") ?? false,
-            DefaultOtpExpiryMinutes,
-            DefaultTrustedDeviceDays,
-            false);
+        return config;
+    }
+
+    private EffectiveEmailSecuritySettings ReadConfigEmailSettings() => new(
+        _configuration["OtpEmail:FromEmail"] ?? "noreply.paynex@gmail.com",
+        _configuration["OtpEmail:FromName"] ?? "InterNex Cloud ERP",
+        _configuration["OtpEmail:SmtpHost"] ?? string.Empty,
+        _configuration.GetValue<int?>("OtpEmail:SmtpPort") ?? 587,
+        _configuration["OtpEmail:SmtpUser"] ?? string.Empty,
+        _configuration["OtpEmail:SmtpPassword"] ?? string.Empty,
+        _configuration.GetValue<bool?>("OtpEmail:EnableSsl") ?? true,
+        _configuration.GetValue<bool?>("OtpEmail:ReturnDevOtp") ?? false,
+        DefaultOtpExpiryMinutes,
+        DefaultTrustedDeviceDays,
+        false);
+
+    private async Task SeedDefaultSmtpIfMissingAsync()
+    {
+        var config = ReadConfigEmailSettings();
+        if (string.IsNullOrWhiteSpace(config.SmtpHost)) return;
+
+        await using var con = await _db.OpenMasterAsync();
+        string existingHost = string.Empty;
+        await using (var read = con.CreateCommand())
+        {
+            read.CommandText = "SELECT TOP 1 ISNULL(SmtpHost,'') SmtpHost FROM PlatformEmailSecuritySettings WHERE SettingId=1";
+            existingHost = (Convert.ToString(await read.ExecuteScalarAsync()) ?? string.Empty).Trim();
+        }
+        if (!string.IsNullOrWhiteSpace(existingHost)) return;
+
+        var protectedPassword = string.IsNullOrWhiteSpace(config.SmtpPassword) ? string.Empty : Protect(config.SmtpPassword);
+        await using var cmd = con.CreateCommand();
+        cmd.CommandText = @"
+MERGE PlatformEmailSecuritySettings AS target
+USING (SELECT CAST(1 AS INT) SettingId) AS source ON target.SettingId=source.SettingId
+WHEN MATCHED AND LTRIM(RTRIM(ISNULL(target.SmtpHost,''))) = '' THEN UPDATE SET
+    FromEmail=@FromEmail,FromName=@FromName,SmtpHost=@SmtpHost,SmtpPort=@SmtpPort,SmtpUser=@SmtpUser,
+    SmtpPasswordProtected=@SmtpPasswordProtected,EnableSsl=@EnableSsl,UpdatedBy=@UpdatedBy,UpdatedAt=SYSUTCDATETIME()
+WHEN NOT MATCHED THEN INSERT(SettingId,FromEmail,FromName,SmtpHost,SmtpPort,SmtpUser,SmtpPasswordProtected,EnableSsl,ReturnDevOtp,LoginOtpExpiryMinutes,TrustedDeviceDays,UpdatedBy)
+VALUES(1,@FromEmail,@FromName,@SmtpHost,@SmtpPort,@SmtpUser,@SmtpPasswordProtected,@EnableSsl,@ReturnDevOtp,@LoginOtpExpiryMinutes,@TrustedDeviceDays,@UpdatedBy);";
+        cmd.Parameters.AddWithValue("@FromEmail", config.FromEmail);
+        cmd.Parameters.AddWithValue("@FromName", config.FromName);
+        cmd.Parameters.AddWithValue("@SmtpHost", config.SmtpHost.Trim());
+        cmd.Parameters.AddWithValue("@SmtpPort", config.SmtpPort < 1 ? 587 : config.SmtpPort);
+        cmd.Parameters.AddWithValue("@SmtpUser", config.SmtpUser);
+        cmd.Parameters.AddWithValue("@SmtpPasswordProtected", protectedPassword);
+        cmd.Parameters.AddWithValue("@EnableSsl", config.EnableSsl);
+        cmd.Parameters.AddWithValue("@ReturnDevOtp", config.ReturnDevOtp);
+        cmd.Parameters.AddWithValue("@LoginOtpExpiryMinutes", DefaultOtpExpiryMinutes);
+        cmd.Parameters.AddWithValue("@TrustedDeviceDays", DefaultTrustedDeviceDays);
+        cmd.Parameters.AddWithValue("@UpdatedBy", "system-smtp-seed");
+        await cmd.ExecuteNonQueryAsync();
     }
 
     public async Task SaveEmailSettingsAsync(OwnerEmailSecuritySettingsRequest request, string updatedBy)
@@ -184,7 +262,7 @@ LoginOtpExpiryMinutes=@LoginOtpExpiryMinutes,TrustedDeviceDays=@TrustedDeviceDay
 WHEN NOT MATCHED THEN INSERT(SettingId,FromEmail,FromName,SmtpHost,SmtpPort,SmtpUser,SmtpPasswordProtected,EnableSsl,ReturnDevOtp,LoginOtpExpiryMinutes,TrustedDeviceDays,UpdatedBy)
 VALUES(1,@FromEmail,@FromName,@SmtpHost,@SmtpPort,@SmtpUser,@SmtpPasswordProtected,@EnableSsl,@ReturnDevOtp,@LoginOtpExpiryMinutes,@TrustedDeviceDays,@UpdatedBy);";
         cmd.Parameters.AddWithValue("@FromEmail", fromEmail);
-        cmd.Parameters.AddWithValue("@FromName", string.IsNullOrWhiteSpace(request.FromName) ? "PayNex Cloud ERP" : request.FromName.Trim());
+        cmd.Parameters.AddWithValue("@FromName", string.IsNullOrWhiteSpace(request.FromName) ? "InterNex Cloud ERP" : request.FromName.Trim());
         cmd.Parameters.AddWithValue("@SmtpHost", (request.SmtpHost ?? string.Empty).Trim());
         cmd.Parameters.AddWithValue("@SmtpPort", request.SmtpPort);
         cmd.Parameters.AddWithValue("@SmtpUser", (request.SmtpUser ?? string.Empty).Trim());
@@ -202,16 +280,18 @@ VALUES(1,@FromEmail,@FromName,@SmtpHost,@SmtpPort,@SmtpUser,@SmtpPasswordProtect
     {
         var settings = await GetEffectiveEmailSettingsAsync();
         var subject = purpose.Equals("LOGIN_MFA", StringComparison.OrdinalIgnoreCase)
-            ? "PayNex Cloud ERP sign-in verification code"
-            : "PayNex Cloud ERP email verification code";
-        var expiry = purpose.Equals("LOGIN_MFA", StringComparison.OrdinalIgnoreCase)
+            ? "InterNex Cloud ERP sign-in verification code"
+            : purpose.Equals("DELETE_CLIENT", StringComparison.OrdinalIgnoreCase)
+                ? "InterNex Cloud ERP client deletion code"
+                : "InterNex Cloud ERP email verification code";
+        var expiry = purpose.Equals("LOGIN_MFA", StringComparison.OrdinalIgnoreCase) || purpose.Equals("DELETE_CLIENT", StringComparison.OrdinalIgnoreCase)
             ? settings.LoginOtpExpiryMinutes
             : 15;
-        var safeCompany = System.Net.WebUtility.HtmlEncode(companyName ?? "PayNex");
+        var safeCompany = System.Net.WebUtility.HtmlEncode(companyName ?? "InterNex");
         var safeCode = System.Net.WebUtility.HtmlEncode(code ?? string.Empty);
         var html = $@"<!DOCTYPE html><html><body style=""margin:0;padding:24px;background:#f4f6f8;font-family:Segoe UI,Arial,sans-serif;color:#1b2430"">
 <div style=""max-width:480px;margin:0 auto;background:#fff;border-radius:12px;padding:28px 24px;border:1px solid #e5eaf0"">
-  <div style=""text-align:center;font-size:14px;color:#5b6b7c;margin-bottom:8px"">PayNex Cloud ERP</div>
+  <div style=""text-align:center;font-size:14px;color:#5b6b7c;margin-bottom:8px"">InterNex Cloud ERP</div>
   <div style=""text-align:center;font-size:18px;font-weight:700;margin-bottom:18px"">Verification code</div>
   <div style=""text-align:center;font-size:42px;font-weight:800;letter-spacing:10px;line-height:1.2;color:#0b5cab;padding:18px 8px;background:#f3f8fd;border-radius:10px;margin:0 0 16px"">{safeCode}</div>
   <p style=""text-align:center;font-size:14px;margin:0 0 8px""><b>Don't share this code</b> with anyone.</p>
@@ -238,12 +318,12 @@ VALUES(1,@FromEmail,@FromName,@SmtpHost,@SmtpPort,@SmtpUser,@SmtpPasswordProtect
             var settings = await GetEffectiveEmailSettingsAsync();
             var publicBaseUrl = (_configuration["PayNex:PublicBaseUrl"] ?? string.Empty).Trim().TrimEnd('/');
             var loginLine = string.IsNullOrWhiteSpace(publicBaseUrl)
-                ? "Login page: Open the PayNex Cloud ERP address provided by your administrator."
+                ? "Login page: Open the InterNex Cloud ERP address provided by your administrator."
                 : $"Login page: {publicBaseUrl}/login.html";
             var trustedDays = Math.Clamp(settings.TrustedDeviceDays, 1, 90);
             var body = $@"Hello {displayName},
 
-Your PayNex Cloud ERP user account has been created.
+Your InterNex Cloud ERP user account has been created.
 
 Company: {companyName}
 Login email: {normalizedEmail}
@@ -255,7 +335,7 @@ On your first sign-in, a 6-digit OTP will be sent to this email address. After s
 
 Keep this email and password private. If you did not expect this account, contact your company administrator.";
 
-            var result = await SendEmailAsync(settings, normalizedEmail, "Your PayNex Cloud ERP login details", body);
+            var result = await SendEmailAsync(settings, normalizedEmail, "Your InterNex Cloud ERP login details", body);
             await WriteSecurityAuditAsync(
                 normalizedEmail,
                 "NEW_USER_CREDENTIALS_EMAIL",
@@ -276,7 +356,7 @@ Keep this email and password private. If you did not expect this account, contac
         var normalized = NormalizeEmail(toEmail);
         if (string.IsNullOrWhiteSpace(normalized)) throw new InvalidOperationException("A valid test recipient email is required.");
         var settings = await GetEffectiveEmailSettingsAsync();
-        return await SendEmailAsync(settings, normalized, "PayNex Cloud ERP email setup test", "This is a test email from the PayNex owner-managed Email & OTP Security Setup. This mailbox sends new-user login details and sign-in OTP codes.");
+        return await SendEmailAsync(settings, normalized, "InterNex Cloud ERP email setup test", "This is a test email from the InterNex owner-managed Email & OTP Security Setup. This mailbox sends new-user login details and sign-in OTP codes.");
     }
 
     public async Task<DateTimeOffset?> GetLockoutUntilAsync(string email, string ipAddress)
@@ -406,12 +486,12 @@ VALUES(@ChallengeId,@Email,@CompanyCode,@PendingSessionProtected,@CodeHash,5,DAT
         if (!delivery.Sent && delivery.SmtpConfigured && !delivery.ReturnDevOtp)
         {
             await InvalidateChallengeAsync(challengeId);
-            throw new InvalidOperationException("The verification email could not be sent. The PayNex owner must review the Email & OTP Setup.");
+            throw new InvalidOperationException("The verification email could not be sent. The InterNex owner must review the Email & OTP Setup.");
         }
         if (!delivery.Sent && !delivery.SmtpConfigured && !delivery.ReturnDevOtp)
         {
             await InvalidateChallengeAsync(challengeId);
-            throw new InvalidOperationException("Login verification email is not configured. Contact the PayNex owner.");
+            throw new InvalidOperationException("Login verification email is not configured. Contact the InterNex owner.");
         }
 
         await WriteSecurityAuditAsync(email, "LOGIN_OTP_SENT", delivery.Sent ? "Success" : "Development", $"Company={pendingSession.CompanyCode}; From={delivery.FromEmail}", http.Connection.RemoteIpAddress?.ToString(), http.Request.Headers["User-Agent"].ToString());
@@ -454,7 +534,7 @@ WHERE ChallengeId=@ChallengeId AND UsedAt IS NULL AND ExpiresAt>SYSUTCDATETIME()
         }
 
         var delivery = await SendOtpEmailAsync(session.Email, code, session.CompanyName, session.DisplayName, "LOGIN_MFA");
-        if (!delivery.Sent && !delivery.ReturnDevOtp) throw new InvalidOperationException("The verification email could not be sent. Contact the PayNex owner.");
+        if (!delivery.Sent && !delivery.ReturnDevOtp) throw new InvalidOperationException("The verification email could not be sent. Contact the InterNex owner.");
         return new LoginChallengeCreated(challengeId, MaskEmail(session.Email), expiryMinutes * 60, delivery.ReturnDevOtp ? code : null, delivery);
     }
 
@@ -490,7 +570,10 @@ FROM LoginMfaChallenges WHERE ChallengeId=@ChallengeId";
         }
 
         var currentUserAgent = Limit(http.Request.Headers["User-Agent"].ToString(), 500);
-        if (!string.Equals(challengeUserAgent, currentUserAgent, StringComparison.Ordinal))
+        // Enforce UA binding for browser sessions; allow empty/missing UA for native mobile/desktop clients.
+        if (!string.IsNullOrWhiteSpace(challengeUserAgent) &&
+            !string.IsNullOrWhiteSpace(currentUserAgent) &&
+            !string.Equals(challengeUserAgent, currentUserAgent, StringComparison.Ordinal))
         {
             await InvalidateChallengeAsync(challengeId);
             await WriteSecurityAuditAsync(email, "LOGIN_OTP_DEVICE_MISMATCH", "Denied", $"Company={companyCode}", http.Connection.RemoteIpAddress?.ToString(), currentUserAgent);
@@ -669,6 +752,139 @@ END;";
         await using var cmd = con.CreateCommand();
         cmd.CommandText = "UPDATE TrustedLoginDevices SET RevokedAt=COALESCE(RevokedAt,SYSUTCDATETIME()) WHERE TokenHash=@TokenHash";
         cmd.Parameters.AddWithValue("@TokenHash", HashToken(plainToken));
+        await cmd.ExecuteNonQueryAsync();
+    }
+
+    public async Task<DeleteClientChallengeCreated> CreateDeleteClientChallengeAsync(string companyCode, string companyName, string ownerEmail, HttpContext http)
+    {
+        await EnsureSchemaAsync();
+        var email = NormalizeEmail(ownerEmail);
+        if (string.IsNullOrWhiteSpace(email)) throw new InvalidOperationException("A platform owner email is required to delete a client.");
+        var code = companyCode?.Trim() ?? string.Empty;
+        if (string.IsNullOrWhiteSpace(code)) throw new InvalidOperationException("Company code is required.");
+
+        var settings = await GetEffectiveEmailSettingsAsync();
+        var expiryMinutes = Math.Clamp(settings.LoginOtpExpiryMinutes, 5, 30);
+        var challengeId = Guid.NewGuid().ToString("N");
+        var otp = RandomNumberGenerator.GetInt32(100000, 1000000).ToString();
+
+        await using (var con = await _db.OpenMasterAsync())
+        await using (var cmd = con.CreateCommand())
+        {
+            cmd.CommandText = @"
+UPDATE PlatformDeleteClientChallenges SET UsedAt=COALESCE(UsedAt,SYSUTCDATETIME())
+WHERE CompanyCode=@CompanyCode AND UsedAt IS NULL;
+INSERT INTO PlatformDeleteClientChallenges(ChallengeId,CompanyCode,OwnerEmail,CodeHash,MaxAttempts,ExpiresAt,IpAddress,UserAgent)
+VALUES(@ChallengeId,@CompanyCode,@OwnerEmail,@CodeHash,5,DATEADD(MINUTE,@ExpiryMinutes,SYSUTCDATETIME()),@IpAddress,@UserAgent);";
+            cmd.Parameters.AddWithValue("@ChallengeId", challengeId);
+            cmd.Parameters.AddWithValue("@CompanyCode", code);
+            cmd.Parameters.AddWithValue("@OwnerEmail", email);
+            cmd.Parameters.AddWithValue("@CodeHash", _passwords.Hash(otp));
+            cmd.Parameters.AddWithValue("@ExpiryMinutes", expiryMinutes);
+            cmd.Parameters.AddWithValue("@IpAddress", http.Connection.RemoteIpAddress?.ToString() ?? string.Empty);
+            cmd.Parameters.AddWithValue("@UserAgent", Limit(http.Request.Headers["User-Agent"].ToString(), 500));
+            await cmd.ExecuteNonQueryAsync();
+        }
+
+        var delivery = await SendOtpEmailAsync(email, otp, companyName, email, "DELETE_CLIENT");
+        if (!delivery.Sent && !delivery.ReturnDevOtp)
+        {
+            await InvalidateDeleteClientChallengeAsync(challengeId);
+            throw new InvalidOperationException(delivery.SmtpConfigured
+                ? "The deletion verification email could not be sent. Review Email & OTP Setup."
+                : "Login verification email is not configured. Contact the InterNex owner.");
+        }
+
+        await WriteSecurityAuditAsync(email, "DELETE_CLIENT_OTP_SENT", delivery.Sent ? "Success" : "Development", $"Company={code}; From={delivery.FromEmail}", http.Connection.RemoteIpAddress?.ToString(), http.Request.Headers["User-Agent"].ToString());
+        return new DeleteClientChallengeCreated(challengeId, MaskEmail(email), expiryMinutes * 60, delivery.ReturnDevOtp ? otp : null, delivery);
+    }
+
+    public async Task<DeleteClientChallengeVerified> VerifyDeleteClientChallengeAsync(string companyCode, string challengeId, string? code)
+    {
+        await EnsureSchemaAsync();
+        var expectedCompany = (companyCode ?? string.Empty).Trim();
+        string codeHash;
+        string ownerEmail;
+        string storedCompany;
+        int attemptCount;
+        int maxAttempts;
+        DateTime expiresAt;
+
+        await using var con = await _db.OpenMasterAsync();
+        await using (var cmd = con.CreateCommand())
+        {
+            cmd.CommandText = @"SELECT TOP 1 CompanyCode,OwnerEmail,CodeHash,AttemptCount,MaxAttempts,ExpiresAt,UsedAt,VerifiedAt
+FROM PlatformDeleteClientChallenges WHERE ChallengeId=@ChallengeId";
+            cmd.Parameters.AddWithValue("@ChallengeId", challengeId ?? string.Empty);
+            await using var r = await cmd.ExecuteReaderAsync();
+            if (!await r.ReadAsync()) throw new InvalidOperationException("Invalid deletion verification request.");
+            if (r["UsedAt"] != DBNull.Value) throw new InvalidOperationException("This deletion request has already been used.");
+            storedCompany = SqlRead.String(r, "CompanyCode");
+            ownerEmail = SqlRead.String(r, "OwnerEmail");
+            codeHash = SqlRead.String(r, "CodeHash");
+            attemptCount = SqlRead.Int(r, "AttemptCount");
+            maxAttempts = SqlRead.Int(r, "MaxAttempts");
+            expiresAt = Convert.ToDateTime(r["ExpiresAt"]);
+        }
+
+        if (!string.Equals(storedCompany, expectedCompany, StringComparison.OrdinalIgnoreCase))
+            throw new InvalidOperationException("This verification request does not match the selected company.");
+        if (DateTime.SpecifyKind(expiresAt, DateTimeKind.Utc) <= DateTime.UtcNow)
+        {
+            await InvalidateDeleteClientChallengeAsync(challengeId);
+            throw new InvalidOperationException("The verification code has expired. Start the delete again.");
+        }
+        if (attemptCount >= maxAttempts)
+        {
+            await InvalidateDeleteClientChallengeAsync(challengeId);
+            throw new InvalidOperationException("Too many incorrect verification attempts. Start the delete again.");
+        }
+        if (!_passwords.Verify((code ?? string.Empty).Trim(), codeHash))
+        {
+            await using var failed = con.CreateCommand();
+            failed.CommandText = @"UPDATE PlatformDeleteClientChallenges SET AttemptCount=AttemptCount+1,UsedAt=CASE WHEN AttemptCount+1>=MaxAttempts THEN SYSUTCDATETIME() ELSE UsedAt END WHERE ChallengeId=@ChallengeId";
+            failed.Parameters.AddWithValue("@ChallengeId", challengeId);
+            await failed.ExecuteNonQueryAsync();
+            throw new InvalidOperationException("Invalid verification code.");
+        }
+
+        var deleteToken = GenerateToken(32);
+        await using (var verified = con.CreateCommand())
+        {
+            verified.CommandText = @"UPDATE PlatformDeleteClientChallenges
+SET VerifiedAt=SYSUTCDATETIME(), DeleteTokenHash=@DeleteTokenHash, ExpiresAt=DATEADD(MINUTE,10,SYSUTCDATETIME())
+WHERE ChallengeId=@ChallengeId AND UsedAt IS NULL";
+            verified.Parameters.AddWithValue("@DeleteTokenHash", HashToken(deleteToken));
+            verified.Parameters.AddWithValue("@ChallengeId", challengeId);
+            if (await verified.ExecuteNonQueryAsync() != 1) throw new InvalidOperationException("This verification request is no longer valid.");
+        }
+
+        await WriteSecurityAuditAsync(ownerEmail, "DELETE_CLIENT_OTP_VERIFIED", "Success", $"Company={storedCompany}", null, null);
+        return new DeleteClientChallengeVerified(deleteToken, storedCompany, MaskEmail(ownerEmail));
+    }
+
+    public async Task ConsumeDeleteClientTokenAsync(string companyCode, string? deleteToken)
+    {
+        await EnsureSchemaAsync();
+        var tokenHash = HashToken(deleteToken);
+        await using var con = await _db.OpenMasterAsync();
+        await using var cmd = con.CreateCommand();
+        cmd.CommandText = @"UPDATE PlatformDeleteClientChallenges
+SET UsedAt=SYSUTCDATETIME()
+WHERE DeleteTokenHash=@DeleteTokenHash AND CompanyCode=@CompanyCode AND VerifiedAt IS NOT NULL AND UsedAt IS NULL AND ExpiresAt>SYSUTCDATETIME();
+SELECT @@ROWCOUNT;";
+        cmd.Parameters.AddWithValue("@DeleteTokenHash", tokenHash);
+        cmd.Parameters.AddWithValue("@CompanyCode", companyCode ?? string.Empty);
+        if (Convert.ToInt32(await cmd.ExecuteScalarAsync() ?? 0) != 1)
+            throw new InvalidOperationException("The deletion confirmation is invalid or has expired. Start the delete again.");
+    }
+
+    private async Task InvalidateDeleteClientChallengeAsync(string challengeId)
+    {
+        await using var con = await _db.OpenMasterAsync();
+        await using var cmd = con.CreateCommand();
+        cmd.CommandText = "UPDATE PlatformDeleteClientChallenges SET UsedAt=COALESCE(UsedAt,SYSUTCDATETIME()) WHERE ChallengeId=@ChallengeId";
+        cmd.Parameters.AddWithValue("@ChallengeId", challengeId ?? string.Empty);
         await cmd.ExecuteNonQueryAsync();
     }
 

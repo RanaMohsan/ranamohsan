@@ -1,0 +1,132 @@
+<!doctype html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <link rel="stylesheet" href="/css/app.css?v=avatar-fix-20260812d">
+  <title>InterNex Desktop Detail</title>
+</head>
+<body>
+  <main class="shell bc-card-page owner-company-card-page" data-page-role="owner-desktop-app">
+    <section class="bc-page-heading bc-document-heading">
+      <div>
+        <div class="bc-breadcrumb"><a href="/platform-portal.html">Client Companies</a> / <a id="companyCardLink" href="/platform-company-card.html">Company Card</a> / Desktop Detail</div>
+        <div class="bc-title-line">
+          <h1 id="documentTitle">Desktop Detail</h1>
+          <span id="documentStatus" class="bc-status-pill draft">Not Registered</span>
+        </div>
+        <p id="who" class="muted">Loading InterNex owner profile...</p>
+      </div>
+      <div class="bc-document-number">
+        <span>Company Code</span>
+        <strong id="documentNo">—</strong>
+      </div>
+    </section>
+
+    <section class="bc-command-bar" aria-label="Desktop app actions">
+      <button id="backBtn" class="secondary" type="button"><span>←</span> Company Card</button>
+      <button id="registerBtn" class="bc-command-primary" type="button"><span>＋</span> Register Desktop App</button>
+      <button id="saveBtn" class="bc-command-primary" type="button" hidden><span>✓</span> Save App Details</button>
+      <button id="blockCompanyBtn" class="danger" type="button" hidden><span>■</span> Block Desktop App</button>
+      <button id="unblockCompanyBtn" class="success" type="button" hidden><span>□</span> Unblock Desktop App</button>
+      <button id="refreshBtn" class="secondary" type="button"><span>↻</span> Refresh</button>
+    </section>
+
+    <div class="bc-card-layout owner-company-card-layout">
+      <div class="bc-card-main">
+        <section class="bc-fasttab open">
+          <div class="bc-fasttab-title"><span>Company</span><span>⌃</span></div>
+          <div class="bc-fasttab-body bc-form-grid">
+            <label>Company Code
+              <input id="fCompanyCode" readonly>
+            </label>
+            <label class="span-2">Company Name
+              <input id="fCompanyName" readonly>
+            </label>
+            <label>Owner Name
+              <input id="fOwnerName" readonly>
+            </label>
+            <label class="span-2">Owner Email
+              <input id="fOwnerEmail" readonly>
+            </label>
+          </div>
+        </section>
+
+        <section class="bc-fasttab open">
+          <div class="bc-fasttab-title"><span>Desktop App Registration</span><span>⌃</span></div>
+          <div class="bc-fasttab-body">
+            <div id="registerNote" class="amber-note">This company has no desktop app registration yet. Register it to block the Windows app or grant/revoke user access. ERP users sign in to InterNex Desktop with <b>Email + Password</b> (same login as Cloud). First login requires OTP to that email.</div>
+            <div class="bc-form-grid">
+              <label class="span-2">App Name
+                <input id="fAppName" maxlength="150" placeholder="InterNex Desktop">
+              </label>
+              <label>App Version
+                <input id="fAppVersion" maxlength="40" placeholder="1.0.0">
+              </label>
+              <label class="span-2">Notes
+                <input id="fNotes" maxlength="500" placeholder="Optional notes">
+              </label>
+              <label>Status
+                <input id="fStatus" readonly>
+              </label>
+              <label>Block Reason
+                <input id="fBlockReason" readonly placeholder="—">
+              </label>
+            </div>
+          </div>
+        </section>
+
+        <section id="usersSection" class="bc-fasttab open owner-related-section" hidden>
+          <div class="bc-fasttab-title"><span>Company Users — Desktop Access</span><span id="userCountLabel">0 records</span></div>
+          <div class="bc-fasttab-body">
+            <div class="amber-note">These are the company's ERP users. <b>Email + Password</b> identify the company. This email can be used on Cloud, Desktop, and Mobile for this company only — never on another company. First Desktop/Cloud login sends an OTP until verified. Passwords are visible only to the InterNex owner. Block Desktop App stops every user; Block User stops only that account.</div>
+            <div class="bc-table-wrap owner-related-table-wrap">
+              <table class="bc-data-table owner-related-table">
+                <thead>
+                  <tr>
+                    <th>ID</th>
+                    <th>Email (login)</th>
+                    <th>Display Name</th>
+                    <th>Role</th>
+                    <th>Password</th>
+                    <th>Desktop Access</th>
+                    <th>User Blocked</th>
+                    <th>Action</th>
+                  </tr>
+                </thead>
+                <tbody id="userRows">
+                  <tr><td colspan="8" class="bc-empty-row">No company users found.</td></tr>
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </section>
+      </div>
+
+      <aside class="bc-factbox-column">
+        <section class="bc-factbox">
+          <h2>App Summary</h2>
+          <dl>
+            <dt>Registration</dt><dd id="factRegistered">No</dd>
+            <dt>Status</dt><dd id="factStatus">Not Registered</dd>
+            <dt>Company Blocked</dt><dd id="factCompanyBlocked">No</dd>
+            <dt>Users</dt><dd id="factUsers">0</dd>
+            <dt>With Access</dt><dd id="factAllowedUsers">0</dd>
+            <dt>Blocked Users</dt><dd id="factBlockedUsers">0</dd>
+          </dl>
+        </section>
+        <section class="bc-factbox">
+          <h2>Controls</h2>
+          <p class="muted small-text">Block Desktop App stops Windows Desktop login for the whole company. Grant / Revoke controls which ERP users can sign in. Company administrators can also grant access from the User Card.</p>
+        </section>
+      </aside>
+    </div>
+
+    <p id="status" class="bc-status-line" aria-live="polite"></p>
+  </main>
+
+  <script src="/js/api.js?v=avatar-fix-20260812d"></script>
+  <script src="/js/platform-desktop-app.js?v=desktop-app-detail-20260829"></script>
+  <script src="/js/app-shell.js?v=desktop-detail-20260829"></script>
+</body>
+</html>

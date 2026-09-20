@@ -1,0 +1,138 @@
+<!doctype html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <link rel="stylesheet" href="/css/app.css?v=avatar-fix-20260812d">
+  <title>Shift Card</title>
+</head>
+<body>
+  <main class="shell shift-card-page">
+    <section class="bc-page-heading">
+      <div>
+        <div class="bc-breadcrumb">POS / Shift Management</div>
+        <h1>Shift Card</h1>
+        <p id="who" class="muted">Loading...</p>
+      </div>
+      <span class="bc-page-badge">Details</span>
+    </section>
+
+    <section class="bc-command-bar" aria-label="Shift card actions">
+      <button type="button" class="secondary" onclick="location.href='/shift-list.html'">← Shift List</button>
+      <button id="refreshCardBtn" class="secondary" type="button">↻ Refresh</button>
+    </section>
+
+    <section class="shift-status-card panel" aria-live="polite">
+      <div>
+        <span id="shiftBadge" class="status-pill neutral">Checking</span>
+        <h2 id="shiftTitle">Shift</h2>
+        <p id="shiftText" class="muted">Loading shift...</p>
+        <p id="shiftTimes" class="muted"></p>
+      </div>
+      <div class="shift-kpis">
+        <div><span>Opening Balance</span><b id="kOpeningCash">Rs. 0.00</b></div>
+        <div><span>Current Cash Balance</span><b id="kCurrentCashBalance">Rs. 0.00</b></div>
+        <div><span>Closing Balance</span><b id="kClosingCash">Rs. 0.00</b></div>
+        <div><span>Total Sales</span><b id="kTotalSales">Rs. 0.00</b></div>
+        <div><span>Total Returns</span><b id="kTotalReturns">Rs. 0.00</b></div>
+        <div><span>Total Amount Collected</span><b id="kTotalCollected">Rs. 0.00</b></div>
+        <div><span>Cash Sales</span><b id="kCashSales">Rs. 0.00</b></div>
+        <div><span>Credit Sales</span><b id="kCreditSales">Rs. 0.00</b></div>
+        <div><span>Bank/Card Payments</span><b id="kBankCardSales">Rs. 0.00</b></div>
+        <div><span>Difference</span><b id="kDifference">Rs. 0.00</b></div>
+      </div>
+    </section>
+
+    <section class="panel">
+      <div class="setup-section-title">
+        <h2>Sales by application source</h2>
+      </div>
+      <div class="shift-kpis">
+        <div><span>InterNex / Cloud Sales</span><b id="kSalesCloud">Rs. 0.00</b></div>
+        <div><span>Desktop Sales</span><b id="kSalesDesktop">Rs. 0.00</b></div>
+        <div><span>Mobile Sales</span><b id="kSalesMobile">Rs. 0.00</b></div>
+        <div><span>Cloud Returns</span><b id="kReturnsCloud">Rs. 0.00</b></div>
+        <div><span>Desktop Returns</span><b id="kReturnsDesktop">Rs. 0.00</b></div>
+        <div><span>Mobile Returns</span><b id="kReturnsMobile">Rs. 0.00</b></div>
+      </div>
+    </section>
+
+    <section class="shift-flow-grid">
+      <div class="panel shift-step">
+        <span class="step-no">1</span>
+        <h2>Open Shift</h2>
+        <p class="muted">Enter starting cash for a new shift. If a shift is already open, this reuses the active shift.</p>
+        <label>Opening Cash
+          <input id="openingCash" type="number" placeholder="Opening Cash" value="0">
+        </label>
+        <input id="terminalId" type="hidden" value="1">
+        <button id="openShiftBtn" type="button">Open Shift</button>
+        <p id="openShiftStatus" class="muted"></p>
+      </div>
+
+      <div class="panel shift-step">
+        <span class="step-no">2</span>
+        <h2>Close Shift</h2>
+        <p class="muted">Enter counted closing cash before closing.</p>
+        <label>Actual Closing Cash
+          <input id="closingCash" type="number" placeholder="Actual Closing Cash">
+        </label>
+        <label>Closing Remarks
+          <input id="closingRemarks" placeholder="Optional remarks">
+        </label>
+        <button id="closeShiftBtn" class="danger" type="button">Close Shift</button>
+        <p id="closeShiftStatus" class="muted"></p>
+      </div>
+    </section>
+
+    <section class="panel drilldown-section">
+      <div class="setup-section-title">
+        <h2>Transaction details by source</h2>
+        <div class="actions">
+          <button id="salesTabCloud" type="button" class="secondary">InterNex / Cloud Sales</button>
+          <button id="salesTabDesktop" type="button" class="secondary">Desktop Application Sales</button>
+          <button id="salesTabMobile" type="button" class="secondary">Mobile Application Sales</button>
+        </div>
+      </div>
+      <p id="sourceCaption" class="muted">Showing InterNex / Cloud invoices for this shift.</p>
+      <div class="bc-table-wrap">
+        <table class="bc-data-table" aria-label="Shift sales list">
+          <thead>
+            <tr>
+              <th>Invoice No</th>
+              <th>Sale Date</th>
+              <th>Source</th>
+              <th class="number">Grand Total</th>
+              <th class="number">Paid</th>
+            </tr>
+          </thead>
+          <tbody id="salesBody">
+            <tr><td colspan="5" class="bc-empty-row">Loading sales...</td></tr>
+          </tbody>
+        </table>
+      </div>
+      <h3 style="margin-top:16px">Returns for this source</h3>
+      <div class="bc-table-wrap">
+        <table class="bc-data-table" aria-label="Shift returns list">
+          <thead>
+            <tr>
+              <th>Return No</th>
+              <th>Return Date</th>
+              <th>Source</th>
+              <th class="number">Refund Amount</th>
+              <th>Reason</th>
+            </tr>
+          </thead>
+          <tbody id="returnsBody">
+            <tr><td colspan="5" class="bc-empty-row">Loading returns...</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </section>
+  </main>
+
+  <script src="/js/api.js?v=avatar-fix-20260812d"></script>
+  <script src="/js/shift-card.js?v=shift-card-20260903b"></script>
+  <script src="/js/app-shell.js?v=avatar-fix-20260812d"></script>
+</body>
+</html>

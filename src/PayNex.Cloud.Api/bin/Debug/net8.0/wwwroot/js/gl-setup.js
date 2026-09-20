@@ -1,0 +1,17 @@
+const accountFields=[
+  ['cashAccount','Cash Account'],['bankAccount','Bank Account'],['receivableAccount','Receivable Account'],['payableAccount','Payable Account'],['inventoryAccount','Inventory Account'],['salesAccount','Sales Account'],['cogsAccount','COGS Account'],['salesReturnAccount','Sales Return Account'],['inputTaxAccount','Input Tax Account'],['outputTaxAccount','Output Tax Account'],['openingBalanceAccount','Opening Balance Account'],['stockAdjustmentAccount','Stock Adjustment Account']
+];
+let accounts=[];
+async function init(){try{const me=await api.get('/api/me');who.textContent=`${me.companyName} | ${me.displayName} | ${me.roleName}`;}catch{location.href='/login.html'}
+  postingFields.innerHTML=accountFields.map(([id,label])=>`<div><label>${label}</label><div class="account-field"><input id="${id}" placeholder="G/L account no." readonly><button class="secondary" title="Lookup" onclick="pickAccount('${id}')">⌕</button></div><div class="field-note" id="${id}Name">Select account</div></div>`).join('');
+  await loadAccounts(); await loadPosting();
+}
+async function loadAccounts(){accounts=await api.get('/api/accounting/chart-of-accounts?term='+encodeURIComponent(accountSearch.value||''));accountBody.innerHTML=accounts.map(a=>`<tr onclick="setActiveAccount('${a.accountNo}')"><td>${a.accountNo}</td><td>${a.accountName}</td><td>${a.accountType}</td><td>${a.normalBalance}</td></tr>`).join('')}
+function setActiveAccount(no){const a=accounts.find(x=>x.accountNo==no); if(a) msg('postingStatus',`Selected ${a.accountNo} - ${a.accountName}. Use lookup button on target field to assign.`,true)}
+async function pickAccount(targetId){
+  await openBcLookup({title:'G/L Account Lookup',columns:[{key:'accountNo',label:'No.'},{key:'accountName',label:'Name'},{key:'accountType',label:'Type'},{key:'normalBalance',label:'Normal'}],provider:async term=>api.get('/api/accounting/chart-of-accounts?term='+encodeURIComponent(term||'')),onPick:r=>{document.getElementById(targetId).value=r.accountNo; const n=document.getElementById(targetId+'Name'); if(n)n.textContent=r.accountName+' • '+r.accountType; renderSnapshot();}});
+}
+async function loadPosting(){const p=await api.get('/api/posting-setup'); for(const [id] of accountFields){const value=p[id]??p[id[0].toUpperCase()+id.slice(1)]??''; document.getElementById(id).value=value; const acc=accounts.find(a=>a.accountNo==value); const n=document.getElementById(id+'Name'); if(n)n.textContent=acc?acc.accountName+' • '+acc.accountType:'Account no. '+value;} cashierDiscountLimit.value=p.cashierDiscountLimit??p.CashierDiscountLimit??0; costingMethod.value=p.costingMethod??p.CostingMethod??'Average'; blockNegativeStock.value=String(p.blockNegativeStock??p.BlockNegativeStock??true); renderSnapshot();}
+function renderSnapshot(){postingSnapshot.innerHTML=accountFields.map(([id,label])=>`<div class="read-card"><div class="label">${label}</div><div class="value">${document.getElementById(id).value||'-'}</div><div class="field-note">${document.getElementById(id+'Name')?.textContent||''}</div></div>`).join('')}
+async function savePosting(){const body={}; for(const [id] of accountFields) body[id]=document.getElementById(id).value; body.cashierDiscountLimit=Number(cashierDiscountLimit.value||0); body.costingMethod=costingMethod.value; body.blockNegativeStock=(blockNegativeStock.value==='true'); try{const r=await api.put('/api/posting-setup',body); msg('postingStatus',r.message,true); await loadPosting();}catch(e){msg('postingStatus',e.message,false)}}
+init();

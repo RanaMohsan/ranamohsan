@@ -6,15 +6,59 @@ namespace PayNex.Cloud.Api.Services;
 
 public static class PosSql
 {
-    public static async Task<int> EnsureOpenShiftAsync(SqlConnection con, SqlTransaction tran, UserSession user)
+    public const string NoActiveShiftMessage = "No active shift is available. Please open a shift before completing the POS transaction.";
+
+    public static async Task<int> EnsureOpenShiftAsync(SqlConnection con, SqlTransaction tran, UserSession user, int? preferredShiftId = null)
     {
-        await using (var find = new SqlCommand("SELECT TOP 1 ShiftId FROM Shifts WHERE StoreId=@StoreId AND UserId=@UserId AND Status='Open' ORDER BY ShiftId DESC", con, tran))
+        bool enableShiftManagement = false;
+        bool userWiseShift = true;
+
+        await using (var settingsCmd = new SqlCommand(@"
+SELECT TOP 1
+    ISNULL(EnableShiftManagement,0) EnableShiftManagement,
+    ISNULL(UserWiseShift,1) UserWiseShift
+FROM ShiftManagementSettings
+WHERE SettingId=1", con, tran))
+        await using (var r = await settingsCmd.ExecuteReaderAsync())
+        {
+            if (await r.ReadAsync())
+            {
+                enableShiftManagement = Convert.ToBoolean(r["EnableShiftManagement"] ?? false);
+                userWiseShift = Convert.ToBoolean(r["UserWiseShift"] ?? true);
+            }
+        }
+
+        if (preferredShiftId is > 0)
+        {
+            var preferredSql = userWiseShift
+                ? "SELECT TOP 1 ShiftId FROM Shifts WHERE ShiftId=@ShiftId AND StoreId=@StoreId AND UserId=@UserId AND Status='Open'"
+                : "SELECT TOP 1 ShiftId FROM Shifts WHERE ShiftId=@ShiftId AND StoreId=@StoreId AND Status='Open'";
+            await using (var preferred = new SqlCommand(preferredSql, con, tran))
+            {
+                preferred.Parameters.AddWithValue("@ShiftId", preferredShiftId.Value);
+                preferred.Parameters.AddWithValue("@StoreId", user.StoreId);
+                if (userWiseShift) preferred.Parameters.AddWithValue("@UserId", user.UserId);
+                var preferredId = await preferred.ExecuteScalarAsync();
+                if (preferredId != null && preferredId != DBNull.Value) return Convert.ToInt32(preferredId);
+            }
+        }
+
+        var shiftFindSql = userWiseShift
+            ? "SELECT TOP 1 ShiftId FROM Shifts WHERE StoreId=@StoreId AND UserId=@UserId AND Status='Open' ORDER BY ShiftId DESC"
+            : "SELECT TOP 1 ShiftId FROM Shifts WHERE StoreId=@StoreId AND Status='Open' ORDER BY ShiftId DESC";
+
+        await using (var find = new SqlCommand(shiftFindSql, con, tran))
         {
             find.Parameters.AddWithValue("@StoreId", user.StoreId);
-            find.Parameters.AddWithValue("@UserId", user.UserId);
+            if (userWiseShift) find.Parameters.AddWithValue("@UserId", user.UserId);
+
             var existing = await find.ExecuteScalarAsync();
             if (existing != null && existing != DBNull.Value) return Convert.ToInt32(existing);
         }
+
+        if (enableShiftManagement)
+            throw new InvalidOperationException(NoActiveShiftMessage);
+
         await using (var cmd = new SqlCommand(@"DECLARE @TerminalId INT=(SELECT TOP 1 TerminalId FROM Terminals WHERE StoreId=@StoreId AND IsActive=1 ORDER BY TerminalId);
 IF @TerminalId IS NULL
 BEGIN
@@ -44,6 +88,94 @@ BEGIN
     OUTPUT INSERTED.CustomerId VALUES('WALKIN','Walk-in Customer','','','',0,0,0,0,1);
 END", con, tran);
         return Convert.ToInt32(await cmd.ExecuteScalarAsync());
+    }
+
+    /// <summary>Ensure an active terminal exists for the store; create COUNTER-{storeId} if missing.</summary>
+    public static async Task<int> EnsureTerminalIdAsync(SqlConnection con, SqlTransaction tran, int storeId)
+    {
+        await using var cmd = new SqlCommand(@"
+DECLARE @TerminalId INT=(SELECT TOP 1 TerminalId FROM Terminals WHERE StoreId=@StoreId AND IsActive=1 ORDER BY TerminalId);
+IF @TerminalId IS NULL
+BEGIN
+    INSERT INTO Terminals(StoreId,TerminalCode,TerminalName,IsActive)
+    VALUES(@StoreId,CONCAT('COUNTER-',@StoreId),'Counter 01',1);
+    SET @TerminalId=SCOPE_IDENTITY();
+END;
+SELECT @TerminalId;", con, tran);
+        cmd.Parameters.AddWithValue("@StoreId", storeId <= 0 ? 1 : storeId);
+        return Convert.ToInt32(await cmd.ExecuteScalarAsync());
+    }
+
+    /// <summary>
+    /// Resolve PaymentMethodId: prefer name match, then valid id, then first active Cash, else first active method.
+    /// </summary>
+    public static async Task<int> ResolvePaymentMethodIdAsync(
+        SqlConnection con,
+        SqlTransaction tran,
+        int paymentMethodId,
+        string? paymentMethodName)
+    {
+        var name = string.IsNullOrWhiteSpace(paymentMethodName) ? "Cash" : paymentMethodName.Trim();
+
+        await using (var byName = new SqlCommand(@"
+SELECT TOP 1 PaymentMethodId FROM PaymentMethods
+WHERE IsActive=1 AND LOWER(LTRIM(RTRIM(PaymentMethodName))) = LOWER(LTRIM(RTRIM(@Name)))
+ORDER BY PaymentMethodId", con, tran))
+        {
+            byName.Parameters.AddWithValue("@Name", name);
+            var id = await byName.ExecuteScalarAsync();
+            if (id != null && id != DBNull.Value)
+                return Convert.ToInt32(id);
+        }
+
+        if (paymentMethodId > 0)
+        {
+            await using var byId = new SqlCommand(
+                "SELECT TOP 1 PaymentMethodId FROM PaymentMethods WHERE PaymentMethodId=@Id AND IsActive=1",
+                con, tran);
+            byId.Parameters.AddWithValue("@Id", paymentMethodId);
+            var id = await byId.ExecuteScalarAsync();
+            if (id != null && id != DBNull.Value)
+                return Convert.ToInt32(id);
+        }
+
+        await using (var cash = new SqlCommand(@"
+SELECT TOP 1 PaymentMethodId FROM PaymentMethods
+WHERE IsActive=1 AND LOWER(PaymentMethodName)='cash'
+ORDER BY PaymentMethodId", con, tran))
+        {
+            var id = await cash.ExecuteScalarAsync();
+            if (id != null && id != DBNull.Value)
+                return Convert.ToInt32(id);
+        }
+
+        await using var any = new SqlCommand(
+            "SELECT TOP 1 PaymentMethodId FROM PaymentMethods WHERE IsActive=1 ORDER BY PaymentMethodId",
+            con, tran);
+        var fallback = await any.ExecuteScalarAsync();
+        if (fallback == null || fallback == DBNull.Value)
+            throw new InvalidOperationException("No active payment method is configured. Add Cash under Payment Methods.");
+        return Convert.ToInt32(fallback);
+    }
+
+    public static string FormatPosForeignKeyError(Microsoft.Data.SqlClient.SqlException ex)
+    {
+        var msg = ex.Message ?? "";
+        if (msg.Contains("UserId", StringComparison.OrdinalIgnoreCase) ||
+            msg.Contains("FK_Shifts_Users", StringComparison.OrdinalIgnoreCase) ||
+            msg.Contains("FK_SalesHeader_Users", StringComparison.OrdinalIgnoreCase))
+            return "POS user is not mapped to a tenant Users row. Re-login or link the mobile user to an ERP user.";
+        if (msg.Contains("PaymentMethod", StringComparison.OrdinalIgnoreCase))
+            return "Payment method is missing or inactive. Ensure Cash exists under Payment Methods.";
+        if (msg.Contains("Terminal", StringComparison.OrdinalIgnoreCase))
+            return "No active terminal for this store. Open a shift or add a terminal.";
+        if (msg.Contains("Customer", StringComparison.OrdinalIgnoreCase))
+            return "Customer reference is invalid. Use Walk-in or sync customers.";
+        if (msg.Contains("Product", StringComparison.OrdinalIgnoreCase))
+            return "A cart product is missing on the server. Sync products and try again.";
+        if (msg.Contains("Store", StringComparison.OrdinalIgnoreCase))
+            return "Store reference is invalid for this company.";
+        return "Sale could not be posted due to a data reference error. Sync master data and retry.";
     }
 
     public static async Task<string> NextNumberAsync(SqlConnection con, SqlTransaction tran, string seriesCode)

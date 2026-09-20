@@ -1,0 +1,98 @@
+<!doctype html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>Configuration Package</title>
+  <link rel="stylesheet" href="/css/app.css?v=avatar-fix-20260812d">
+</head>
+<body>
+<main class="shell bc-card-page bc-master-card-page package-card-page simple-package-card">
+  <section class="bc-page-heading bc-document-heading">
+    <div>
+      <div class="bc-breadcrumb"><a href="/configuration-packages.html">Configuration Packages</a> / <span id="breadcrumbName">Master Data</span></div>
+      <div class="bc-title-line"><h1 id="cardTitle">Configuration Package</h1><span id="recordStatus" class="bc-status-pill posted">Ready</span></div>
+      <p id="who" class="muted">Loading company and user...</p>
+    </div>
+    <div class="bc-document-number"><span>Package</span><strong id="recordNo">...</strong></div>
+  </section>
+
+  <section class="bc-command-bar" aria-label="Import and export actions">
+    <button id="backBtn" class="secondary" type="button"><span>←</span> Packages</button>
+    <button id="exportBtn" class="bc-command-primary" type="button"><span>⇩</span> Export Excel</button>
+    <button id="importBtn" class="secondary" type="button"><span>⇧</span> Import Excel</button>
+    <button id="validateBtn" class="secondary" type="button" disabled><span>✓</span> Validate</button>
+    <button id="saveBtn" class="success" type="button" disabled><span>💾</span> Save</button>
+    <button id="refreshBtn" class="secondary" type="button"><span>↻</span> Refresh</button>
+    <input id="packageFile" type="file" accept=".xlsx,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" hidden>
+  </section>
+
+  <div class="bc-card-layout package-card-layout">
+    <div class="bc-card-main">
+      <section class="bc-fasttab open">
+        <div class="bc-fasttab-title"><span id="dataTitle">Current Records</span><span>⌃</span></div>
+        <div class="bc-fasttab-body package-current-data">
+          <div class="package-data-toolbar">
+            <div><strong id="currentCount">0 records</strong><span class="muted">These are the records currently saved in the ERP.</span></div>
+            <label>Search current records<input id="recordSearch" type="search" placeholder="Search..."></label>
+          </div>
+          <div class="bc-table-wrap package-preview-wrap">
+            <table class="bc-data-table package-preview-table">
+              <thead id="previewHead"><tr><th>Loading...</th></tr></thead>
+              <tbody id="previewBody"><tr><td class="bc-empty-row">Loading current records...</td></tr></tbody>
+            </table>
+          </div>
+        </div>
+      </section>
+
+      <section class="bc-fasttab open">
+        <div class="bc-fasttab-title"><span>Import and Validation</span><span>⌃</span></div>
+        <div class="bc-fasttab-body">
+          <div class="package-file-strip">
+            <div><span>Imported Excel file</span><strong id="selectedFileName">No Excel file imported</strong></div>
+            <div id="validationBadge" class="bc-status-pill draft">Not validated</div>
+          </div>
+          <div class="simple-package-steps" aria-label="Import process">
+            <div class="done"><b>1</b><span><strong>Export</strong><small>Download current data or an empty Excel format.</small></span></div>
+            <div id="stepImport"><b>2</b><span><strong>Import</strong><small>Select the edited Excel file.</small></span></div>
+            <div id="stepValidate"><b>3</b><span><strong>Validate</strong><small>Check required fields and data.</small></span></div>
+            <div id="stepSave"><b>4</b><span><strong>Save</strong><small>Save only after successful validation.</small></span></div>
+          </div>
+          <div id="validationSummary" class="package-validation-summary simple-validation-summary">
+            <div><span>Imported Rows</span><strong>0</strong></div>
+            <div><span>Valid Rows</span><strong>0</strong></div>
+            <div><span>Error Rows</span><strong>0</strong></div>
+          </div>
+          <div class="bc-table-wrap">
+            <table class="bc-data-table">
+              <thead><tr><th>Worksheet</th><th>Row</th><th>Field</th><th>Validation Message</th><th>Severity</th></tr></thead>
+              <tbody id="issuesBody"><tr><td colspan="5" class="bc-empty-row">Import an Excel file, then select Validate.</td></tr></tbody>
+            </table>
+          </div>
+        </div>
+      </section>
+
+      <section class="bc-fasttab open">
+        <div class="bc-fasttab-title"><span>Import History</span><span>⌃</span></div>
+        <div class="bc-fasttab-body bc-table-wrap">
+          <table class="bc-data-table">
+            <thead><tr><th>Import ID</th><th>File Name</th><th>Rows</th><th>Valid</th><th>Errors</th><th>Status</th><th>Imported At</th><th>Saved At</th></tr></thead>
+            <tbody id="historyBody"><tr><td colspan="8" class="bc-empty-row">Loading history...</td></tr></tbody>
+          </table>
+        </div>
+      </section>
+    </div>
+
+    <aside class="bc-factbox-column">
+      <section class="bc-factbox"><h2>Simple Process</h2><ol class="package-flow-list"><li>Export Excel</li><li>Add or edit rows</li><li>Import Excel</li><li>Validate</li><li>Save</li></ol></section>
+      <section class="bc-factbox"><h2>Export Behaviour</h2><p>Export always downloads an Excel file. When no ERP record exists, the file still contains the correct column headings so new rows can be added.</p></section>
+      <section class="bc-factbox package-warning-box"><h2>Validation Rule</h2><p>Save remains disabled until the imported file passes validation. Saving runs in one SQL transaction and rolls back completely if an error occurs.</p></section>
+    </aside>
+  </div>
+  <p id="status" class="bc-status-line" aria-live="polite"></p>
+</main>
+<script src="/js/api.js?v=avatar-fix-20260812d"></script>
+<script src="/js/configuration-package-card.js?v=configuration-package-simple-20260712"></script>
+<script src="/js/app-shell.js?v=avatar-fix-20260812d"></script>
+</body>
+</html>

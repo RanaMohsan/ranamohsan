@@ -260,3 +260,503 @@ C:\Users\Hamid\Documents\POS\owner_portal_work_BC_list___After__filters\owner_po
 C:\Users\Hamid\Documents\POS\owner_portal_work_BC_list___After__filters\owner_portal_work\src\PayNex.Cloud.Api\obj\Debug\net8.0\PayNex.Cloud.Api.genruntimeconfig.cache
 C:\Users\Hamid\Documents\POS\owner_portal_work_BC_list___After__filters\owner_portal_work\src\PayNex.Cloud.Api\obj\Debug\net8.0\ref\PayNex.Cloud.Api.dll
 C:\Users\Hamid\Documents\POS\owner_portal_work_BC_list___After__filters\owner_portal_work\src\PayNex.Cloud.Api\obj\Debug\net8.0\PayNex.Cloud.Api.sourcelink.json
+C:\Users\Hamid\Documents\POS\owner_portal_work_BC_list___After__filters\owner_portal_work\src\PayNex.Cloud.Api\bin\Debug\net8.0\database\DesktopIdempotency.sql
+C:\Users\Hamid\Documents\POS\owner_portal_work_BC_list___After__filters\owner_portal_work\src\PayNex.Cloud.Api\bin\Debug\net8.0\database\DesktopAccess.sql
+C:\Users\Hamid\Documents\POS\owner_portal_work_BC_list___After__filters\owner_portal_work\src\PayNex.Cloud.Api\bin\desktop-detail-check\appsettings.json
+C:\Users\Hamid\Documents\POS\owner_portal_work_BC_list___After__filters\owner_portal_work\src\PayNex.Cloud.Api\bin\desktop-detail-check\appsettings.Production.sample.json
+C:\Users\Hamid\Documents\POS\owner_portal_work_BC_list___After__filters\owner_portal_work\src\PayNex.Cloud.Api\bin\desktop-detail-check\database\DesktopAccess.sql
+C:\Users\Hamid\Documents\POS\owner_portal_work_BC_list___After__filters\owner_portal_work\src\PayNex.Cloud.Api\bin\desktop-detail-check\database\DesktopIdempotency.sql
+C:\Users\Hamid\Documents\POS\owner_portal_work_BC_list___After__filters\owner_portal_work\src\PayNex.Cloud.Api\bin\desktop-detail-check\database\MasterSchema.sql
+C:\Users\Hamid\Documents\POS\owner_portal_work_BC_list___After__filters\owner_portal_work\src\PayNex.Cloud.Api\bin\desktop-detail-check\database\TenantSchema.sql
+C:\Users\Hamid\Documents\POS\owner_portal_work_BC_list___After__filters\owner_portal_work\src\PayNex.Cloud.Api\bin\desktop-detail-check\Reports\Customer_Ledger_Entries.rdlc
+C:\Users\Hamid\Documents\POS\owner_portal_work_BC_list___After__filters\owner_portal_work\src\PayNex.Cloud.Api\bin\desktop-detail-check\Reports\Customer_Payment_Receipt.rdlc
+C:\Users\Hamid\Documents\POS\owner_portal_work_BC_list___After__filters\owner_portal_work\src\PayNex.Cloud.Api\bin\desktop-detail-check\Reports\Expense_Management_Report.rdlc
+C:\Users\Hamid\Documents\POS\owner_portal_work_BC_list___After__filters\owner_portal_work\src\PayNex.Cloud.Api\bin\desktop-detail-check\Reports\Posted_Purchase_Invoice.rdlc
+C:\Users\Hamid\Documents\POS\owner_portal_work_BC_list___After__filters\owner_portal_work\src\PayNex.Cloud.Api\bin\desktop-detail-check\Reports\Posted_Sales_Invoice.rdlc
+C:\Users\Hamid\Documents\POS\owner_portal_work_BC_list___After__filters\owner_portal_work\src\PayNex.Cloud.Api\bin\desktop-detail-check\Reports\Vendor_Ledger_Entries.rdlc
+C:\Users\Hamid\Documents\POS\owner_portal_work_BC_list___After__filters\owner_portal_work\src\PayNex.Cloud.Api\bin\desktop-detail-check\Reports\Vendor_Payment_Receipt.rdlc
+C:\Users\Hamid\Documents\POS\owner_portal_work_BC_list___After__filters\owner_portal_work\src\PayNex.Cloud.Api\bin\desktop-detail-check\database\addons\CompanyInformation_Table_Setup.sql
+C:\Users\Hamid\Documents\POS\owner_portal_work_BC_list___After__filters\owner_portal_work\src\PayNex.Cloud.Api\bin\desktop-detail-check\database\addons\Report_CompanyInformation_Setup.sql
+C:\Users\Hamid\Documents\POS\owner_portal_work_BC_list___After__filters\owner_portal_work\src\PayNex.Cloud.Api\bin\desktop-detail-check\PayNex.Cloud.Api.staticwebassets.runtime.json
+C:\Users\Hamid\Documents\POS\owner_portal_work_BC_list___After__filters\owner_portal_work\src\PayNex.Cloud.Api\bin\desktop-detail-check\PayNex.Cloud.Api.exe
+C:\Users\Hamid\Documents\POS\owner_portal_work_BC_list___After__filters\owner_portal_work\src\PayNex.Cloud.Api\bin\desktop-detail-check\PayNex.Cloud.Api.deps.json
+C:\Users\Hamid\Documents\POS\owner_portal_work_BC_list___After__filters\owner_portal_work\src\PayNex.Cloud.Api\bin\desktop-detail-check\PayNex.Cloud.Api.runtimeconfig.json
+C:\Users\Hamid\Documents\POS\owner_portal_work_BC_list___After__filters\owner_portal_work\src\PayNex.Cloud.Api\bin\desktop-detail-check\PayNex.Cloud.Api.dll
+C:\Users\Hamid\Documents\POS\owner_portal_work_BC_list___After__filters\owner_portal_work\src\PayNex.Cloud.Api\bin\desktop-detail-check\PayNex.Cloud.Api.pdb
+C:\Users\Hamid\Documents\POS\owner_portal_work_BC_list___After__filters\owner_portal_work\src\PayNex.Cloud.Api\bin\desktop-detail-check\Azure.Core.dll
+C:\Users\Hamid\Documents\POS\owner_portal_work_BC_list___After__filters\owner_portal_work\src\PayNex.Cloud.Api\bin\desktop-detail-check\Azure.Identity.dll
+C:\Users\Hamid\Documents\POS\owner_portal_work_BC_list___After__filters\owner_portal_work\src\PayNex.Cloud.Api\bin\desktop-detail-check\BCrypt-Net-Next.dll
+C:\Users\Hamid\Documents\POS\owner_portal_work_BC_list___After__filters\owner_portal_work\src\PayNex.Cloud.Api\bin\desktop-detail-check\Microsoft.Bcl.AsyncInterfaces.dll
+C:\Users\Hamid\Documents\POS\owner_portal_work_BC_list___After__filters\owner_portal_work\src\PayNex.Cloud.Api\bin\desktop-detail-check\Microsoft.Data.SqlClient.dll
+C:\Users\Hamid\Documents\POS\owner_portal_work_BC_list___After__filters\owner_portal_work\src\PayNex.Cloud.Api\bin\desktop-detail-check\Microsoft.Identity.Client.dll
+C:\Users\Hamid\Documents\POS\owner_portal_work_BC_list___After__filters\owner_portal_work\src\PayNex.Cloud.Api\bin\desktop-detail-check\Microsoft.Identity.Client.Extensions.Msal.dll
+C:\Users\Hamid\Documents\POS\owner_portal_work_BC_list___After__filters\owner_portal_work\src\PayNex.Cloud.Api\bin\desktop-detail-check\Microsoft.IdentityModel.Abstractions.dll
+C:\Users\Hamid\Documents\POS\owner_portal_work_BC_list___After__filters\owner_portal_work\src\PayNex.Cloud.Api\bin\desktop-detail-check\Microsoft.IdentityModel.JsonWebTokens.dll
+C:\Users\Hamid\Documents\POS\owner_portal_work_BC_list___After__filters\owner_portal_work\src\PayNex.Cloud.Api\bin\desktop-detail-check\Microsoft.IdentityModel.Logging.dll
+C:\Users\Hamid\Documents\POS\owner_portal_work_BC_list___After__filters\owner_portal_work\src\PayNex.Cloud.Api\bin\desktop-detail-check\Microsoft.IdentityModel.Protocols.dll
+C:\Users\Hamid\Documents\POS\owner_portal_work_BC_list___After__filters\owner_portal_work\src\PayNex.Cloud.Api\bin\desktop-detail-check\Microsoft.IdentityModel.Protocols.OpenIdConnect.dll
+C:\Users\Hamid\Documents\POS\owner_portal_work_BC_list___After__filters\owner_portal_work\src\PayNex.Cloud.Api\bin\desktop-detail-check\Microsoft.IdentityModel.Tokens.dll
+C:\Users\Hamid\Documents\POS\owner_portal_work_BC_list___After__filters\owner_portal_work\src\PayNex.Cloud.Api\bin\desktop-detail-check\Microsoft.OpenApi.dll
+C:\Users\Hamid\Documents\POS\owner_portal_work_BC_list___After__filters\owner_portal_work\src\PayNex.Cloud.Api\bin\desktop-detail-check\Microsoft.SqlServer.Server.dll
+C:\Users\Hamid\Documents\POS\owner_portal_work_BC_list___After__filters\owner_portal_work\src\PayNex.Cloud.Api\bin\desktop-detail-check\Swashbuckle.AspNetCore.Swagger.dll
+C:\Users\Hamid\Documents\POS\owner_portal_work_BC_list___After__filters\owner_portal_work\src\PayNex.Cloud.Api\bin\desktop-detail-check\Swashbuckle.AspNetCore.SwaggerGen.dll
+C:\Users\Hamid\Documents\POS\owner_portal_work_BC_list___After__filters\owner_portal_work\src\PayNex.Cloud.Api\bin\desktop-detail-check\Swashbuckle.AspNetCore.SwaggerUI.dll
+C:\Users\Hamid\Documents\POS\owner_portal_work_BC_list___After__filters\owner_portal_work\src\PayNex.Cloud.Api\bin\desktop-detail-check\System.ClientModel.dll
+C:\Users\Hamid\Documents\POS\owner_portal_work_BC_list___After__filters\owner_portal_work\src\PayNex.Cloud.Api\bin\desktop-detail-check\System.Configuration.ConfigurationManager.dll
+C:\Users\Hamid\Documents\POS\owner_portal_work_BC_list___After__filters\owner_portal_work\src\PayNex.Cloud.Api\bin\desktop-detail-check\System.IdentityModel.Tokens.Jwt.dll
+C:\Users\Hamid\Documents\POS\owner_portal_work_BC_list___After__filters\owner_portal_work\src\PayNex.Cloud.Api\bin\desktop-detail-check\System.Memory.Data.dll
+C:\Users\Hamid\Documents\POS\owner_portal_work_BC_list___After__filters\owner_portal_work\src\PayNex.Cloud.Api\bin\desktop-detail-check\System.Runtime.Caching.dll
+C:\Users\Hamid\Documents\POS\owner_portal_work_BC_list___After__filters\owner_portal_work\src\PayNex.Cloud.Api\bin\desktop-detail-check\System.Security.Cryptography.ProtectedData.dll
+C:\Users\Hamid\Documents\POS\owner_portal_work_BC_list___After__filters\owner_portal_work\src\PayNex.Cloud.Api\bin\desktop-detail-check\de\Microsoft.Data.SqlClient.resources.dll
+C:\Users\Hamid\Documents\POS\owner_portal_work_BC_list___After__filters\owner_portal_work\src\PayNex.Cloud.Api\bin\desktop-detail-check\es\Microsoft.Data.SqlClient.resources.dll
+C:\Users\Hamid\Documents\POS\owner_portal_work_BC_list___After__filters\owner_portal_work\src\PayNex.Cloud.Api\bin\desktop-detail-check\fr\Microsoft.Data.SqlClient.resources.dll
+C:\Users\Hamid\Documents\POS\owner_portal_work_BC_list___After__filters\owner_portal_work\src\PayNex.Cloud.Api\bin\desktop-detail-check\it\Microsoft.Data.SqlClient.resources.dll
+C:\Users\Hamid\Documents\POS\owner_portal_work_BC_list___After__filters\owner_portal_work\src\PayNex.Cloud.Api\bin\desktop-detail-check\ja\Microsoft.Data.SqlClient.resources.dll
+C:\Users\Hamid\Documents\POS\owner_portal_work_BC_list___After__filters\owner_portal_work\src\PayNex.Cloud.Api\bin\desktop-detail-check\ko\Microsoft.Data.SqlClient.resources.dll
+C:\Users\Hamid\Documents\POS\owner_portal_work_BC_list___After__filters\owner_portal_work\src\PayNex.Cloud.Api\bin\desktop-detail-check\pt-BR\Microsoft.Data.SqlClient.resources.dll
+C:\Users\Hamid\Documents\POS\owner_portal_work_BC_list___After__filters\owner_portal_work\src\PayNex.Cloud.Api\bin\desktop-detail-check\ru\Microsoft.Data.SqlClient.resources.dll
+C:\Users\Hamid\Documents\POS\owner_portal_work_BC_list___After__filters\owner_portal_work\src\PayNex.Cloud.Api\bin\desktop-detail-check\zh-Hans\Microsoft.Data.SqlClient.resources.dll
+C:\Users\Hamid\Documents\POS\owner_portal_work_BC_list___After__filters\owner_portal_work\src\PayNex.Cloud.Api\bin\desktop-detail-check\zh-Hant\Microsoft.Data.SqlClient.resources.dll
+C:\Users\Hamid\Documents\POS\owner_portal_work_BC_list___After__filters\owner_portal_work\src\PayNex.Cloud.Api\bin\desktop-detail-check\runtimes\unix\lib\net8.0\Microsoft.Data.SqlClient.dll
+C:\Users\Hamid\Documents\POS\owner_portal_work_BC_list___After__filters\owner_portal_work\src\PayNex.Cloud.Api\bin\desktop-detail-check\runtimes\win\lib\net8.0\Microsoft.Data.SqlClient.dll
+C:\Users\Hamid\Documents\POS\owner_portal_work_BC_list___After__filters\owner_portal_work\src\PayNex.Cloud.Api\bin\desktop-detail-check\runtimes\win-arm\native\Microsoft.Data.SqlClient.SNI.dll
+C:\Users\Hamid\Documents\POS\owner_portal_work_BC_list___After__filters\owner_portal_work\src\PayNex.Cloud.Api\bin\desktop-detail-check\runtimes\win-arm64\native\Microsoft.Data.SqlClient.SNI.dll
+C:\Users\Hamid\Documents\POS\owner_portal_work_BC_list___After__filters\owner_portal_work\src\PayNex.Cloud.Api\bin\desktop-detail-check\runtimes\win-x64\native\Microsoft.Data.SqlClient.SNI.dll
+C:\Users\Hamid\Documents\POS\owner_portal_work_BC_list___After__filters\owner_portal_work\src\PayNex.Cloud.Api\bin\desktop-detail-check\runtimes\win-x86\native\Microsoft.Data.SqlClient.SNI.dll
+C:\Users\Hamid\Documents\POS\owner_portal_work_BC_list___After__filters\owner_portal_work\src\PayNex.Cloud.Api\bin\desktop-detail-check\runtimes\win\lib\net8.0\System.Runtime.Caching.dll
+C:\Users\Hamid\Documents\POS\PayNex ERP Mohsin\owner_portal_work_BC_list___After__filters\owner_portal_work\src\PayNex.Cloud.Api\bin\Debug\net8.0\appsettings.json
+C:\Users\Hamid\Documents\POS\PayNex ERP Mohsin\owner_portal_work_BC_list___After__filters\owner_portal_work\src\PayNex.Cloud.Api\bin\Debug\net8.0\appsettings.Production.sample.json
+C:\Users\Hamid\Documents\POS\PayNex ERP Mohsin\owner_portal_work_BC_list___After__filters\owner_portal_work\src\PayNex.Cloud.Api\bin\Debug\net8.0\database\DesktopAccess.sql
+C:\Users\Hamid\Documents\POS\PayNex ERP Mohsin\owner_portal_work_BC_list___After__filters\owner_portal_work\src\PayNex.Cloud.Api\bin\Debug\net8.0\database\DesktopIdempotency.sql
+C:\Users\Hamid\Documents\POS\PayNex ERP Mohsin\owner_portal_work_BC_list___After__filters\owner_portal_work\src\PayNex.Cloud.Api\bin\Debug\net8.0\database\MasterSchema.sql
+C:\Users\Hamid\Documents\POS\PayNex ERP Mohsin\owner_portal_work_BC_list___After__filters\owner_portal_work\src\PayNex.Cloud.Api\bin\Debug\net8.0\database\TenantSchema.sql
+C:\Users\Hamid\Documents\POS\PayNex ERP Mohsin\owner_portal_work_BC_list___After__filters\owner_portal_work\src\PayNex.Cloud.Api\bin\Debug\net8.0\Reports\Customer_Ledger_Entries.rdlc
+C:\Users\Hamid\Documents\POS\PayNex ERP Mohsin\owner_portal_work_BC_list___After__filters\owner_portal_work\src\PayNex.Cloud.Api\bin\Debug\net8.0\Reports\Customer_Payment_Receipt.rdlc
+C:\Users\Hamid\Documents\POS\PayNex ERP Mohsin\owner_portal_work_BC_list___After__filters\owner_portal_work\src\PayNex.Cloud.Api\bin\Debug\net8.0\Reports\Expense_Management_Report.rdlc
+C:\Users\Hamid\Documents\POS\PayNex ERP Mohsin\owner_portal_work_BC_list___After__filters\owner_portal_work\src\PayNex.Cloud.Api\bin\Debug\net8.0\Reports\Posted_Purchase_Invoice.rdlc
+C:\Users\Hamid\Documents\POS\PayNex ERP Mohsin\owner_portal_work_BC_list___After__filters\owner_portal_work\src\PayNex.Cloud.Api\bin\Debug\net8.0\Reports\Posted_Sales_Invoice.rdlc
+C:\Users\Hamid\Documents\POS\PayNex ERP Mohsin\owner_portal_work_BC_list___After__filters\owner_portal_work\src\PayNex.Cloud.Api\bin\Debug\net8.0\Reports\Vendor_Ledger_Entries.rdlc
+C:\Users\Hamid\Documents\POS\PayNex ERP Mohsin\owner_portal_work_BC_list___After__filters\owner_portal_work\src\PayNex.Cloud.Api\bin\Debug\net8.0\Reports\Vendor_Payment_Receipt.rdlc
+C:\Users\Hamid\Documents\POS\PayNex ERP Mohsin\owner_portal_work_BC_list___After__filters\owner_portal_work\src\PayNex.Cloud.Api\bin\Debug\net8.0\database\addons\CompanyInformation_Table_Setup.sql
+C:\Users\Hamid\Documents\POS\PayNex ERP Mohsin\owner_portal_work_BC_list___After__filters\owner_portal_work\src\PayNex.Cloud.Api\bin\Debug\net8.0\database\addons\Report_CompanyInformation_Setup.sql
+C:\Users\Hamid\Documents\POS\PayNex ERP Mohsin\owner_portal_work_BC_list___After__filters\owner_portal_work\src\PayNex.Cloud.Api\bin\Debug\net8.0\PayNex.Cloud.Api.staticwebassets.runtime.json
+C:\Users\Hamid\Documents\POS\PayNex ERP Mohsin\owner_portal_work_BC_list___After__filters\owner_portal_work\src\PayNex.Cloud.Api\bin\Debug\net8.0\PayNex.Cloud.Api.exe
+C:\Users\Hamid\Documents\POS\PayNex ERP Mohsin\owner_portal_work_BC_list___After__filters\owner_portal_work\src\PayNex.Cloud.Api\bin\Debug\net8.0\PayNex.Cloud.Api.deps.json
+C:\Users\Hamid\Documents\POS\PayNex ERP Mohsin\owner_portal_work_BC_list___After__filters\owner_portal_work\src\PayNex.Cloud.Api\bin\Debug\net8.0\PayNex.Cloud.Api.runtimeconfig.json
+C:\Users\Hamid\Documents\POS\PayNex ERP Mohsin\owner_portal_work_BC_list___After__filters\owner_portal_work\src\PayNex.Cloud.Api\bin\Debug\net8.0\PayNex.Cloud.Api.dll
+C:\Users\Hamid\Documents\POS\PayNex ERP Mohsin\owner_portal_work_BC_list___After__filters\owner_portal_work\src\PayNex.Cloud.Api\bin\Debug\net8.0\PayNex.Cloud.Api.pdb
+C:\Users\Hamid\Documents\POS\PayNex ERP Mohsin\owner_portal_work_BC_list___After__filters\owner_portal_work\src\PayNex.Cloud.Api\bin\Debug\net8.0\Azure.Core.dll
+C:\Users\Hamid\Documents\POS\PayNex ERP Mohsin\owner_portal_work_BC_list___After__filters\owner_portal_work\src\PayNex.Cloud.Api\bin\Debug\net8.0\Azure.Identity.dll
+C:\Users\Hamid\Documents\POS\PayNex ERP Mohsin\owner_portal_work_BC_list___After__filters\owner_portal_work\src\PayNex.Cloud.Api\bin\Debug\net8.0\BCrypt-Net-Next.dll
+C:\Users\Hamid\Documents\POS\PayNex ERP Mohsin\owner_portal_work_BC_list___After__filters\owner_portal_work\src\PayNex.Cloud.Api\bin\Debug\net8.0\Microsoft.Bcl.AsyncInterfaces.dll
+C:\Users\Hamid\Documents\POS\PayNex ERP Mohsin\owner_portal_work_BC_list___After__filters\owner_portal_work\src\PayNex.Cloud.Api\bin\Debug\net8.0\Microsoft.Data.SqlClient.dll
+C:\Users\Hamid\Documents\POS\PayNex ERP Mohsin\owner_portal_work_BC_list___After__filters\owner_portal_work\src\PayNex.Cloud.Api\bin\Debug\net8.0\Microsoft.Identity.Client.dll
+C:\Users\Hamid\Documents\POS\PayNex ERP Mohsin\owner_portal_work_BC_list___After__filters\owner_portal_work\src\PayNex.Cloud.Api\bin\Debug\net8.0\Microsoft.Identity.Client.Extensions.Msal.dll
+C:\Users\Hamid\Documents\POS\PayNex ERP Mohsin\owner_portal_work_BC_list___After__filters\owner_portal_work\src\PayNex.Cloud.Api\bin\Debug\net8.0\Microsoft.IdentityModel.Abstractions.dll
+C:\Users\Hamid\Documents\POS\PayNex ERP Mohsin\owner_portal_work_BC_list___After__filters\owner_portal_work\src\PayNex.Cloud.Api\bin\Debug\net8.0\Microsoft.IdentityModel.JsonWebTokens.dll
+C:\Users\Hamid\Documents\POS\PayNex ERP Mohsin\owner_portal_work_BC_list___After__filters\owner_portal_work\src\PayNex.Cloud.Api\bin\Debug\net8.0\Microsoft.IdentityModel.Logging.dll
+C:\Users\Hamid\Documents\POS\PayNex ERP Mohsin\owner_portal_work_BC_list___After__filters\owner_portal_work\src\PayNex.Cloud.Api\bin\Debug\net8.0\Microsoft.IdentityModel.Protocols.dll
+C:\Users\Hamid\Documents\POS\PayNex ERP Mohsin\owner_portal_work_BC_list___After__filters\owner_portal_work\src\PayNex.Cloud.Api\bin\Debug\net8.0\Microsoft.IdentityModel.Protocols.OpenIdConnect.dll
+C:\Users\Hamid\Documents\POS\PayNex ERP Mohsin\owner_portal_work_BC_list___After__filters\owner_portal_work\src\PayNex.Cloud.Api\bin\Debug\net8.0\Microsoft.IdentityModel.Tokens.dll
+C:\Users\Hamid\Documents\POS\PayNex ERP Mohsin\owner_portal_work_BC_list___After__filters\owner_portal_work\src\PayNex.Cloud.Api\bin\Debug\net8.0\Microsoft.OpenApi.dll
+C:\Users\Hamid\Documents\POS\PayNex ERP Mohsin\owner_portal_work_BC_list___After__filters\owner_portal_work\src\PayNex.Cloud.Api\bin\Debug\net8.0\Microsoft.SqlServer.Server.dll
+C:\Users\Hamid\Documents\POS\PayNex ERP Mohsin\owner_portal_work_BC_list___After__filters\owner_portal_work\src\PayNex.Cloud.Api\bin\Debug\net8.0\Swashbuckle.AspNetCore.Swagger.dll
+C:\Users\Hamid\Documents\POS\PayNex ERP Mohsin\owner_portal_work_BC_list___After__filters\owner_portal_work\src\PayNex.Cloud.Api\bin\Debug\net8.0\Swashbuckle.AspNetCore.SwaggerGen.dll
+C:\Users\Hamid\Documents\POS\PayNex ERP Mohsin\owner_portal_work_BC_list___After__filters\owner_portal_work\src\PayNex.Cloud.Api\bin\Debug\net8.0\Swashbuckle.AspNetCore.SwaggerUI.dll
+C:\Users\Hamid\Documents\POS\PayNex ERP Mohsin\owner_portal_work_BC_list___After__filters\owner_portal_work\src\PayNex.Cloud.Api\bin\Debug\net8.0\System.ClientModel.dll
+C:\Users\Hamid\Documents\POS\PayNex ERP Mohsin\owner_portal_work_BC_list___After__filters\owner_portal_work\src\PayNex.Cloud.Api\bin\Debug\net8.0\System.Configuration.ConfigurationManager.dll
+C:\Users\Hamid\Documents\POS\PayNex ERP Mohsin\owner_portal_work_BC_list___After__filters\owner_portal_work\src\PayNex.Cloud.Api\bin\Debug\net8.0\System.IdentityModel.Tokens.Jwt.dll
+C:\Users\Hamid\Documents\POS\PayNex ERP Mohsin\owner_portal_work_BC_list___After__filters\owner_portal_work\src\PayNex.Cloud.Api\bin\Debug\net8.0\System.Memory.Data.dll
+C:\Users\Hamid\Documents\POS\PayNex ERP Mohsin\owner_portal_work_BC_list___After__filters\owner_portal_work\src\PayNex.Cloud.Api\bin\Debug\net8.0\System.Runtime.Caching.dll
+C:\Users\Hamid\Documents\POS\PayNex ERP Mohsin\owner_portal_work_BC_list___After__filters\owner_portal_work\src\PayNex.Cloud.Api\bin\Debug\net8.0\System.Security.Cryptography.ProtectedData.dll
+C:\Users\Hamid\Documents\POS\PayNex ERP Mohsin\owner_portal_work_BC_list___After__filters\owner_portal_work\src\PayNex.Cloud.Api\bin\Debug\net8.0\de\Microsoft.Data.SqlClient.resources.dll
+C:\Users\Hamid\Documents\POS\PayNex ERP Mohsin\owner_portal_work_BC_list___After__filters\owner_portal_work\src\PayNex.Cloud.Api\bin\Debug\net8.0\es\Microsoft.Data.SqlClient.resources.dll
+C:\Users\Hamid\Documents\POS\PayNex ERP Mohsin\owner_portal_work_BC_list___After__filters\owner_portal_work\src\PayNex.Cloud.Api\bin\Debug\net8.0\fr\Microsoft.Data.SqlClient.resources.dll
+C:\Users\Hamid\Documents\POS\PayNex ERP Mohsin\owner_portal_work_BC_list___After__filters\owner_portal_work\src\PayNex.Cloud.Api\bin\Debug\net8.0\it\Microsoft.Data.SqlClient.resources.dll
+C:\Users\Hamid\Documents\POS\PayNex ERP Mohsin\owner_portal_work_BC_list___After__filters\owner_portal_work\src\PayNex.Cloud.Api\bin\Debug\net8.0\ja\Microsoft.Data.SqlClient.resources.dll
+C:\Users\Hamid\Documents\POS\PayNex ERP Mohsin\owner_portal_work_BC_list___After__filters\owner_portal_work\src\PayNex.Cloud.Api\bin\Debug\net8.0\ko\Microsoft.Data.SqlClient.resources.dll
+C:\Users\Hamid\Documents\POS\PayNex ERP Mohsin\owner_portal_work_BC_list___After__filters\owner_portal_work\src\PayNex.Cloud.Api\bin\Debug\net8.0\pt-BR\Microsoft.Data.SqlClient.resources.dll
+C:\Users\Hamid\Documents\POS\PayNex ERP Mohsin\owner_portal_work_BC_list___After__filters\owner_portal_work\src\PayNex.Cloud.Api\bin\Debug\net8.0\ru\Microsoft.Data.SqlClient.resources.dll
+C:\Users\Hamid\Documents\POS\PayNex ERP Mohsin\owner_portal_work_BC_list___After__filters\owner_portal_work\src\PayNex.Cloud.Api\bin\Debug\net8.0\zh-Hans\Microsoft.Data.SqlClient.resources.dll
+C:\Users\Hamid\Documents\POS\PayNex ERP Mohsin\owner_portal_work_BC_list___After__filters\owner_portal_work\src\PayNex.Cloud.Api\bin\Debug\net8.0\zh-Hant\Microsoft.Data.SqlClient.resources.dll
+C:\Users\Hamid\Documents\POS\PayNex ERP Mohsin\owner_portal_work_BC_list___After__filters\owner_portal_work\src\PayNex.Cloud.Api\bin\Debug\net8.0\runtimes\unix\lib\net8.0\Microsoft.Data.SqlClient.dll
+C:\Users\Hamid\Documents\POS\PayNex ERP Mohsin\owner_portal_work_BC_list___After__filters\owner_portal_work\src\PayNex.Cloud.Api\bin\Debug\net8.0\runtimes\win\lib\net8.0\Microsoft.Data.SqlClient.dll
+C:\Users\Hamid\Documents\POS\PayNex ERP Mohsin\owner_portal_work_BC_list___After__filters\owner_portal_work\src\PayNex.Cloud.Api\bin\Debug\net8.0\runtimes\win-arm\native\Microsoft.Data.SqlClient.SNI.dll
+C:\Users\Hamid\Documents\POS\PayNex ERP Mohsin\owner_portal_work_BC_list___After__filters\owner_portal_work\src\PayNex.Cloud.Api\bin\Debug\net8.0\runtimes\win-arm64\native\Microsoft.Data.SqlClient.SNI.dll
+C:\Users\Hamid\Documents\POS\PayNex ERP Mohsin\owner_portal_work_BC_list___After__filters\owner_portal_work\src\PayNex.Cloud.Api\bin\Debug\net8.0\runtimes\win-x64\native\Microsoft.Data.SqlClient.SNI.dll
+C:\Users\Hamid\Documents\POS\PayNex ERP Mohsin\owner_portal_work_BC_list___After__filters\owner_portal_work\src\PayNex.Cloud.Api\bin\Debug\net8.0\runtimes\win-x86\native\Microsoft.Data.SqlClient.SNI.dll
+C:\Users\Hamid\Documents\POS\PayNex ERP Mohsin\owner_portal_work_BC_list___After__filters\owner_portal_work\src\PayNex.Cloud.Api\bin\Debug\net8.0\runtimes\win\lib\net8.0\System.Runtime.Caching.dll
+C:\Users\Hamid\Documents\POS\PayNex ERP Mohsin\owner_portal_work_BC_list___After__filters\owner_portal_work\src\PayNex.Cloud.Api\obj\Debug\net8.0\PayNex.Cloud.Api.csproj.AssemblyReference.cache
+C:\Users\Hamid\Documents\POS\PayNex ERP Mohsin\owner_portal_work_BC_list___After__filters\owner_portal_work\src\PayNex.Cloud.Api\obj\Debug\net8.0\PayNex.Cloud.Api.GeneratedMSBuildEditorConfig.editorconfig
+C:\Users\Hamid\Documents\POS\PayNex ERP Mohsin\owner_portal_work_BC_list___After__filters\owner_portal_work\src\PayNex.Cloud.Api\obj\Debug\net8.0\PayNex.Cloud.Api.AssemblyInfoInputs.cache
+C:\Users\Hamid\Documents\POS\PayNex ERP Mohsin\owner_portal_work_BC_list___After__filters\owner_portal_work\src\PayNex.Cloud.Api\obj\Debug\net8.0\PayNex.Cloud.Api.AssemblyInfo.cs
+C:\Users\Hamid\Documents\POS\PayNex ERP Mohsin\owner_portal_work_BC_list___After__filters\owner_portal_work\src\PayNex.Cloud.Api\obj\Debug\net8.0\PayNex.Cloud.Api.csproj.CoreCompileInputs.cache
+C:\Users\Hamid\Documents\POS\PayNex ERP Mohsin\owner_portal_work_BC_list___After__filters\owner_portal_work\src\PayNex.Cloud.Api\obj\Debug\net8.0\PayNex.Cloud.Api.MvcApplicationPartsAssemblyInfo.cs
+C:\Users\Hamid\Documents\POS\PayNex ERP Mohsin\owner_portal_work_BC_list___After__filters\owner_portal_work\src\PayNex.Cloud.Api\obj\Debug\net8.0\PayNex.Cloud.Api.MvcApplicationPartsAssemblyInfo.cache
+C:\Users\Hamid\Documents\POS\PayNex ERP Mohsin\owner_portal_work_BC_list___After__filters\owner_portal_work\src\PayNex.Cloud.Api\obj\Debug\net8.0\PayNex.Cloud.Api.sourcelink.json
+C:\Users\Hamid\Documents\POS\PayNex ERP Mohsin\owner_portal_work_BC_list___After__filters\owner_portal_work\src\PayNex.Cloud.Api\obj\Debug\net8.0\staticwebassets.build.json
+C:\Users\Hamid\Documents\POS\PayNex ERP Mohsin\owner_portal_work_BC_list___After__filters\owner_portal_work\src\PayNex.Cloud.Api\obj\Debug\net8.0\staticwebassets.development.json
+C:\Users\Hamid\Documents\POS\PayNex ERP Mohsin\owner_portal_work_BC_list___After__filters\owner_portal_work\src\PayNex.Cloud.Api\obj\Debug\net8.0\staticwebassets\msbuild.PayNex.Cloud.Api.Microsoft.AspNetCore.StaticWebAssets.props
+C:\Users\Hamid\Documents\POS\PayNex ERP Mohsin\owner_portal_work_BC_list___After__filters\owner_portal_work\src\PayNex.Cloud.Api\obj\Debug\net8.0\staticwebassets\msbuild.build.PayNex.Cloud.Api.props
+C:\Users\Hamid\Documents\POS\PayNex ERP Mohsin\owner_portal_work_BC_list___After__filters\owner_portal_work\src\PayNex.Cloud.Api\obj\Debug\net8.0\staticwebassets\msbuild.buildMultiTargeting.PayNex.Cloud.Api.props
+C:\Users\Hamid\Documents\POS\PayNex ERP Mohsin\owner_portal_work_BC_list___After__filters\owner_portal_work\src\PayNex.Cloud.Api\obj\Debug\net8.0\staticwebassets\msbuild.buildTransitive.PayNex.Cloud.Api.props
+C:\Users\Hamid\Documents\POS\PayNex ERP Mohsin\owner_portal_work_BC_list___After__filters\owner_portal_work\src\PayNex.Cloud.Api\obj\Debug\net8.0\staticwebassets.pack.json
+C:\Users\Hamid\Documents\POS\PayNex ERP Mohsin\owner_portal_work_BC_list___After__filters\owner_portal_work\src\PayNex.Cloud.Api\obj\Debug\net8.0\scopedcss\bundle\PayNex.Cloud.Api.styles.css
+C:\Users\Hamid\Documents\POS\PayNex ERP Mohsin\owner_portal_work_BC_list___After__filters\owner_portal_work\src\PayNex.Cloud.Api\obj\Debug\net8.0\PayNex.C.455CE34F.Up2Date
+C:\Users\Hamid\Documents\POS\PayNex ERP Mohsin\owner_portal_work_BC_list___After__filters\owner_portal_work\src\PayNex.Cloud.Api\obj\Debug\net8.0\PayNex.Cloud.Api.dll
+C:\Users\Hamid\Documents\POS\PayNex ERP Mohsin\owner_portal_work_BC_list___After__filters\owner_portal_work\src\PayNex.Cloud.Api\obj\Debug\net8.0\refint\PayNex.Cloud.Api.dll
+C:\Users\Hamid\Documents\POS\PayNex ERP Mohsin\owner_portal_work_BC_list___After__filters\owner_portal_work\src\PayNex.Cloud.Api\obj\Debug\net8.0\PayNex.Cloud.Api.pdb
+C:\Users\Hamid\Documents\POS\PayNex ERP Mohsin\owner_portal_work_BC_list___After__filters\owner_portal_work\src\PayNex.Cloud.Api\obj\Debug\net8.0\PayNex.Cloud.Api.genruntimeconfig.cache
+C:\Users\Hamid\Documents\POS\PayNex ERP Mohsin\owner_portal_work_BC_list___After__filters\owner_portal_work\src\PayNex.Cloud.Api\obj\Debug\net8.0\ref\PayNex.Cloud.Api.dll
+C:\Users\Hamid\Documents\POS\PayNex ERP Mohsin\owner_portal_work_BC_list___After__filters\owner_portal_work\src\PayNex.Cloud.Api\bin\shift-mgmt-check\appsettings.json
+C:\Users\Hamid\Documents\POS\PayNex ERP Mohsin\owner_portal_work_BC_list___After__filters\owner_portal_work\src\PayNex.Cloud.Api\bin\shift-mgmt-check\appsettings.Production.sample.json
+C:\Users\Hamid\Documents\POS\PayNex ERP Mohsin\owner_portal_work_BC_list___After__filters\owner_portal_work\src\PayNex.Cloud.Api\bin\shift-mgmt-check\database\DesktopAccess.sql
+C:\Users\Hamid\Documents\POS\PayNex ERP Mohsin\owner_portal_work_BC_list___After__filters\owner_portal_work\src\PayNex.Cloud.Api\bin\shift-mgmt-check\database\DesktopIdempotency.sql
+C:\Users\Hamid\Documents\POS\PayNex ERP Mohsin\owner_portal_work_BC_list___After__filters\owner_portal_work\src\PayNex.Cloud.Api\bin\shift-mgmt-check\database\MasterSchema.sql
+C:\Users\Hamid\Documents\POS\PayNex ERP Mohsin\owner_portal_work_BC_list___After__filters\owner_portal_work\src\PayNex.Cloud.Api\bin\shift-mgmt-check\database\TenantSchema.sql
+C:\Users\Hamid\Documents\POS\PayNex ERP Mohsin\owner_portal_work_BC_list___After__filters\owner_portal_work\src\PayNex.Cloud.Api\bin\shift-mgmt-check\Reports\Customer_Ledger_Entries.rdlc
+C:\Users\Hamid\Documents\POS\PayNex ERP Mohsin\owner_portal_work_BC_list___After__filters\owner_portal_work\src\PayNex.Cloud.Api\bin\shift-mgmt-check\Reports\Customer_Payment_Receipt.rdlc
+C:\Users\Hamid\Documents\POS\PayNex ERP Mohsin\owner_portal_work_BC_list___After__filters\owner_portal_work\src\PayNex.Cloud.Api\bin\shift-mgmt-check\Reports\Expense_Management_Report.rdlc
+C:\Users\Hamid\Documents\POS\PayNex ERP Mohsin\owner_portal_work_BC_list___After__filters\owner_portal_work\src\PayNex.Cloud.Api\bin\shift-mgmt-check\Reports\Posted_Purchase_Invoice.rdlc
+C:\Users\Hamid\Documents\POS\PayNex ERP Mohsin\owner_portal_work_BC_list___After__filters\owner_portal_work\src\PayNex.Cloud.Api\bin\shift-mgmt-check\Reports\Posted_Sales_Invoice.rdlc
+C:\Users\Hamid\Documents\POS\PayNex ERP Mohsin\owner_portal_work_BC_list___After__filters\owner_portal_work\src\PayNex.Cloud.Api\bin\shift-mgmt-check\Reports\Vendor_Ledger_Entries.rdlc
+C:\Users\Hamid\Documents\POS\PayNex ERP Mohsin\owner_portal_work_BC_list___After__filters\owner_portal_work\src\PayNex.Cloud.Api\bin\shift-mgmt-check\Reports\Vendor_Payment_Receipt.rdlc
+C:\Users\Hamid\Documents\POS\PayNex ERP Mohsin\owner_portal_work_BC_list___After__filters\owner_portal_work\src\PayNex.Cloud.Api\bin\shift-mgmt-check\database\addons\CompanyInformation_Table_Setup.sql
+C:\Users\Hamid\Documents\POS\PayNex ERP Mohsin\owner_portal_work_BC_list___After__filters\owner_portal_work\src\PayNex.Cloud.Api\bin\shift-mgmt-check\database\addons\Report_CompanyInformation_Setup.sql
+C:\Users\Hamid\Documents\POS\PayNex ERP Mohsin\owner_portal_work_BC_list___After__filters\owner_portal_work\src\PayNex.Cloud.Api\bin\shift-mgmt-check\PayNex.Cloud.Api.staticwebassets.runtime.json
+C:\Users\Hamid\Documents\POS\PayNex ERP Mohsin\owner_portal_work_BC_list___After__filters\owner_portal_work\src\PayNex.Cloud.Api\bin\shift-mgmt-check\PayNex.Cloud.Api.exe
+C:\Users\Hamid\Documents\POS\PayNex ERP Mohsin\owner_portal_work_BC_list___After__filters\owner_portal_work\src\PayNex.Cloud.Api\bin\shift-mgmt-check\PayNex.Cloud.Api.deps.json
+C:\Users\Hamid\Documents\POS\PayNex ERP Mohsin\owner_portal_work_BC_list___After__filters\owner_portal_work\src\PayNex.Cloud.Api\bin\shift-mgmt-check\PayNex.Cloud.Api.runtimeconfig.json
+C:\Users\Hamid\Documents\POS\PayNex ERP Mohsin\owner_portal_work_BC_list___After__filters\owner_portal_work\src\PayNex.Cloud.Api\bin\shift-mgmt-check\PayNex.Cloud.Api.dll
+C:\Users\Hamid\Documents\POS\PayNex ERP Mohsin\owner_portal_work_BC_list___After__filters\owner_portal_work\src\PayNex.Cloud.Api\bin\shift-mgmt-check\PayNex.Cloud.Api.pdb
+C:\Users\Hamid\Documents\POS\PayNex ERP Mohsin\owner_portal_work_BC_list___After__filters\owner_portal_work\src\PayNex.Cloud.Api\bin\shift-mgmt-check\Azure.Core.dll
+C:\Users\Hamid\Documents\POS\PayNex ERP Mohsin\owner_portal_work_BC_list___After__filters\owner_portal_work\src\PayNex.Cloud.Api\bin\shift-mgmt-check\Azure.Identity.dll
+C:\Users\Hamid\Documents\POS\PayNex ERP Mohsin\owner_portal_work_BC_list___After__filters\owner_portal_work\src\PayNex.Cloud.Api\bin\shift-mgmt-check\BCrypt-Net-Next.dll
+C:\Users\Hamid\Documents\POS\PayNex ERP Mohsin\owner_portal_work_BC_list___After__filters\owner_portal_work\src\PayNex.Cloud.Api\bin\shift-mgmt-check\Microsoft.Bcl.AsyncInterfaces.dll
+C:\Users\Hamid\Documents\POS\PayNex ERP Mohsin\owner_portal_work_BC_list___After__filters\owner_portal_work\src\PayNex.Cloud.Api\bin\shift-mgmt-check\Microsoft.Data.SqlClient.dll
+C:\Users\Hamid\Documents\POS\PayNex ERP Mohsin\owner_portal_work_BC_list___After__filters\owner_portal_work\src\PayNex.Cloud.Api\bin\shift-mgmt-check\Microsoft.Identity.Client.dll
+C:\Users\Hamid\Documents\POS\PayNex ERP Mohsin\owner_portal_work_BC_list___After__filters\owner_portal_work\src\PayNex.Cloud.Api\bin\shift-mgmt-check\Microsoft.Identity.Client.Extensions.Msal.dll
+C:\Users\Hamid\Documents\POS\PayNex ERP Mohsin\owner_portal_work_BC_list___After__filters\owner_portal_work\src\PayNex.Cloud.Api\bin\shift-mgmt-check\Microsoft.IdentityModel.Abstractions.dll
+C:\Users\Hamid\Documents\POS\PayNex ERP Mohsin\owner_portal_work_BC_list___After__filters\owner_portal_work\src\PayNex.Cloud.Api\bin\shift-mgmt-check\Microsoft.IdentityModel.JsonWebTokens.dll
+C:\Users\Hamid\Documents\POS\PayNex ERP Mohsin\owner_portal_work_BC_list___After__filters\owner_portal_work\src\PayNex.Cloud.Api\bin\shift-mgmt-check\Microsoft.IdentityModel.Logging.dll
+C:\Users\Hamid\Documents\POS\PayNex ERP Mohsin\owner_portal_work_BC_list___After__filters\owner_portal_work\src\PayNex.Cloud.Api\bin\shift-mgmt-check\Microsoft.IdentityModel.Protocols.dll
+C:\Users\Hamid\Documents\POS\PayNex ERP Mohsin\owner_portal_work_BC_list___After__filters\owner_portal_work\src\PayNex.Cloud.Api\bin\shift-mgmt-check\Microsoft.IdentityModel.Protocols.OpenIdConnect.dll
+C:\Users\Hamid\Documents\POS\PayNex ERP Mohsin\owner_portal_work_BC_list___After__filters\owner_portal_work\src\PayNex.Cloud.Api\bin\shift-mgmt-check\Microsoft.IdentityModel.Tokens.dll
+C:\Users\Hamid\Documents\POS\PayNex ERP Mohsin\owner_portal_work_BC_list___After__filters\owner_portal_work\src\PayNex.Cloud.Api\bin\shift-mgmt-check\Microsoft.OpenApi.dll
+C:\Users\Hamid\Documents\POS\PayNex ERP Mohsin\owner_portal_work_BC_list___After__filters\owner_portal_work\src\PayNex.Cloud.Api\bin\shift-mgmt-check\Microsoft.SqlServer.Server.dll
+C:\Users\Hamid\Documents\POS\PayNex ERP Mohsin\owner_portal_work_BC_list___After__filters\owner_portal_work\src\PayNex.Cloud.Api\bin\shift-mgmt-check\Swashbuckle.AspNetCore.Swagger.dll
+C:\Users\Hamid\Documents\POS\PayNex ERP Mohsin\owner_portal_work_BC_list___After__filters\owner_portal_work\src\PayNex.Cloud.Api\bin\shift-mgmt-check\Swashbuckle.AspNetCore.SwaggerGen.dll
+C:\Users\Hamid\Documents\POS\PayNex ERP Mohsin\owner_portal_work_BC_list___After__filters\owner_portal_work\src\PayNex.Cloud.Api\bin\shift-mgmt-check\Swashbuckle.AspNetCore.SwaggerUI.dll
+C:\Users\Hamid\Documents\POS\PayNex ERP Mohsin\owner_portal_work_BC_list___After__filters\owner_portal_work\src\PayNex.Cloud.Api\bin\shift-mgmt-check\System.ClientModel.dll
+C:\Users\Hamid\Documents\POS\PayNex ERP Mohsin\owner_portal_work_BC_list___After__filters\owner_portal_work\src\PayNex.Cloud.Api\bin\shift-mgmt-check\System.Configuration.ConfigurationManager.dll
+C:\Users\Hamid\Documents\POS\PayNex ERP Mohsin\owner_portal_work_BC_list___After__filters\owner_portal_work\src\PayNex.Cloud.Api\bin\shift-mgmt-check\System.IdentityModel.Tokens.Jwt.dll
+C:\Users\Hamid\Documents\POS\PayNex ERP Mohsin\owner_portal_work_BC_list___After__filters\owner_portal_work\src\PayNex.Cloud.Api\bin\shift-mgmt-check\System.Memory.Data.dll
+C:\Users\Hamid\Documents\POS\PayNex ERP Mohsin\owner_portal_work_BC_list___After__filters\owner_portal_work\src\PayNex.Cloud.Api\bin\shift-mgmt-check\System.Runtime.Caching.dll
+C:\Users\Hamid\Documents\POS\PayNex ERP Mohsin\owner_portal_work_BC_list___After__filters\owner_portal_work\src\PayNex.Cloud.Api\bin\shift-mgmt-check\System.Security.Cryptography.ProtectedData.dll
+C:\Users\Hamid\Documents\POS\PayNex ERP Mohsin\owner_portal_work_BC_list___After__filters\owner_portal_work\src\PayNex.Cloud.Api\bin\shift-mgmt-check\de\Microsoft.Data.SqlClient.resources.dll
+C:\Users\Hamid\Documents\POS\PayNex ERP Mohsin\owner_portal_work_BC_list___After__filters\owner_portal_work\src\PayNex.Cloud.Api\bin\shift-mgmt-check\es\Microsoft.Data.SqlClient.resources.dll
+C:\Users\Hamid\Documents\POS\PayNex ERP Mohsin\owner_portal_work_BC_list___After__filters\owner_portal_work\src\PayNex.Cloud.Api\bin\shift-mgmt-check\fr\Microsoft.Data.SqlClient.resources.dll
+C:\Users\Hamid\Documents\POS\PayNex ERP Mohsin\owner_portal_work_BC_list___After__filters\owner_portal_work\src\PayNex.Cloud.Api\bin\shift-mgmt-check\it\Microsoft.Data.SqlClient.resources.dll
+C:\Users\Hamid\Documents\POS\PayNex ERP Mohsin\owner_portal_work_BC_list___After__filters\owner_portal_work\src\PayNex.Cloud.Api\bin\shift-mgmt-check\ja\Microsoft.Data.SqlClient.resources.dll
+C:\Users\Hamid\Documents\POS\PayNex ERP Mohsin\owner_portal_work_BC_list___After__filters\owner_portal_work\src\PayNex.Cloud.Api\bin\shift-mgmt-check\ko\Microsoft.Data.SqlClient.resources.dll
+C:\Users\Hamid\Documents\POS\PayNex ERP Mohsin\owner_portal_work_BC_list___After__filters\owner_portal_work\src\PayNex.Cloud.Api\bin\shift-mgmt-check\pt-BR\Microsoft.Data.SqlClient.resources.dll
+C:\Users\Hamid\Documents\POS\PayNex ERP Mohsin\owner_portal_work_BC_list___After__filters\owner_portal_work\src\PayNex.Cloud.Api\bin\shift-mgmt-check\ru\Microsoft.Data.SqlClient.resources.dll
+C:\Users\Hamid\Documents\POS\PayNex ERP Mohsin\owner_portal_work_BC_list___After__filters\owner_portal_work\src\PayNex.Cloud.Api\bin\shift-mgmt-check\zh-Hans\Microsoft.Data.SqlClient.resources.dll
+C:\Users\Hamid\Documents\POS\PayNex ERP Mohsin\owner_portal_work_BC_list___After__filters\owner_portal_work\src\PayNex.Cloud.Api\bin\shift-mgmt-check\zh-Hant\Microsoft.Data.SqlClient.resources.dll
+C:\Users\Hamid\Documents\POS\PayNex ERP Mohsin\owner_portal_work_BC_list___After__filters\owner_portal_work\src\PayNex.Cloud.Api\bin\shift-mgmt-check\runtimes\unix\lib\net8.0\Microsoft.Data.SqlClient.dll
+C:\Users\Hamid\Documents\POS\PayNex ERP Mohsin\owner_portal_work_BC_list___After__filters\owner_portal_work\src\PayNex.Cloud.Api\bin\shift-mgmt-check\runtimes\win\lib\net8.0\Microsoft.Data.SqlClient.dll
+C:\Users\Hamid\Documents\POS\PayNex ERP Mohsin\owner_portal_work_BC_list___After__filters\owner_portal_work\src\PayNex.Cloud.Api\bin\shift-mgmt-check\runtimes\win-arm\native\Microsoft.Data.SqlClient.SNI.dll
+C:\Users\Hamid\Documents\POS\PayNex ERP Mohsin\owner_portal_work_BC_list___After__filters\owner_portal_work\src\PayNex.Cloud.Api\bin\shift-mgmt-check\runtimes\win-arm64\native\Microsoft.Data.SqlClient.SNI.dll
+C:\Users\Hamid\Documents\POS\PayNex ERP Mohsin\owner_portal_work_BC_list___After__filters\owner_portal_work\src\PayNex.Cloud.Api\bin\shift-mgmt-check\runtimes\win-x64\native\Microsoft.Data.SqlClient.SNI.dll
+C:\Users\Hamid\Documents\POS\PayNex ERP Mohsin\owner_portal_work_BC_list___After__filters\owner_portal_work\src\PayNex.Cloud.Api\bin\shift-mgmt-check\runtimes\win-x86\native\Microsoft.Data.SqlClient.SNI.dll
+C:\Users\Hamid\Documents\POS\PayNex ERP Mohsin\owner_portal_work_BC_list___After__filters\owner_portal_work\src\PayNex.Cloud.Api\bin\shift-mgmt-check\runtimes\win\lib\net8.0\System.Runtime.Caching.dll
+C:\Users\Hamid\Documents\POS\PayNex ERP Mohsin\owner_portal_work_BC_list___After__filters\owner_portal_work\src\PayNex.Cloud.Api\bin\shift-mgmt-check2\appsettings.json
+C:\Users\Hamid\Documents\POS\PayNex ERP Mohsin\owner_portal_work_BC_list___After__filters\owner_portal_work\src\PayNex.Cloud.Api\bin\shift-mgmt-check2\appsettings.Production.sample.json
+C:\Users\Hamid\Documents\POS\PayNex ERP Mohsin\owner_portal_work_BC_list___After__filters\owner_portal_work\src\PayNex.Cloud.Api\bin\shift-mgmt-check2\database\DesktopAccess.sql
+C:\Users\Hamid\Documents\POS\PayNex ERP Mohsin\owner_portal_work_BC_list___After__filters\owner_portal_work\src\PayNex.Cloud.Api\bin\shift-mgmt-check2\database\DesktopIdempotency.sql
+C:\Users\Hamid\Documents\POS\PayNex ERP Mohsin\owner_portal_work_BC_list___After__filters\owner_portal_work\src\PayNex.Cloud.Api\bin\shift-mgmt-check2\database\MasterSchema.sql
+C:\Users\Hamid\Documents\POS\PayNex ERP Mohsin\owner_portal_work_BC_list___After__filters\owner_portal_work\src\PayNex.Cloud.Api\bin\shift-mgmt-check2\database\TenantSchema.sql
+C:\Users\Hamid\Documents\POS\PayNex ERP Mohsin\owner_portal_work_BC_list___After__filters\owner_portal_work\src\PayNex.Cloud.Api\bin\shift-mgmt-check2\Reports\Customer_Ledger_Entries.rdlc
+C:\Users\Hamid\Documents\POS\PayNex ERP Mohsin\owner_portal_work_BC_list___After__filters\owner_portal_work\src\PayNex.Cloud.Api\bin\shift-mgmt-check2\Reports\Customer_Payment_Receipt.rdlc
+C:\Users\Hamid\Documents\POS\PayNex ERP Mohsin\owner_portal_work_BC_list___After__filters\owner_portal_work\src\PayNex.Cloud.Api\bin\shift-mgmt-check2\Reports\Expense_Management_Report.rdlc
+C:\Users\Hamid\Documents\POS\PayNex ERP Mohsin\owner_portal_work_BC_list___After__filters\owner_portal_work\src\PayNex.Cloud.Api\bin\shift-mgmt-check2\Reports\Posted_Purchase_Invoice.rdlc
+C:\Users\Hamid\Documents\POS\PayNex ERP Mohsin\owner_portal_work_BC_list___After__filters\owner_portal_work\src\PayNex.Cloud.Api\bin\shift-mgmt-check2\Reports\Posted_Sales_Invoice.rdlc
+C:\Users\Hamid\Documents\POS\PayNex ERP Mohsin\owner_portal_work_BC_list___After__filters\owner_portal_work\src\PayNex.Cloud.Api\bin\shift-mgmt-check2\Reports\Vendor_Ledger_Entries.rdlc
+C:\Users\Hamid\Documents\POS\PayNex ERP Mohsin\owner_portal_work_BC_list___After__filters\owner_portal_work\src\PayNex.Cloud.Api\bin\shift-mgmt-check2\Reports\Vendor_Payment_Receipt.rdlc
+C:\Users\Hamid\Documents\POS\PayNex ERP Mohsin\owner_portal_work_BC_list___After__filters\owner_portal_work\src\PayNex.Cloud.Api\bin\shift-mgmt-check2\database\addons\CompanyInformation_Table_Setup.sql
+C:\Users\Hamid\Documents\POS\PayNex ERP Mohsin\owner_portal_work_BC_list___After__filters\owner_portal_work\src\PayNex.Cloud.Api\bin\shift-mgmt-check2\database\addons\Report_CompanyInformation_Setup.sql
+C:\Users\Hamid\Documents\POS\PayNex ERP Mohsin\owner_portal_work_BC_list___After__filters\owner_portal_work\src\PayNex.Cloud.Api\bin\shift-mgmt-check2\PayNex.Cloud.Api.staticwebassets.runtime.json
+C:\Users\Hamid\Documents\POS\PayNex ERP Mohsin\owner_portal_work_BC_list___After__filters\owner_portal_work\src\PayNex.Cloud.Api\bin\shift-mgmt-check2\PayNex.Cloud.Api.exe
+C:\Users\Hamid\Documents\POS\PayNex ERP Mohsin\owner_portal_work_BC_list___After__filters\owner_portal_work\src\PayNex.Cloud.Api\bin\shift-mgmt-check2\PayNex.Cloud.Api.deps.json
+C:\Users\Hamid\Documents\POS\PayNex ERP Mohsin\owner_portal_work_BC_list___After__filters\owner_portal_work\src\PayNex.Cloud.Api\bin\shift-mgmt-check2\PayNex.Cloud.Api.runtimeconfig.json
+C:\Users\Hamid\Documents\POS\PayNex ERP Mohsin\owner_portal_work_BC_list___After__filters\owner_portal_work\src\PayNex.Cloud.Api\bin\shift-mgmt-check2\PayNex.Cloud.Api.dll
+C:\Users\Hamid\Documents\POS\PayNex ERP Mohsin\owner_portal_work_BC_list___After__filters\owner_portal_work\src\PayNex.Cloud.Api\bin\shift-mgmt-check2\PayNex.Cloud.Api.pdb
+C:\Users\Hamid\Documents\POS\PayNex ERP Mohsin\owner_portal_work_BC_list___After__filters\owner_portal_work\src\PayNex.Cloud.Api\bin\shift-mgmt-check2\Azure.Core.dll
+C:\Users\Hamid\Documents\POS\PayNex ERP Mohsin\owner_portal_work_BC_list___After__filters\owner_portal_work\src\PayNex.Cloud.Api\bin\shift-mgmt-check2\Azure.Identity.dll
+C:\Users\Hamid\Documents\POS\PayNex ERP Mohsin\owner_portal_work_BC_list___After__filters\owner_portal_work\src\PayNex.Cloud.Api\bin\shift-mgmt-check2\BCrypt-Net-Next.dll
+C:\Users\Hamid\Documents\POS\PayNex ERP Mohsin\owner_portal_work_BC_list___After__filters\owner_portal_work\src\PayNex.Cloud.Api\bin\shift-mgmt-check2\Microsoft.Bcl.AsyncInterfaces.dll
+C:\Users\Hamid\Documents\POS\PayNex ERP Mohsin\owner_portal_work_BC_list___After__filters\owner_portal_work\src\PayNex.Cloud.Api\bin\shift-mgmt-check2\Microsoft.Data.SqlClient.dll
+C:\Users\Hamid\Documents\POS\PayNex ERP Mohsin\owner_portal_work_BC_list___After__filters\owner_portal_work\src\PayNex.Cloud.Api\bin\shift-mgmt-check2\Microsoft.Identity.Client.dll
+C:\Users\Hamid\Documents\POS\PayNex ERP Mohsin\owner_portal_work_BC_list___After__filters\owner_portal_work\src\PayNex.Cloud.Api\bin\shift-mgmt-check2\Microsoft.Identity.Client.Extensions.Msal.dll
+C:\Users\Hamid\Documents\POS\PayNex ERP Mohsin\owner_portal_work_BC_list___After__filters\owner_portal_work\src\PayNex.Cloud.Api\bin\shift-mgmt-check2\Microsoft.IdentityModel.Abstractions.dll
+C:\Users\Hamid\Documents\POS\PayNex ERP Mohsin\owner_portal_work_BC_list___After__filters\owner_portal_work\src\PayNex.Cloud.Api\bin\shift-mgmt-check2\Microsoft.IdentityModel.JsonWebTokens.dll
+C:\Users\Hamid\Documents\POS\PayNex ERP Mohsin\owner_portal_work_BC_list___After__filters\owner_portal_work\src\PayNex.Cloud.Api\bin\shift-mgmt-check2\Microsoft.IdentityModel.Logging.dll
+C:\Users\Hamid\Documents\POS\PayNex ERP Mohsin\owner_portal_work_BC_list___After__filters\owner_portal_work\src\PayNex.Cloud.Api\bin\shift-mgmt-check2\Microsoft.IdentityModel.Protocols.dll
+C:\Users\Hamid\Documents\POS\PayNex ERP Mohsin\owner_portal_work_BC_list___After__filters\owner_portal_work\src\PayNex.Cloud.Api\bin\shift-mgmt-check2\Microsoft.IdentityModel.Protocols.OpenIdConnect.dll
+C:\Users\Hamid\Documents\POS\PayNex ERP Mohsin\owner_portal_work_BC_list___After__filters\owner_portal_work\src\PayNex.Cloud.Api\bin\shift-mgmt-check2\Microsoft.IdentityModel.Tokens.dll
+C:\Users\Hamid\Documents\POS\PayNex ERP Mohsin\owner_portal_work_BC_list___After__filters\owner_portal_work\src\PayNex.Cloud.Api\bin\shift-mgmt-check2\Microsoft.OpenApi.dll
+C:\Users\Hamid\Documents\POS\PayNex ERP Mohsin\owner_portal_work_BC_list___After__filters\owner_portal_work\src\PayNex.Cloud.Api\bin\shift-mgmt-check2\Microsoft.SqlServer.Server.dll
+C:\Users\Hamid\Documents\POS\PayNex ERP Mohsin\owner_portal_work_BC_list___After__filters\owner_portal_work\src\PayNex.Cloud.Api\bin\shift-mgmt-check2\Swashbuckle.AspNetCore.Swagger.dll
+C:\Users\Hamid\Documents\POS\PayNex ERP Mohsin\owner_portal_work_BC_list___After__filters\owner_portal_work\src\PayNex.Cloud.Api\bin\shift-mgmt-check2\Swashbuckle.AspNetCore.SwaggerGen.dll
+C:\Users\Hamid\Documents\POS\PayNex ERP Mohsin\owner_portal_work_BC_list___After__filters\owner_portal_work\src\PayNex.Cloud.Api\bin\shift-mgmt-check2\Swashbuckle.AspNetCore.SwaggerUI.dll
+C:\Users\Hamid\Documents\POS\PayNex ERP Mohsin\owner_portal_work_BC_list___After__filters\owner_portal_work\src\PayNex.Cloud.Api\bin\shift-mgmt-check2\System.ClientModel.dll
+C:\Users\Hamid\Documents\POS\PayNex ERP Mohsin\owner_portal_work_BC_list___After__filters\owner_portal_work\src\PayNex.Cloud.Api\bin\shift-mgmt-check2\System.Configuration.ConfigurationManager.dll
+C:\Users\Hamid\Documents\POS\PayNex ERP Mohsin\owner_portal_work_BC_list___After__filters\owner_portal_work\src\PayNex.Cloud.Api\bin\shift-mgmt-check2\System.IdentityModel.Tokens.Jwt.dll
+C:\Users\Hamid\Documents\POS\PayNex ERP Mohsin\owner_portal_work_BC_list___After__filters\owner_portal_work\src\PayNex.Cloud.Api\bin\shift-mgmt-check2\System.Memory.Data.dll
+C:\Users\Hamid\Documents\POS\PayNex ERP Mohsin\owner_portal_work_BC_list___After__filters\owner_portal_work\src\PayNex.Cloud.Api\bin\shift-mgmt-check2\System.Runtime.Caching.dll
+C:\Users\Hamid\Documents\POS\PayNex ERP Mohsin\owner_portal_work_BC_list___After__filters\owner_portal_work\src\PayNex.Cloud.Api\bin\shift-mgmt-check2\System.Security.Cryptography.ProtectedData.dll
+C:\Users\Hamid\Documents\POS\PayNex ERP Mohsin\owner_portal_work_BC_list___After__filters\owner_portal_work\src\PayNex.Cloud.Api\bin\shift-mgmt-check2\de\Microsoft.Data.SqlClient.resources.dll
+C:\Users\Hamid\Documents\POS\PayNex ERP Mohsin\owner_portal_work_BC_list___After__filters\owner_portal_work\src\PayNex.Cloud.Api\bin\shift-mgmt-check2\es\Microsoft.Data.SqlClient.resources.dll
+C:\Users\Hamid\Documents\POS\PayNex ERP Mohsin\owner_portal_work_BC_list___After__filters\owner_portal_work\src\PayNex.Cloud.Api\bin\shift-mgmt-check2\fr\Microsoft.Data.SqlClient.resources.dll
+C:\Users\Hamid\Documents\POS\PayNex ERP Mohsin\owner_portal_work_BC_list___After__filters\owner_portal_work\src\PayNex.Cloud.Api\bin\shift-mgmt-check2\it\Microsoft.Data.SqlClient.resources.dll
+C:\Users\Hamid\Documents\POS\PayNex ERP Mohsin\owner_portal_work_BC_list___After__filters\owner_portal_work\src\PayNex.Cloud.Api\bin\shift-mgmt-check2\ja\Microsoft.Data.SqlClient.resources.dll
+C:\Users\Hamid\Documents\POS\PayNex ERP Mohsin\owner_portal_work_BC_list___After__filters\owner_portal_work\src\PayNex.Cloud.Api\bin\shift-mgmt-check2\ko\Microsoft.Data.SqlClient.resources.dll
+C:\Users\Hamid\Documents\POS\PayNex ERP Mohsin\owner_portal_work_BC_list___After__filters\owner_portal_work\src\PayNex.Cloud.Api\bin\shift-mgmt-check2\pt-BR\Microsoft.Data.SqlClient.resources.dll
+C:\Users\Hamid\Documents\POS\PayNex ERP Mohsin\owner_portal_work_BC_list___After__filters\owner_portal_work\src\PayNex.Cloud.Api\bin\shift-mgmt-check2\ru\Microsoft.Data.SqlClient.resources.dll
+C:\Users\Hamid\Documents\POS\PayNex ERP Mohsin\owner_portal_work_BC_list___After__filters\owner_portal_work\src\PayNex.Cloud.Api\bin\shift-mgmt-check2\zh-Hans\Microsoft.Data.SqlClient.resources.dll
+C:\Users\Hamid\Documents\POS\PayNex ERP Mohsin\owner_portal_work_BC_list___After__filters\owner_portal_work\src\PayNex.Cloud.Api\bin\shift-mgmt-check2\zh-Hant\Microsoft.Data.SqlClient.resources.dll
+C:\Users\Hamid\Documents\POS\PayNex ERP Mohsin\owner_portal_work_BC_list___After__filters\owner_portal_work\src\PayNex.Cloud.Api\bin\shift-mgmt-check2\runtimes\unix\lib\net8.0\Microsoft.Data.SqlClient.dll
+C:\Users\Hamid\Documents\POS\PayNex ERP Mohsin\owner_portal_work_BC_list___After__filters\owner_portal_work\src\PayNex.Cloud.Api\bin\shift-mgmt-check2\runtimes\win\lib\net8.0\Microsoft.Data.SqlClient.dll
+C:\Users\Hamid\Documents\POS\PayNex ERP Mohsin\owner_portal_work_BC_list___After__filters\owner_portal_work\src\PayNex.Cloud.Api\bin\shift-mgmt-check2\runtimes\win-arm\native\Microsoft.Data.SqlClient.SNI.dll
+C:\Users\Hamid\Documents\POS\PayNex ERP Mohsin\owner_portal_work_BC_list___After__filters\owner_portal_work\src\PayNex.Cloud.Api\bin\shift-mgmt-check2\runtimes\win-arm64\native\Microsoft.Data.SqlClient.SNI.dll
+C:\Users\Hamid\Documents\POS\PayNex ERP Mohsin\owner_portal_work_BC_list___After__filters\owner_portal_work\src\PayNex.Cloud.Api\bin\shift-mgmt-check2\runtimes\win-x64\native\Microsoft.Data.SqlClient.SNI.dll
+C:\Users\Hamid\Documents\POS\PayNex ERP Mohsin\owner_portal_work_BC_list___After__filters\owner_portal_work\src\PayNex.Cloud.Api\bin\shift-mgmt-check2\runtimes\win-x86\native\Microsoft.Data.SqlClient.SNI.dll
+C:\Users\Hamid\Documents\POS\PayNex ERP Mohsin\owner_portal_work_BC_list___After__filters\owner_portal_work\src\PayNex.Cloud.Api\bin\shift-mgmt-check2\runtimes\win\lib\net8.0\System.Runtime.Caching.dll
+C:\Users\Hamid\AppData\Local\Temp\paynex-cloud-bank-verify\appsettings.json
+C:\Users\Hamid\AppData\Local\Temp\paynex-cloud-bank-verify\appsettings.Production.sample.json
+C:\Users\Hamid\AppData\Local\Temp\paynex-cloud-bank-verify\database\DesktopAccess.sql
+C:\Users\Hamid\AppData\Local\Temp\paynex-cloud-bank-verify\database\DesktopIdempotency.sql
+C:\Users\Hamid\AppData\Local\Temp\paynex-cloud-bank-verify\database\MasterSchema.sql
+C:\Users\Hamid\AppData\Local\Temp\paynex-cloud-bank-verify\database\TenantSchema.sql
+C:\Users\Hamid\AppData\Local\Temp\paynex-cloud-bank-verify\Reports\Customer_Ledger_Entries.rdlc
+C:\Users\Hamid\AppData\Local\Temp\paynex-cloud-bank-verify\Reports\Customer_Payment_Receipt.rdlc
+C:\Users\Hamid\AppData\Local\Temp\paynex-cloud-bank-verify\Reports\Expense_Management_Report.rdlc
+C:\Users\Hamid\AppData\Local\Temp\paynex-cloud-bank-verify\Reports\Posted_Purchase_Invoice.rdlc
+C:\Users\Hamid\AppData\Local\Temp\paynex-cloud-bank-verify\Reports\Posted_Sales_Invoice.rdlc
+C:\Users\Hamid\AppData\Local\Temp\paynex-cloud-bank-verify\Reports\Vendor_Ledger_Entries.rdlc
+C:\Users\Hamid\AppData\Local\Temp\paynex-cloud-bank-verify\Reports\Vendor_Payment_Receipt.rdlc
+C:\Users\Hamid\AppData\Local\Temp\paynex-cloud-bank-verify\database\addons\CompanyInformation_Table_Setup.sql
+C:\Users\Hamid\AppData\Local\Temp\paynex-cloud-bank-verify\database\addons\Report_CompanyInformation_Setup.sql
+C:\Users\Hamid\AppData\Local\Temp\paynex-cloud-bank-verify\PayNex.Cloud.Api.staticwebassets.runtime.json
+C:\Users\Hamid\AppData\Local\Temp\paynex-cloud-bank-verify\PayNex.Cloud.Api.exe
+C:\Users\Hamid\AppData\Local\Temp\paynex-cloud-bank-verify\PayNex.Cloud.Api.deps.json
+C:\Users\Hamid\AppData\Local\Temp\paynex-cloud-bank-verify\PayNex.Cloud.Api.runtimeconfig.json
+C:\Users\Hamid\AppData\Local\Temp\paynex-cloud-bank-verify\PayNex.Cloud.Api.dll
+C:\Users\Hamid\AppData\Local\Temp\paynex-cloud-bank-verify\PayNex.Cloud.Api.pdb
+C:\Users\Hamid\Documents\POS\PayNex ERP Mohsin\owner_portal_work_BC_list___After__filters\owner_portal_work\src\PayNex.Cloud.Api\bin\Debug\net8.0\database\addons\upgrade-bank-accounts.sql
+C:\Users\Hamid\Documents\POS\PayNex ERP Mohsin\owner_portal_work_BC_list___After__filters\owner_portal_work\src\PayNex.Cloud.Api\bin\RestartTemp\appsettings.json
+C:\Users\Hamid\Documents\POS\PayNex ERP Mohsin\owner_portal_work_BC_list___After__filters\owner_portal_work\src\PayNex.Cloud.Api\bin\RestartTemp\appsettings.Production.sample.json
+C:\Users\Hamid\Documents\POS\PayNex ERP Mohsin\owner_portal_work_BC_list___After__filters\owner_portal_work\src\PayNex.Cloud.Api\bin\RestartTemp\database\DesktopAccess.sql
+C:\Users\Hamid\Documents\POS\PayNex ERP Mohsin\owner_portal_work_BC_list___After__filters\owner_portal_work\src\PayNex.Cloud.Api\bin\RestartTemp\database\DesktopIdempotency.sql
+C:\Users\Hamid\Documents\POS\PayNex ERP Mohsin\owner_portal_work_BC_list___After__filters\owner_portal_work\src\PayNex.Cloud.Api\bin\RestartTemp\database\MasterSchema.sql
+C:\Users\Hamid\Documents\POS\PayNex ERP Mohsin\owner_portal_work_BC_list___After__filters\owner_portal_work\src\PayNex.Cloud.Api\bin\RestartTemp\database\TenantSchema.sql
+C:\Users\Hamid\Documents\POS\PayNex ERP Mohsin\owner_portal_work_BC_list___After__filters\owner_portal_work\src\PayNex.Cloud.Api\bin\RestartTemp\Reports\Customer_Ledger_Entries.rdlc
+C:\Users\Hamid\Documents\POS\PayNex ERP Mohsin\owner_portal_work_BC_list___After__filters\owner_portal_work\src\PayNex.Cloud.Api\bin\RestartTemp\Reports\Customer_Payment_Receipt.rdlc
+C:\Users\Hamid\Documents\POS\PayNex ERP Mohsin\owner_portal_work_BC_list___After__filters\owner_portal_work\src\PayNex.Cloud.Api\bin\RestartTemp\Reports\Expense_Management_Report.rdlc
+C:\Users\Hamid\Documents\POS\PayNex ERP Mohsin\owner_portal_work_BC_list___After__filters\owner_portal_work\src\PayNex.Cloud.Api\bin\RestartTemp\Reports\Posted_Purchase_Invoice.rdlc
+C:\Users\Hamid\Documents\POS\PayNex ERP Mohsin\owner_portal_work_BC_list___After__filters\owner_portal_work\src\PayNex.Cloud.Api\bin\RestartTemp\Reports\Posted_Sales_Invoice.rdlc
+C:\Users\Hamid\Documents\POS\PayNex ERP Mohsin\owner_portal_work_BC_list___After__filters\owner_portal_work\src\PayNex.Cloud.Api\bin\RestartTemp\Reports\Vendor_Ledger_Entries.rdlc
+C:\Users\Hamid\Documents\POS\PayNex ERP Mohsin\owner_portal_work_BC_list___After__filters\owner_portal_work\src\PayNex.Cloud.Api\bin\RestartTemp\Reports\Vendor_Payment_Receipt.rdlc
+C:\Users\Hamid\Documents\POS\PayNex ERP Mohsin\owner_portal_work_BC_list___After__filters\owner_portal_work\src\PayNex.Cloud.Api\bin\RestartTemp\database\addons\CompanyInformation_Table_Setup.sql
+C:\Users\Hamid\Documents\POS\PayNex ERP Mohsin\owner_portal_work_BC_list___After__filters\owner_portal_work\src\PayNex.Cloud.Api\bin\RestartTemp\database\addons\Report_CompanyInformation_Setup.sql
+C:\Users\Hamid\Documents\POS\PayNex ERP Mohsin\owner_portal_work_BC_list___After__filters\owner_portal_work\src\PayNex.Cloud.Api\bin\RestartTemp\database\addons\upgrade-bank-accounts.sql
+C:\Users\Hamid\Documents\POS\PayNex ERP Mohsin\owner_portal_work_BC_list___After__filters\owner_portal_work\src\PayNex.Cloud.Api\bin\RestartTemp\PayNex.Cloud.Api.staticwebassets.runtime.json
+C:\Users\Hamid\Documents\POS\PayNex ERP Mohsin\owner_portal_work_BC_list___After__filters\owner_portal_work\src\PayNex.Cloud.Api\bin\RestartTemp\PayNex.Cloud.Api.exe
+C:\Users\Hamid\Documents\POS\PayNex ERP Mohsin\owner_portal_work_BC_list___After__filters\owner_portal_work\src\PayNex.Cloud.Api\bin\RestartTemp\PayNex.Cloud.Api.deps.json
+C:\Users\Hamid\Documents\POS\PayNex ERP Mohsin\owner_portal_work_BC_list___After__filters\owner_portal_work\src\PayNex.Cloud.Api\bin\RestartTemp\PayNex.Cloud.Api.runtimeconfig.json
+C:\Users\Hamid\Documents\POS\PayNex ERP Mohsin\owner_portal_work_BC_list___After__filters\owner_portal_work\src\PayNex.Cloud.Api\bin\RestartTemp\PayNex.Cloud.Api.dll
+C:\Users\Hamid\Documents\POS\PayNex ERP Mohsin\owner_portal_work_BC_list___After__filters\owner_portal_work\src\PayNex.Cloud.Api\bin\RestartTemp\PayNex.Cloud.Api.pdb
+C:\Users\Hamid\Documents\POS\PayNex ERP Mohsin\owner_portal_work_BC_list___After__filters\owner_portal_work\src\PayNex.Cloud.Api\bin\RestartTemp\Azure.Core.dll
+C:\Users\Hamid\Documents\POS\PayNex ERP Mohsin\owner_portal_work_BC_list___After__filters\owner_portal_work\src\PayNex.Cloud.Api\bin\RestartTemp\Azure.Identity.dll
+C:\Users\Hamid\Documents\POS\PayNex ERP Mohsin\owner_portal_work_BC_list___After__filters\owner_portal_work\src\PayNex.Cloud.Api\bin\RestartTemp\BCrypt-Net-Next.dll
+C:\Users\Hamid\Documents\POS\PayNex ERP Mohsin\owner_portal_work_BC_list___After__filters\owner_portal_work\src\PayNex.Cloud.Api\bin\RestartTemp\Microsoft.Bcl.AsyncInterfaces.dll
+C:\Users\Hamid\Documents\POS\PayNex ERP Mohsin\owner_portal_work_BC_list___After__filters\owner_portal_work\src\PayNex.Cloud.Api\bin\RestartTemp\Microsoft.Data.SqlClient.dll
+C:\Users\Hamid\Documents\POS\PayNex ERP Mohsin\owner_portal_work_BC_list___After__filters\owner_portal_work\src\PayNex.Cloud.Api\bin\RestartTemp\Microsoft.Identity.Client.dll
+C:\Users\Hamid\Documents\POS\PayNex ERP Mohsin\owner_portal_work_BC_list___After__filters\owner_portal_work\src\PayNex.Cloud.Api\bin\RestartTemp\Microsoft.Identity.Client.Extensions.Msal.dll
+C:\Users\Hamid\Documents\POS\PayNex ERP Mohsin\owner_portal_work_BC_list___After__filters\owner_portal_work\src\PayNex.Cloud.Api\bin\RestartTemp\Microsoft.IdentityModel.Abstractions.dll
+C:\Users\Hamid\Documents\POS\PayNex ERP Mohsin\owner_portal_work_BC_list___After__filters\owner_portal_work\src\PayNex.Cloud.Api\bin\RestartTemp\Microsoft.IdentityModel.JsonWebTokens.dll
+C:\Users\Hamid\Documents\POS\PayNex ERP Mohsin\owner_portal_work_BC_list___After__filters\owner_portal_work\src\PayNex.Cloud.Api\bin\RestartTemp\Microsoft.IdentityModel.Logging.dll
+C:\Users\Hamid\Documents\POS\PayNex ERP Mohsin\owner_portal_work_BC_list___After__filters\owner_portal_work\src\PayNex.Cloud.Api\bin\RestartTemp\Microsoft.IdentityModel.Protocols.dll
+C:\Users\Hamid\Documents\POS\PayNex ERP Mohsin\owner_portal_work_BC_list___After__filters\owner_portal_work\src\PayNex.Cloud.Api\bin\RestartTemp\Microsoft.IdentityModel.Protocols.OpenIdConnect.dll
+C:\Users\Hamid\Documents\POS\PayNex ERP Mohsin\owner_portal_work_BC_list___After__filters\owner_portal_work\src\PayNex.Cloud.Api\bin\RestartTemp\Microsoft.IdentityModel.Tokens.dll
+C:\Users\Hamid\Documents\POS\PayNex ERP Mohsin\owner_portal_work_BC_list___After__filters\owner_portal_work\src\PayNex.Cloud.Api\bin\RestartTemp\Microsoft.OpenApi.dll
+C:\Users\Hamid\Documents\POS\PayNex ERP Mohsin\owner_portal_work_BC_list___After__filters\owner_portal_work\src\PayNex.Cloud.Api\bin\RestartTemp\Microsoft.SqlServer.Server.dll
+C:\Users\Hamid\Documents\POS\PayNex ERP Mohsin\owner_portal_work_BC_list___After__filters\owner_portal_work\src\PayNex.Cloud.Api\bin\RestartTemp\Swashbuckle.AspNetCore.Swagger.dll
+C:\Users\Hamid\Documents\POS\PayNex ERP Mohsin\owner_portal_work_BC_list___After__filters\owner_portal_work\src\PayNex.Cloud.Api\bin\RestartTemp\Swashbuckle.AspNetCore.SwaggerGen.dll
+C:\Users\Hamid\Documents\POS\PayNex ERP Mohsin\owner_portal_work_BC_list___After__filters\owner_portal_work\src\PayNex.Cloud.Api\bin\RestartTemp\Swashbuckle.AspNetCore.SwaggerUI.dll
+C:\Users\Hamid\Documents\POS\PayNex ERP Mohsin\owner_portal_work_BC_list___After__filters\owner_portal_work\src\PayNex.Cloud.Api\bin\RestartTemp\System.ClientModel.dll
+C:\Users\Hamid\Documents\POS\PayNex ERP Mohsin\owner_portal_work_BC_list___After__filters\owner_portal_work\src\PayNex.Cloud.Api\bin\RestartTemp\System.Configuration.ConfigurationManager.dll
+C:\Users\Hamid\Documents\POS\PayNex ERP Mohsin\owner_portal_work_BC_list___After__filters\owner_portal_work\src\PayNex.Cloud.Api\bin\RestartTemp\System.IdentityModel.Tokens.Jwt.dll
+C:\Users\Hamid\Documents\POS\PayNex ERP Mohsin\owner_portal_work_BC_list___After__filters\owner_portal_work\src\PayNex.Cloud.Api\bin\RestartTemp\System.Memory.Data.dll
+C:\Users\Hamid\Documents\POS\PayNex ERP Mohsin\owner_portal_work_BC_list___After__filters\owner_portal_work\src\PayNex.Cloud.Api\bin\RestartTemp\System.Runtime.Caching.dll
+C:\Users\Hamid\Documents\POS\PayNex ERP Mohsin\owner_portal_work_BC_list___After__filters\owner_portal_work\src\PayNex.Cloud.Api\bin\RestartTemp\System.Security.Cryptography.ProtectedData.dll
+C:\Users\Hamid\Documents\POS\PayNex ERP Mohsin\owner_portal_work_BC_list___After__filters\owner_portal_work\src\PayNex.Cloud.Api\bin\RestartTemp\de\Microsoft.Data.SqlClient.resources.dll
+C:\Users\Hamid\Documents\POS\PayNex ERP Mohsin\owner_portal_work_BC_list___After__filters\owner_portal_work\src\PayNex.Cloud.Api\bin\RestartTemp\es\Microsoft.Data.SqlClient.resources.dll
+C:\Users\Hamid\Documents\POS\PayNex ERP Mohsin\owner_portal_work_BC_list___After__filters\owner_portal_work\src\PayNex.Cloud.Api\bin\RestartTemp\fr\Microsoft.Data.SqlClient.resources.dll
+C:\Users\Hamid\Documents\POS\PayNex ERP Mohsin\owner_portal_work_BC_list___After__filters\owner_portal_work\src\PayNex.Cloud.Api\bin\RestartTemp\it\Microsoft.Data.SqlClient.resources.dll
+C:\Users\Hamid\Documents\POS\PayNex ERP Mohsin\owner_portal_work_BC_list___After__filters\owner_portal_work\src\PayNex.Cloud.Api\bin\RestartTemp\ja\Microsoft.Data.SqlClient.resources.dll
+C:\Users\Hamid\Documents\POS\PayNex ERP Mohsin\owner_portal_work_BC_list___After__filters\owner_portal_work\src\PayNex.Cloud.Api\bin\RestartTemp\ko\Microsoft.Data.SqlClient.resources.dll
+C:\Users\Hamid\Documents\POS\PayNex ERP Mohsin\owner_portal_work_BC_list___After__filters\owner_portal_work\src\PayNex.Cloud.Api\bin\RestartTemp\pt-BR\Microsoft.Data.SqlClient.resources.dll
+C:\Users\Hamid\Documents\POS\PayNex ERP Mohsin\owner_portal_work_BC_list___After__filters\owner_portal_work\src\PayNex.Cloud.Api\bin\RestartTemp\ru\Microsoft.Data.SqlClient.resources.dll
+C:\Users\Hamid\Documents\POS\PayNex ERP Mohsin\owner_portal_work_BC_list___After__filters\owner_portal_work\src\PayNex.Cloud.Api\bin\RestartTemp\zh-Hans\Microsoft.Data.SqlClient.resources.dll
+C:\Users\Hamid\Documents\POS\PayNex ERP Mohsin\owner_portal_work_BC_list___After__filters\owner_portal_work\src\PayNex.Cloud.Api\bin\RestartTemp\zh-Hant\Microsoft.Data.SqlClient.resources.dll
+C:\Users\Hamid\Documents\POS\PayNex ERP Mohsin\owner_portal_work_BC_list___After__filters\owner_portal_work\src\PayNex.Cloud.Api\bin\RestartTemp\runtimes\unix\lib\net8.0\Microsoft.Data.SqlClient.dll
+C:\Users\Hamid\Documents\POS\PayNex ERP Mohsin\owner_portal_work_BC_list___After__filters\owner_portal_work\src\PayNex.Cloud.Api\bin\RestartTemp\runtimes\win\lib\net8.0\Microsoft.Data.SqlClient.dll
+C:\Users\Hamid\Documents\POS\PayNex ERP Mohsin\owner_portal_work_BC_list___After__filters\owner_portal_work\src\PayNex.Cloud.Api\bin\RestartTemp\runtimes\win-arm\native\Microsoft.Data.SqlClient.SNI.dll
+C:\Users\Hamid\Documents\POS\PayNex ERP Mohsin\owner_portal_work_BC_list___After__filters\owner_portal_work\src\PayNex.Cloud.Api\bin\RestartTemp\runtimes\win-arm64\native\Microsoft.Data.SqlClient.SNI.dll
+C:\Users\Hamid\Documents\POS\PayNex ERP Mohsin\owner_portal_work_BC_list___After__filters\owner_portal_work\src\PayNex.Cloud.Api\bin\RestartTemp\runtimes\win-x64\native\Microsoft.Data.SqlClient.SNI.dll
+C:\Users\Hamid\Documents\POS\PayNex ERP Mohsin\owner_portal_work_BC_list___After__filters\owner_portal_work\src\PayNex.Cloud.Api\bin\RestartTemp\runtimes\win-x86\native\Microsoft.Data.SqlClient.SNI.dll
+C:\Users\Hamid\Documents\POS\PayNex ERP Mohsin\owner_portal_work_BC_list___After__filters\owner_portal_work\src\PayNex.Cloud.Api\bin\RestartTemp\runtimes\win\lib\net8.0\System.Runtime.Caching.dll
+C:\Users\Hamid\Documents\POS\PayNex ERP Mohsin\owner_portal_work_BC_list___After__filters\owner_portal_work\src\PayNex.Cloud.Api\bin\Debug\net8.0\wwwroot\account-card.html
+C:\Users\Hamid\Documents\POS\PayNex ERP Mohsin\owner_portal_work_BC_list___After__filters\owner_portal_work\src\PayNex.Cloud.Api\bin\Debug\net8.0\wwwroot\accounting-reports.html
+C:\Users\Hamid\Documents\POS\PayNex ERP Mohsin\owner_portal_work_BC_list___After__filters\owner_portal_work\src\PayNex.Cloud.Api\bin\Debug\net8.0\wwwroot\admin.html
+C:\Users\Hamid\Documents\POS\PayNex ERP Mohsin\owner_portal_work_BC_list___After__filters\owner_portal_work\src\PayNex.Cloud.Api\bin\Debug\net8.0\wwwroot\bank-account-card.html
+C:\Users\Hamid\Documents\POS\PayNex ERP Mohsin\owner_portal_work_BC_list___After__filters\owner_portal_work\src\PayNex.Cloud.Api\bin\Debug\net8.0\wwwroot\bank-accounts.html
+C:\Users\Hamid\Documents\POS\PayNex ERP Mohsin\owner_portal_work_BC_list___After__filters\owner_portal_work\src\PayNex.Cloud.Api\bin\Debug\net8.0\wwwroot\branches.html
+C:\Users\Hamid\Documents\POS\PayNex ERP Mohsin\owner_portal_work_BC_list___After__filters\owner_portal_work\src\PayNex.Cloud.Api\bin\Debug\net8.0\wwwroot\company.html
+C:\Users\Hamid\Documents\POS\PayNex ERP Mohsin\owner_portal_work_BC_list___After__filters\owner_portal_work\src\PayNex.Cloud.Api\bin\Debug\net8.0\wwwroot\configuration-package-card.html
+C:\Users\Hamid\Documents\POS\PayNex ERP Mohsin\owner_portal_work_BC_list___After__filters\owner_portal_work\src\PayNex.Cloud.Api\bin\Debug\net8.0\wwwroot\configuration-packages.html
+C:\Users\Hamid\Documents\POS\PayNex ERP Mohsin\owner_portal_work_BC_list___After__filters\owner_portal_work\src\PayNex.Cloud.Api\bin\Debug\net8.0\wwwroot\css\app.css
+C:\Users\Hamid\Documents\POS\PayNex ERP Mohsin\owner_portal_work_BC_list___After__filters\owner_portal_work\src\PayNex.Cloud.Api\bin\Debug\net8.0\wwwroot\css\pos-cashier.css
+C:\Users\Hamid\Documents\POS\PayNex ERP Mohsin\owner_portal_work_BC_list___After__filters\owner_portal_work\src\PayNex.Cloud.Api\bin\Debug\net8.0\wwwroot\css\report-print.css
+C:\Users\Hamid\Documents\POS\PayNex ERP Mohsin\owner_portal_work_BC_list___After__filters\owner_portal_work\src\PayNex.Cloud.Api\bin\Debug\net8.0\wwwroot\currency-setup.html
+C:\Users\Hamid\Documents\POS\PayNex ERP Mohsin\owner_portal_work_BC_list___After__filters\owner_portal_work\src\PayNex.Cloud.Api\bin\Debug\net8.0\wwwroot\customer-card.html
+C:\Users\Hamid\Documents\POS\PayNex ERP Mohsin\owner_portal_work_BC_list___After__filters\owner_portal_work\src\PayNex.Cloud.Api\bin\Debug\net8.0\wwwroot\customer-ledger.html
+C:\Users\Hamid\Documents\POS\PayNex ERP Mohsin\owner_portal_work_BC_list___After__filters\owner_portal_work\src\PayNex.Cloud.Api\bin\Debug\net8.0\wwwroot\customer-payment.html
+C:\Users\Hamid\Documents\POS\PayNex ERP Mohsin\owner_portal_work_BC_list___After__filters\owner_portal_work\src\PayNex.Cloud.Api\bin\Debug\net8.0\wwwroot\customers.html
+C:\Users\Hamid\Documents\POS\PayNex ERP Mohsin\owner_portal_work_BC_list___After__filters\owner_portal_work\src\PayNex.Cloud.Api\bin\Debug\net8.0\wwwroot\dashboard.html
+C:\Users\Hamid\Documents\POS\PayNex ERP Mohsin\owner_portal_work_BC_list___After__filters\owner_portal_work\src\PayNex.Cloud.Api\bin\Debug\net8.0\wwwroot\draft-purchase-invoices.html
+C:\Users\Hamid\Documents\POS\PayNex ERP Mohsin\owner_portal_work_BC_list___After__filters\owner_portal_work\src\PayNex.Cloud.Api\bin\Debug\net8.0\wwwroot\draft-sales-invoices.html
+C:\Users\Hamid\Documents\POS\PayNex ERP Mohsin\owner_portal_work_BC_list___After__filters\owner_portal_work\src\PayNex.Cloud.Api\bin\Debug\net8.0\wwwroot\expense-card.html
+C:\Users\Hamid\Documents\POS\PayNex ERP Mohsin\owner_portal_work_BC_list___After__filters\owner_portal_work\src\PayNex.Cloud.Api\bin\Debug\net8.0\wwwroot\expense-report.html
+C:\Users\Hamid\Documents\POS\PayNex ERP Mohsin\owner_portal_work_BC_list___After__filters\owner_portal_work\src\PayNex.Cloud.Api\bin\Debug\net8.0\wwwroot\expenses.html
+C:\Users\Hamid\Documents\POS\PayNex ERP Mohsin\owner_portal_work_BC_list___After__filters\owner_portal_work\src\PayNex.Cloud.Api\bin\Debug\net8.0\wwwroot\favicon.ico
+C:\Users\Hamid\Documents\POS\PayNex ERP Mohsin\owner_portal_work_BC_list___After__filters\owner_portal_work\src\PayNex.Cloud.Api\bin\Debug\net8.0\wwwroot\finance.html
+C:\Users\Hamid\Documents\POS\PayNex ERP Mohsin\owner_portal_work_BC_list___After__filters\owner_portal_work\src\PayNex.Cloud.Api\bin\Debug\net8.0\wwwroot\gl-entries.html
+C:\Users\Hamid\Documents\POS\PayNex ERP Mohsin\owner_portal_work_BC_list___After__filters\owner_portal_work\src\PayNex.Cloud.Api\bin\Debug\net8.0\wwwroot\gl-setup.html
+C:\Users\Hamid\Documents\POS\PayNex ERP Mohsin\owner_portal_work_BC_list___After__filters\owner_portal_work\src\PayNex.Cloud.Api\bin\Debug\net8.0\wwwroot\images\favicon.ico
+C:\Users\Hamid\Documents\POS\PayNex ERP Mohsin\owner_portal_work_BC_list___After__filters\owner_portal_work\src\PayNex.Cloud.Api\bin\Debug\net8.0\wwwroot\images\favicon.png
+C:\Users\Hamid\Documents\POS\PayNex ERP Mohsin\owner_portal_work_BC_list___After__filters\owner_portal_work\src\PayNex.Cloud.Api\bin\Debug\net8.0\wwwroot\images\internex-icon.png
+C:\Users\Hamid\Documents\POS\PayNex ERP Mohsin\owner_portal_work_BC_list___After__filters\owner_portal_work\src\PayNex.Cloud.Api\bin\Debug\net8.0\wwwroot\images\internex-logo.png
+C:\Users\Hamid\Documents\POS\PayNex ERP Mohsin\owner_portal_work_BC_list___After__filters\owner_portal_work\src\PayNex.Cloud.Api\bin\Debug\net8.0\wwwroot\images\paynex-icon.png
+C:\Users\Hamid\Documents\POS\PayNex ERP Mohsin\owner_portal_work_BC_list___After__filters\owner_portal_work\src\PayNex.Cloud.Api\bin\Debug\net8.0\wwwroot\images\paynex-logo.png
+C:\Users\Hamid\Documents\POS\PayNex ERP Mohsin\owner_portal_work_BC_list___After__filters\owner_portal_work\src\PayNex.Cloud.Api\bin\Debug\net8.0\wwwroot\index.html
+C:\Users\Hamid\Documents\POS\PayNex ERP Mohsin\owner_portal_work_BC_list___After__filters\owner_portal_work\src\PayNex.Cloud.Api\bin\Debug\net8.0\wwwroot\inventory.html
+C:\Users\Hamid\Documents\POS\PayNex ERP Mohsin\owner_portal_work_BC_list___After__filters\owner_portal_work\src\PayNex.Cloud.Api\bin\Debug\net8.0\wwwroot\item-card.html
+C:\Users\Hamid\Documents\POS\PayNex ERP Mohsin\owner_portal_work_BC_list___After__filters\owner_portal_work\src\PayNex.Cloud.Api\bin\Debug\net8.0\wwwroot\items.html
+C:\Users\Hamid\Documents\POS\PayNex ERP Mohsin\owner_portal_work_BC_list___After__filters\owner_portal_work\src\PayNex.Cloud.Api\bin\Debug\net8.0\wwwroot\js\account-card.js
+C:\Users\Hamid\Documents\POS\PayNex ERP Mohsin\owner_portal_work_BC_list___After__filters\owner_portal_work\src\PayNex.Cloud.Api\bin\Debug\net8.0\wwwroot\js\accounting-reports.js
+C:\Users\Hamid\Documents\POS\PayNex ERP Mohsin\owner_portal_work_BC_list___After__filters\owner_portal_work\src\PayNex.Cloud.Api\bin\Debug\net8.0\wwwroot\js\admin.js
+C:\Users\Hamid\Documents\POS\PayNex ERP Mohsin\owner_portal_work_BC_list___After__filters\owner_portal_work\src\PayNex.Cloud.Api\bin\Debug\net8.0\wwwroot\js\api.js
+C:\Users\Hamid\Documents\POS\PayNex ERP Mohsin\owner_portal_work_BC_list___After__filters\owner_portal_work\src\PayNex.Cloud.Api\bin\Debug\net8.0\wwwroot\js\app-shell.js
+C:\Users\Hamid\Documents\POS\PayNex ERP Mohsin\owner_portal_work_BC_list___After__filters\owner_portal_work\src\PayNex.Cloud.Api\bin\Debug\net8.0\wwwroot\js\bank-account-card.js
+C:\Users\Hamid\Documents\POS\PayNex ERP Mohsin\owner_portal_work_BC_list___After__filters\owner_portal_work\src\PayNex.Cloud.Api\bin\Debug\net8.0\wwwroot\js\bank-accounts.js
+C:\Users\Hamid\Documents\POS\PayNex ERP Mohsin\owner_portal_work_BC_list___After__filters\owner_portal_work\src\PayNex.Cloud.Api\bin\Debug\net8.0\wwwroot\js\bc-list-filter.js
+C:\Users\Hamid\Documents\POS\PayNex ERP Mohsin\owner_portal_work_BC_list___After__filters\owner_portal_work\src\PayNex.Cloud.Api\bin\Debug\net8.0\wwwroot\js\branches.js
+C:\Users\Hamid\Documents\POS\PayNex ERP Mohsin\owner_portal_work_BC_list___After__filters\owner_portal_work\src\PayNex.Cloud.Api\bin\Debug\net8.0\wwwroot\js\company.js
+C:\Users\Hamid\Documents\POS\PayNex ERP Mohsin\owner_portal_work_BC_list___After__filters\owner_portal_work\src\PayNex.Cloud.Api\bin\Debug\net8.0\wwwroot\js\configuration-package-card.js
+C:\Users\Hamid\Documents\POS\PayNex ERP Mohsin\owner_portal_work_BC_list___After__filters\owner_portal_work\src\PayNex.Cloud.Api\bin\Debug\net8.0\wwwroot\js\configuration-packages.js
+C:\Users\Hamid\Documents\POS\PayNex ERP Mohsin\owner_portal_work_BC_list___After__filters\owner_portal_work\src\PayNex.Cloud.Api\bin\Debug\net8.0\wwwroot\js\currency-setup.js
+C:\Users\Hamid\Documents\POS\PayNex ERP Mohsin\owner_portal_work_BC_list___After__filters\owner_portal_work\src\PayNex.Cloud.Api\bin\Debug\net8.0\wwwroot\js\customer-card.js
+C:\Users\Hamid\Documents\POS\PayNex ERP Mohsin\owner_portal_work_BC_list___After__filters\owner_portal_work\src\PayNex.Cloud.Api\bin\Debug\net8.0\wwwroot\js\customer-ledger.js
+C:\Users\Hamid\Documents\POS\PayNex ERP Mohsin\owner_portal_work_BC_list___After__filters\owner_portal_work\src\PayNex.Cloud.Api\bin\Debug\net8.0\wwwroot\js\customer-payment.js
+C:\Users\Hamid\Documents\POS\PayNex ERP Mohsin\owner_portal_work_BC_list___After__filters\owner_portal_work\src\PayNex.Cloud.Api\bin\Debug\net8.0\wwwroot\js\customers.js
+C:\Users\Hamid\Documents\POS\PayNex ERP Mohsin\owner_portal_work_BC_list___After__filters\owner_portal_work\src\PayNex.Cloud.Api\bin\Debug\net8.0\wwwroot\js\dashboard.js
+C:\Users\Hamid\Documents\POS\PayNex ERP Mohsin\owner_portal_work_BC_list___After__filters\owner_portal_work\src\PayNex.Cloud.Api\bin\Debug\net8.0\wwwroot\js\expense-card.js
+C:\Users\Hamid\Documents\POS\PayNex ERP Mohsin\owner_portal_work_BC_list___After__filters\owner_portal_work\src\PayNex.Cloud.Api\bin\Debug\net8.0\wwwroot\js\expense-report.js
+C:\Users\Hamid\Documents\POS\PayNex ERP Mohsin\owner_portal_work_BC_list___After__filters\owner_portal_work\src\PayNex.Cloud.Api\bin\Debug\net8.0\wwwroot\js\expenses.js
+C:\Users\Hamid\Documents\POS\PayNex ERP Mohsin\owner_portal_work_BC_list___After__filters\owner_portal_work\src\PayNex.Cloud.Api\bin\Debug\net8.0\wwwroot\js\finance.js
+C:\Users\Hamid\Documents\POS\PayNex ERP Mohsin\owner_portal_work_BC_list___After__filters\owner_portal_work\src\PayNex.Cloud.Api\bin\Debug\net8.0\wwwroot\js\gl-entries.js
+C:\Users\Hamid\Documents\POS\PayNex ERP Mohsin\owner_portal_work_BC_list___After__filters\owner_portal_work\src\PayNex.Cloud.Api\bin\Debug\net8.0\wwwroot\js\gl-setup.js
+C:\Users\Hamid\Documents\POS\PayNex ERP Mohsin\owner_portal_work_BC_list___After__filters\owner_portal_work\src\PayNex.Cloud.Api\bin\Debug\net8.0\wwwroot\js\inventory.js
+C:\Users\Hamid\Documents\POS\PayNex ERP Mohsin\owner_portal_work_BC_list___After__filters\owner_portal_work\src\PayNex.Cloud.Api\bin\Debug\net8.0\wwwroot\js\item-card.js
+C:\Users\Hamid\Documents\POS\PayNex ERP Mohsin\owner_portal_work_BC_list___After__filters\owner_portal_work\src\PayNex.Cloud.Api\bin\Debug\net8.0\wwwroot\js\items.js
+C:\Users\Hamid\Documents\POS\PayNex ERP Mohsin\owner_portal_work_BC_list___After__filters\owner_portal_work\src\PayNex.Cloud.Api\bin\Debug\net8.0\wwwroot\js\modules.js
+C:\Users\Hamid\Documents\POS\PayNex ERP Mohsin\owner_portal_work_BC_list___After__filters\owner_portal_work\src\PayNex.Cloud.Api\bin\Debug\net8.0\wwwroot\js\owner-email-security.js
+C:\Users\Hamid\Documents\POS\PayNex ERP Mohsin\owner_portal_work_BC_list___After__filters\owner_portal_work\src\PayNex.Cloud.Api\bin\Debug\net8.0\wwwroot\js\picture-sales.js
+C:\Users\Hamid\Documents\POS\PayNex ERP Mohsin\owner_portal_work_BC_list___After__filters\owner_portal_work\src\PayNex.Cloud.Api\bin\Debug\net8.0\wwwroot\js\platform-company-card.js
+C:\Users\Hamid\Documents\POS\PayNex ERP Mohsin\owner_portal_work_BC_list___After__filters\owner_portal_work\src\PayNex.Cloud.Api\bin\Debug\net8.0\wwwroot\js\platform-desktop-app.js
+C:\Users\Hamid\Documents\POS\PayNex ERP Mohsin\owner_portal_work_BC_list___After__filters\owner_portal_work\src\PayNex.Cloud.Api\bin\Debug\net8.0\wwwroot\js\platform-mobile-app.js
+C:\Users\Hamid\Documents\POS\PayNex ERP Mohsin\owner_portal_work_BC_list___After__filters\owner_portal_work\src\PayNex.Cloud.Api\bin\Debug\net8.0\wwwroot\js\platform-portal.js
+C:\Users\Hamid\Documents\POS\PayNex ERP Mohsin\owner_portal_work_BC_list___After__filters\owner_portal_work\src\PayNex.Cloud.Api\bin\Debug\net8.0\wwwroot\js\platform-subscription-card.js
+C:\Users\Hamid\Documents\POS\PayNex ERP Mohsin\owner_portal_work_BC_list___After__filters\owner_portal_work\src\PayNex.Cloud.Api\bin\Debug\net8.0\wwwroot\js\platform-subscription-report.js
+C:\Users\Hamid\Documents\POS\PayNex ERP Mohsin\owner_portal_work_BC_list___After__filters\owner_portal_work\src\PayNex.Cloud.Api\bin\Debug\net8.0\wwwroot\js\platform-subscriptions.js
+C:\Users\Hamid\Documents\POS\PayNex ERP Mohsin\owner_portal_work_BC_list___After__filters\owner_portal_work\src\PayNex.Cloud.Api\bin\Debug\net8.0\wwwroot\js\portal.js
+C:\Users\Hamid\Documents\POS\PayNex ERP Mohsin\owner_portal_work_BC_list___After__filters\owner_portal_work\src\PayNex.Cloud.Api\bin\Debug\net8.0\wwwroot\js\pos-cashier.js
+C:\Users\Hamid\Documents\POS\PayNex ERP Mohsin\owner_portal_work_BC_list___After__filters\owner_portal_work\src\PayNex.Cloud.Api\bin\Debug\net8.0\wwwroot\js\pos.js
+C:\Users\Hamid\Documents\POS\PayNex ERP Mohsin\owner_portal_work_BC_list___After__filters\owner_portal_work\src\PayNex.Cloud.Api\bin\Debug\net8.0\wwwroot\js\posted-purchases.js
+C:\Users\Hamid\Documents\POS\PayNex ERP Mohsin\owner_portal_work_BC_list___After__filters\owner_portal_work\src\PayNex.Cloud.Api\bin\Debug\net8.0\wwwroot\js\posted-sales.js
+C:\Users\Hamid\Documents\POS\PayNex ERP Mohsin\owner_portal_work_BC_list___After__filters\owner_portal_work\src\PayNex.Cloud.Api\bin\Debug\net8.0\wwwroot\js\product-actions.js
+C:\Users\Hamid\Documents\POS\PayNex ERP Mohsin\owner_portal_work_BC_list___After__filters\owner_portal_work\src\PayNex.Cloud.Api\bin\Debug\net8.0\wwwroot\js\purchase-invoice-card.js
+C:\Users\Hamid\Documents\POS\PayNex ERP Mohsin\owner_portal_work_BC_list___After__filters\owner_portal_work\src\PayNex.Cloud.Api\bin\Debug\net8.0\wwwroot\js\purchases.js
+C:\Users\Hamid\Documents\POS\PayNex ERP Mohsin\owner_portal_work_BC_list___After__filters\owner_portal_work\src\PayNex.Cloud.Api\bin\Debug\net8.0\wwwroot\js\reports.js
+C:\Users\Hamid\Documents\POS\PayNex ERP Mohsin\owner_portal_work_BC_list___After__filters\owner_portal_work\src\PayNex.Cloud.Api\bin\Debug\net8.0\wwwroot\js\sales-invoice-card.js
+C:\Users\Hamid\Documents\POS\PayNex ERP Mohsin\owner_portal_work_BC_list___After__filters\owner_portal_work\src\PayNex.Cloud.Api\bin\Debug\net8.0\wwwroot\js\sales-return-order-card.js
+C:\Users\Hamid\Documents\POS\PayNex ERP Mohsin\owner_portal_work_BC_list___After__filters\owner_portal_work\src\PayNex.Cloud.Api\bin\Debug\net8.0\wwwroot\js\sales-return-orders.js
+C:\Users\Hamid\Documents\POS\PayNex ERP Mohsin\owner_portal_work_BC_list___After__filters\owner_portal_work\src\PayNex.Cloud.Api\bin\Debug\net8.0\wwwroot\js\sales.js
+C:\Users\Hamid\Documents\POS\PayNex ERP Mohsin\owner_portal_work_BC_list___After__filters\owner_portal_work\src\PayNex.Cloud.Api\bin\Debug\net8.0\wwwroot\js\settings.js
+C:\Users\Hamid\Documents\POS\PayNex ERP Mohsin\owner_portal_work_BC_list___After__filters\owner_portal_work\src\PayNex.Cloud.Api\bin\Debug\net8.0\wwwroot\js\shift-card.js
+C:\Users\Hamid\Documents\POS\PayNex ERP Mohsin\owner_portal_work_BC_list___After__filters\owner_portal_work\src\PayNex.Cloud.Api\bin\Debug\net8.0\wwwroot\js\shift-list.js
+C:\Users\Hamid\Documents\POS\PayNex ERP Mohsin\owner_portal_work_BC_list___After__filters\owner_portal_work\src\PayNex.Cloud.Api\bin\Debug\net8.0\wwwroot\js\shift-management.js
+C:\Users\Hamid\Documents\POS\PayNex ERP Mohsin\owner_portal_work_BC_list___After__filters\owner_portal_work\src\PayNex.Cloud.Api\bin\Debug\net8.0\wwwroot\js\shift.js
+C:\Users\Hamid\Documents\POS\PayNex ERP Mohsin\owner_portal_work_BC_list___After__filters\owner_portal_work\src\PayNex.Cloud.Api\bin\Debug\net8.0\wwwroot\js\tax-discount.js
+C:\Users\Hamid\Documents\POS\PayNex ERP Mohsin\owner_portal_work_BC_list___After__filters\owner_portal_work\src\PayNex.Cloud.Api\bin\Debug\net8.0\wwwroot\js\tax-setup.js
+C:\Users\Hamid\Documents\POS\PayNex ERP Mohsin\owner_portal_work_BC_list___After__filters\owner_portal_work\src\PayNex.Cloud.Api\bin\Debug\net8.0\wwwroot\js\user-card.js
+C:\Users\Hamid\Documents\POS\PayNex ERP Mohsin\owner_portal_work_BC_list___After__filters\owner_portal_work\src\PayNex.Cloud.Api\bin\Debug\net8.0\wwwroot\js\users.js
+C:\Users\Hamid\Documents\POS\PayNex ERP Mohsin\owner_portal_work_BC_list___After__filters\owner_portal_work\src\PayNex.Cloud.Api\bin\Debug\net8.0\wwwroot\js\vendor-card.js
+C:\Users\Hamid\Documents\POS\PayNex ERP Mohsin\owner_portal_work_BC_list___After__filters\owner_portal_work\src\PayNex.Cloud.Api\bin\Debug\net8.0\wwwroot\js\vendor-ledger.js
+C:\Users\Hamid\Documents\POS\PayNex ERP Mohsin\owner_portal_work_BC_list___After__filters\owner_portal_work\src\PayNex.Cloud.Api\bin\Debug\net8.0\wwwroot\js\vendor-payment.js
+C:\Users\Hamid\Documents\POS\PayNex ERP Mohsin\owner_portal_work_BC_list___After__filters\owner_portal_work\src\PayNex.Cloud.Api\bin\Debug\net8.0\wwwroot\js\vendors.js
+C:\Users\Hamid\Documents\POS\PayNex ERP Mohsin\owner_portal_work_BC_list___After__filters\owner_portal_work\src\PayNex.Cloud.Api\bin\Debug\net8.0\wwwroot\js\workspace.js
+C:\Users\Hamid\Documents\POS\PayNex ERP Mohsin\owner_portal_work_BC_list___After__filters\owner_portal_work\src\PayNex.Cloud.Api\bin\Debug\net8.0\wwwroot\login.html
+C:\Users\Hamid\Documents\POS\PayNex ERP Mohsin\owner_portal_work_BC_list___After__filters\owner_portal_work\src\PayNex.Cloud.Api\bin\Debug\net8.0\wwwroot\modules.html
+C:\Users\Hamid\Documents\POS\PayNex ERP Mohsin\owner_portal_work_BC_list___After__filters\owner_portal_work\src\PayNex.Cloud.Api\bin\Debug\net8.0\wwwroot\owner-email-security.html
+C:\Users\Hamid\Documents\POS\PayNex ERP Mohsin\owner_portal_work_BC_list___After__filters\owner_portal_work\src\PayNex.Cloud.Api\bin\Debug\net8.0\wwwroot\picture-sales.html
+C:\Users\Hamid\Documents\POS\PayNex ERP Mohsin\owner_portal_work_BC_list___After__filters\owner_portal_work\src\PayNex.Cloud.Api\bin\Debug\net8.0\wwwroot\platform-company-card.html
+C:\Users\Hamid\Documents\POS\PayNex ERP Mohsin\owner_portal_work_BC_list___After__filters\owner_portal_work\src\PayNex.Cloud.Api\bin\Debug\net8.0\wwwroot\platform-desktop-app.html
+C:\Users\Hamid\Documents\POS\PayNex ERP Mohsin\owner_portal_work_BC_list___After__filters\owner_portal_work\src\PayNex.Cloud.Api\bin\Debug\net8.0\wwwroot\platform-mobile-app.html
+C:\Users\Hamid\Documents\POS\PayNex ERP Mohsin\owner_portal_work_BC_list___After__filters\owner_portal_work\src\PayNex.Cloud.Api\bin\Debug\net8.0\wwwroot\platform-portal.html
+C:\Users\Hamid\Documents\POS\PayNex ERP Mohsin\owner_portal_work_BC_list___After__filters\owner_portal_work\src\PayNex.Cloud.Api\bin\Debug\net8.0\wwwroot\platform-subscription-card.html
+C:\Users\Hamid\Documents\POS\PayNex ERP Mohsin\owner_portal_work_BC_list___After__filters\owner_portal_work\src\PayNex.Cloud.Api\bin\Debug\net8.0\wwwroot\platform-subscription-report.html
+C:\Users\Hamid\Documents\POS\PayNex ERP Mohsin\owner_portal_work_BC_list___After__filters\owner_portal_work\src\PayNex.Cloud.Api\bin\Debug\net8.0\wwwroot\platform-subscriptions.html
+C:\Users\Hamid\Documents\POS\PayNex ERP Mohsin\owner_portal_work_BC_list___After__filters\owner_portal_work\src\PayNex.Cloud.Api\bin\Debug\net8.0\wwwroot\portal.html
+C:\Users\Hamid\Documents\POS\PayNex ERP Mohsin\owner_portal_work_BC_list___After__filters\owner_portal_work\src\PayNex.Cloud.Api\bin\Debug\net8.0\wwwroot\pos-cashier.html
+C:\Users\Hamid\Documents\POS\PayNex ERP Mohsin\owner_portal_work_BC_list___After__filters\owner_portal_work\src\PayNex.Cloud.Api\bin\Debug\net8.0\wwwroot\pos.html
+C:\Users\Hamid\Documents\POS\PayNex ERP Mohsin\owner_portal_work_BC_list___After__filters\owner_portal_work\src\PayNex.Cloud.Api\bin\Debug\net8.0\wwwroot\posted-purchase-invoices.html
+C:\Users\Hamid\Documents\POS\PayNex ERP Mohsin\owner_portal_work_BC_list___After__filters\owner_portal_work\src\PayNex.Cloud.Api\bin\Debug\net8.0\wwwroot\posted-sales-invoices.html
+C:\Users\Hamid\Documents\POS\PayNex ERP Mohsin\owner_portal_work_BC_list___After__filters\owner_portal_work\src\PayNex.Cloud.Api\bin\Debug\net8.0\wwwroot\product-variants.html
+C:\Users\Hamid\Documents\POS\PayNex ERP Mohsin\owner_portal_work_BC_list___After__filters\owner_portal_work\src\PayNex.Cloud.Api\bin\Debug\net8.0\wwwroot\purchase-invoice-card.html
+C:\Users\Hamid\Documents\POS\PayNex ERP Mohsin\owner_portal_work_BC_list___After__filters\owner_portal_work\src\PayNex.Cloud.Api\bin\Debug\net8.0\wwwroot\purchases.html
+C:\Users\Hamid\Documents\POS\PayNex ERP Mohsin\owner_portal_work_BC_list___After__filters\owner_portal_work\src\PayNex.Cloud.Api\bin\Debug\net8.0\wwwroot\released-products.html
+C:\Users\Hamid\Documents\POS\PayNex ERP Mohsin\owner_portal_work_BC_list___After__filters\owner_portal_work\src\PayNex.Cloud.Api\bin\Debug\net8.0\wwwroot\reports.html
+C:\Users\Hamid\Documents\POS\PayNex ERP Mohsin\owner_portal_work_BC_list___After__filters\owner_portal_work\src\PayNex.Cloud.Api\bin\Debug\net8.0\wwwroot\retail-products.html
+C:\Users\Hamid\Documents\POS\PayNex ERP Mohsin\owner_portal_work_BC_list___After__filters\owner_portal_work\src\PayNex.Cloud.Api\bin\Debug\net8.0\wwwroot\saas-flow.html
+C:\Users\Hamid\Documents\POS\PayNex ERP Mohsin\owner_portal_work_BC_list___After__filters\owner_portal_work\src\PayNex.Cloud.Api\bin\Debug\net8.0\wwwroot\sales-invoice-card.html
+C:\Users\Hamid\Documents\POS\PayNex ERP Mohsin\owner_portal_work_BC_list___After__filters\owner_portal_work\src\PayNex.Cloud.Api\bin\Debug\net8.0\wwwroot\sales-return-order-card.html
+C:\Users\Hamid\Documents\POS\PayNex ERP Mohsin\owner_portal_work_BC_list___After__filters\owner_portal_work\src\PayNex.Cloud.Api\bin\Debug\net8.0\wwwroot\sales-return-orders.html
+C:\Users\Hamid\Documents\POS\PayNex ERP Mohsin\owner_portal_work_BC_list___After__filters\owner_portal_work\src\PayNex.Cloud.Api\bin\Debug\net8.0\wwwroot\sales.html
+C:\Users\Hamid\Documents\POS\PayNex ERP Mohsin\owner_portal_work_BC_list___After__filters\owner_portal_work\src\PayNex.Cloud.Api\bin\Debug\net8.0\wwwroot\settings.html
+C:\Users\Hamid\Documents\POS\PayNex ERP Mohsin\owner_portal_work_BC_list___After__filters\owner_portal_work\src\PayNex.Cloud.Api\bin\Debug\net8.0\wwwroot\shift-card.html
+C:\Users\Hamid\Documents\POS\PayNex ERP Mohsin\owner_portal_work_BC_list___After__filters\owner_portal_work\src\PayNex.Cloud.Api\bin\Debug\net8.0\wwwroot\shift-list.html
+C:\Users\Hamid\Documents\POS\PayNex ERP Mohsin\owner_portal_work_BC_list___After__filters\owner_portal_work\src\PayNex.Cloud.Api\bin\Debug\net8.0\wwwroot\shift-management.html
+C:\Users\Hamid\Documents\POS\PayNex ERP Mohsin\owner_portal_work_BC_list___After__filters\owner_portal_work\src\PayNex.Cloud.Api\bin\Debug\net8.0\wwwroot\shift.html
+C:\Users\Hamid\Documents\POS\PayNex ERP Mohsin\owner_portal_work_BC_list___After__filters\owner_portal_work\src\PayNex.Cloud.Api\bin\Debug\net8.0\wwwroot\tax-discount.html
+C:\Users\Hamid\Documents\POS\PayNex ERP Mohsin\owner_portal_work_BC_list___After__filters\owner_portal_work\src\PayNex.Cloud.Api\bin\Debug\net8.0\wwwroot\tax-setup.html
+C:\Users\Hamid\Documents\POS\PayNex ERP Mohsin\owner_portal_work_BC_list___After__filters\owner_portal_work\src\PayNex.Cloud.Api\bin\Debug\net8.0\wwwroot\user-card.html
+C:\Users\Hamid\Documents\POS\PayNex ERP Mohsin\owner_portal_work_BC_list___After__filters\owner_portal_work\src\PayNex.Cloud.Api\bin\Debug\net8.0\wwwroot\users.html
+C:\Users\Hamid\Documents\POS\PayNex ERP Mohsin\owner_portal_work_BC_list___After__filters\owner_portal_work\src\PayNex.Cloud.Api\bin\Debug\net8.0\wwwroot\vendor-card.html
+C:\Users\Hamid\Documents\POS\PayNex ERP Mohsin\owner_portal_work_BC_list___After__filters\owner_portal_work\src\PayNex.Cloud.Api\bin\Debug\net8.0\wwwroot\vendor-ledger.html
+C:\Users\Hamid\Documents\POS\PayNex ERP Mohsin\owner_portal_work_BC_list___After__filters\owner_portal_work\src\PayNex.Cloud.Api\bin\Debug\net8.0\wwwroot\vendor-payment.html
+C:\Users\Hamid\Documents\POS\PayNex ERP Mohsin\owner_portal_work_BC_list___After__filters\owner_portal_work\src\PayNex.Cloud.Api\bin\Debug\net8.0\wwwroot\vendors.html
+C:\Users\Hamid\Documents\POS\PayNex ERP Mohsin\owner_portal_work_BC_list___After__filters\owner_portal_work\src\PayNex.Cloud.Api\bin\Debug\net8.0\wwwroot\workspace.html
+C:\Users\Hamid\Documents\POS\PayNex ERP Mohsin\owner_portal_work_BC_list___After__filters\owner_portal_work\src\PayNex.Cloud.Api\bin\Debug\net8.0\SixLabors.ImageSharp.dll

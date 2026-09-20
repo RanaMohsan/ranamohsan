@@ -8,19 +8,21 @@ public sealed class RolePermissionService
     private static readonly Dictionary<string, string[]> Rules = new(StringComparer.OrdinalIgnoreCase)
     {
         ["/api/sales-invoices/post"] = new[] { "sales.postInvoice" },
+        ["/api/pos/sales"] = new[] { "sales.createInvoice", "sales.postInvoice" },
         ["/api/sales-invoices/draft"] = new[] { "sales.createInvoice", "sales.editInvoice" },
         ["/api/purchase-invoices/draft"] = new[] { "purchase.createInvoice", "purchase.editInvoice" },
         ["/api/sales-quotes"] = new[] { "sales.createInvoice", "sales.editInvoice" },
         ["/api/sales-orders"] = new[] { "sales.createInvoice", "sales.editInvoice" },
         ["/api/sales"] = new[] { "sales.createInvoice" },
         ["/api/returns"] = new[] { "sales.createReturn" },
+        ["/api/sales-return-orders"] = new[] { "sales.createReturn" },
         ["/api/purchases"] = new[] { "purchase.createInvoice", "purchase.postInvoice" },
         ["/api/inventory/transfer"] = new[] { "inventory.transfer" },
         ["/api/inventory/adjust"] = new[] { "inventory.stockAdjustment" },
         ["/api/product-tax-discounts"] = new[] { "pricing.changeProductDiscount", "pricing.changeProductPrice" },
         ["/api/products"] = new[] { "inventory.createItems", "inventory.editItems" },
-        ["/api/customer-payments"] = new[] { "finance.createExpense" },
-        ["/api/vendor-payments"] = new[] { "finance.createExpense" },
+        ["/api/customer-payments"] = new[] { "finance.createExpense", "sales.createInvoice", "sales.postInvoice", "mobile.access" },
+        ["/api/vendor-payments"] = new[] { "finance.createExpense", "purchase.createInvoice", "purchase.postInvoice", "mobile.access" },
         ["/api/company"] = new[] { "system.companySettings" },
         ["/api/branches"] = new[] { "system.branchManagement" },
         ["/api/users"] = new[] { "users.createUser", "users.editUser", "users.deleteUser", "users.resetPassword", "users.assignPermissions", "users.promoteCompanySuperAdmin" },
@@ -28,6 +30,7 @@ public sealed class RolePermissionService
         ["/api/currencies"] = new[] { "system.generalConfiguration" },
         ["/api/tax-groups"] = new[] { "system.generalConfiguration" },
         ["/api/posting-setup"] = new[] { "system.generalConfiguration" },
+        ["/api/bank-accounts"] = new[] { "system.generalConfiguration" },
         ["/api/backup"] = new[] { "system.backupRestore" },
         ["/api/restore"] = new[] { "system.backupRestore" }
     };
@@ -40,14 +43,19 @@ public sealed class RolePermissionService
         var map = ReadPermissionMap(user);
 
         // Mobile POS sessions are limited by design; allow core trading sync operations.
-        if (IsMobileSession(map))
+        if (IsMobileSession(user, map))
         {
             if (path.StartsWith("/api/sales-invoices", StringComparison.OrdinalIgnoreCase)) return true;
             if (path.StartsWith("/api/pos/sales", StringComparison.OrdinalIgnoreCase)) return true;
+            if (path.StartsWith("/api/purchase-invoices", StringComparison.OrdinalIgnoreCase)) return true;
+            if (path.StartsWith("/api/purchases", StringComparison.OrdinalIgnoreCase)) return true;
+            if (path.StartsWith("/api/shifts", StringComparison.OrdinalIgnoreCase)) return true;
+            if (path.StartsWith("/api/returns", StringComparison.OrdinalIgnoreCase)) return true;
             if (path.StartsWith("/api/customer-payments", StringComparison.OrdinalIgnoreCase)) return true;
             if (path.StartsWith("/api/vendor-payments", StringComparison.OrdinalIgnoreCase)) return true;
             if (path.StartsWith("/api/customers", StringComparison.OrdinalIgnoreCase) && method.Equals("GET", StringComparison.OrdinalIgnoreCase)) return true;
-            if (path.StartsWith("/api/vendors", StringComparison.OrdinalIgnoreCase) && method.Equals("GET", StringComparison.OrdinalIgnoreCase)) return true;
+            if (path.StartsWith("/api/vendors", StringComparison.OrdinalIgnoreCase)) return true;
+            if (path.StartsWith("/api/bank-accounts", StringComparison.OrdinalIgnoreCase) && method.Equals("GET", StringComparison.OrdinalIgnoreCase)) return true;
             if (path.StartsWith("/api/products", StringComparison.OrdinalIgnoreCase) && method.Equals("GET", StringComparison.OrdinalIgnoreCase)) return true;
             if (path.StartsWith("/api/lookups", StringComparison.OrdinalIgnoreCase)) return true;
             if (path.StartsWith("/api/mobile", StringComparison.OrdinalIgnoreCase)) return true;
@@ -119,6 +127,22 @@ public sealed class RolePermissionService
 
         if (path.StartsWith("/api/branches/switch", StringComparison.OrdinalIgnoreCase)) return true;
 
+        if (path.StartsWith("/api/sales-invoices", StringComparison.OrdinalIgnoreCase) &&
+            method.Equals("DELETE", StringComparison.OrdinalIgnoreCase))
+        {
+            if (map.TryGetValue("sales.deleteInvoice", out var salesDelete) && salesDelete) return true;
+            reason = "Delete Sales Invoice permission is required.";
+            return false;
+        }
+
+        if (path.StartsWith("/api/purchase-invoices", StringComparison.OrdinalIgnoreCase) &&
+            method.Equals("DELETE", StringComparison.OrdinalIgnoreCase))
+        {
+            if (map.TryGetValue("purchase.deleteInvoice", out var purchaseDelete) && purchaseDelete) return true;
+            reason = "Delete Purchase Invoice permission is required.";
+            return false;
+        }
+
         if (method.Equals("GET", StringComparison.OrdinalIgnoreCase))
         {
             if (path.StartsWith("/api/reports", StringComparison.OrdinalIgnoreCase))
@@ -153,19 +177,61 @@ public sealed class RolePermissionService
         user.RoleName.Equals("System Admin", StringComparison.OrdinalIgnoreCase) ||
         user.RoleName.Equals("Company Super Admin", StringComparison.OrdinalIgnoreCase);
 
-    private static bool IsMobileSession(Dictionary<string, bool> map) =>
-        map.TryGetValue("mobile.access", out var allowed) && allowed;
+    private static bool IsMobileSession(UserSession user, Dictionary<string, bool> map)
+    {
+        if (map.TryGetValue("mobile.access", out var allowed) && allowed) return true;
+        if (!string.IsNullOrWhiteSpace(user.SessionId) &&
+            user.SessionId.StartsWith("MOB-", StringComparison.OrdinalIgnoreCase))
+            return true;
+        if (!string.IsNullOrWhiteSpace(user.RoleName) &&
+            user.RoleName.Contains("Mobile", StringComparison.OrdinalIgnoreCase))
+            return true;
+        return HasMobileAuthChannel(user.PermissionsJson);
+    }
 
-    private static Dictionary<string, bool> ReadPermissionMap(UserSession user)
+    private static bool HasMobileAuthChannel(string? permissionsJson)
     {
         try
         {
-            return JsonSerializer.Deserialize<Dictionary<string, bool>>(user.PermissionsJson ?? "{}", new JsonSerializerOptions { PropertyNameCaseInsensitive = true })
-                ?? new Dictionary<string, bool>(StringComparer.OrdinalIgnoreCase);
+            using var doc = JsonDocument.Parse(string.IsNullOrWhiteSpace(permissionsJson) ? "{}" : permissionsJson);
+            if (doc.RootElement.ValueKind != JsonValueKind.Object) return false;
+            if (doc.RootElement.TryGetProperty("__authChannel", out var ch) &&
+                ch.ValueKind == JsonValueKind.String &&
+                string.Equals(ch.GetString(), "mobile", StringComparison.OrdinalIgnoreCase))
+                return true;
+            if (doc.RootElement.TryGetProperty("__mobileAppUserId", out _)) return true;
         }
-        catch
-        {
-            return new Dictionary<string, bool>(StringComparer.OrdinalIgnoreCase);
-        }
+        catch { /* ignore */ }
+        return false;
     }
+
+    /// <summary>
+    /// Mobile permission JSON mixes bool flags with metadata (__authChannel, __mobileAppUserId).
+    /// Strict Dictionary&lt;string,bool&gt; deserialization throws and used to wipe all permissions.
+    /// </summary>
+    public static Dictionary<string, bool> ParseBoolPermissionMap(string? permissionsJson)
+    {
+        var map = new Dictionary<string, bool>(StringComparer.OrdinalIgnoreCase);
+        try
+        {
+            using var doc = JsonDocument.Parse(string.IsNullOrWhiteSpace(permissionsJson) ? "{}" : permissionsJson);
+            if (doc.RootElement.ValueKind != JsonValueKind.Object) return map;
+            foreach (var prop in doc.RootElement.EnumerateObject())
+            {
+                if (prop.Value.ValueKind == JsonValueKind.True) map[prop.Name] = true;
+                else if (prop.Value.ValueKind == JsonValueKind.False) map[prop.Name] = false;
+                else if (prop.Value.ValueKind == JsonValueKind.String &&
+                         bool.TryParse(prop.Value.GetString(), out var parsed))
+                    map[prop.Name] = parsed;
+                else if (prop.Value.ValueKind == JsonValueKind.Number &&
+                         prop.Value.TryGetInt32(out var n) && (n == 0 || n == 1))
+                    map[prop.Name] = n == 1;
+            }
+        }
+        catch { /* return whatever was parsed */ }
+        return map;
+    }
+
+    private static Dictionary<string, bool> ReadPermissionMap(UserSession user) =>
+        ParseBoolPermissionMap(user.PermissionsJson);
 }

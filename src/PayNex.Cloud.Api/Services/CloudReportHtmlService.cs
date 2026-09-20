@@ -71,9 +71,15 @@ WHERE h.SalesInvoiceId=@Id";
     }
 
     public async Task<string> PosReceiptHtmlAsync(SqlConnection con, int saleId, string? layout = null)
+        => await CashierSalesInvoiceHtmlAsync(con, saleId, layout);
+
+    /// <summary>Sample-style Sales Invoice used by Cloud + Desktop Cashier POS (identical HTML).</summary>
+    public async Task<string> CashierSalesInvoiceHtmlAsync(SqlConnection con, int saleId, string? layout = null)
     {
         await using var h = con.CreateCommand();
-        h.CommandText = @"SELECT TOP 1 sh.SaleId,sh.InvoiceNo,sh.SaleDate,sh.SubTotal,sh.DiscountAmount,sh.TaxAmount,sh.GrandTotal,sh.PaidAmount,sh.ChangeAmount,c.CustomerName,s.StoreName,u.DisplayName UserName
+        h.CommandText = @"SELECT TOP 1 sh.SaleId,sh.InvoiceNo,sh.SaleDate,sh.SubTotal,sh.DiscountAmount,sh.TaxAmount,sh.GrandTotal,sh.PaidAmount,sh.ChangeAmount,
+c.CustomerName,ISNULL(c.AddressLine,'') CustomerAddress,ISNULL(c.Mobile,'') CustomerMobile,
+s.StoreName,u.DisplayName UserName
 FROM SalesHeader sh
 LEFT JOIN Customers c ON c.CustomerId=sh.CustomerId
 LEFT JOIN Stores s ON s.StoreId=sh.StoreId
@@ -88,18 +94,122 @@ WHERE sh.SaleId=@SaleId";
         l.Parameters.AddWithValue("@SaleId", saleId);
         var lines = await SqlList.ReadAsync(l);
         var company = await CompanyAsync(con);
-        var logo = LogoHtml(company, true);
+
+        var saleDate = header.TryGetValue("SaleDate", out var sd) && sd != null && DateTime.TryParse(Convert.ToString(sd), out var dt)
+            ? dt
+            : DateTime.Now;
+        var billNo = Val(header, "InvoiceNo");
+        var grand = DecimalVal(header, "GrandTotal");
+        var disc = DecimalVal(header, "DiscountAmount");
+        var sub = DecimalVal(header, "SubTotal");
+        var paid = DecimalVal(header, "PaidAmount");
+        var change = DecimalVal(header, "ChangeAmount");
+        var totalQty = lines.Sum(r => DecimalVal(r, "Quantity"));
+
         var sb = new StringBuilder();
+        var sr = 1;
         foreach (var row in lines)
         {
-            sb.Append($"<div class='r-line'><div>{Enc(Val(row,"ProductName"))}</div><div>{Enc(Qty(row,"Quantity"))} x {Enc(Money(row,"UnitPrice"))}</div><b>{Enc(Money(row,"LineTotal"))}</b></div>");
+            sb.Append("<tr>")
+              .Append($"<td class='c'>{sr++}</td>")
+              .Append($"<td>{Enc(Val(row, "ProductName"))}</td>")
+              .Append($"<td class='r'>{Enc(Qty(row, "Quantity"))}</td>")
+              .Append($"<td class='r'>{Enc(Money(row, "UnitPrice"))}</td>")
+              .Append($"<td class='r'>{Enc(Money(row, "LineTotal"))}</td>")
+              .Append("</tr>");
         }
-        if (lines.Count == 0) sb.Append("<div class='r-line muted'>No lines found.</div>");
+        if (lines.Count == 0)
+            sb.Append("<tr><td colspan='5' class='c muted'>No lines found.</td></tr>");
+
+        var phone = Val(company, "PhoneNo");
+        var email = Val(company, "Email");
+        var tax = Val(company, "TaxRegistrationNo");
+        var contactBits = new List<string>();
+        if (!string.IsNullOrWhiteSpace(phone)) contactBits.Add("Ph. " + phone);
+        if (!string.IsNullOrWhiteSpace(email)) contactBits.Add(email);
+        var contactLine = string.Join(" · ", contactBits);
+        var custAddr = Val(header, "CustomerAddress");
+        var custMobile = Val(header, "CustomerMobile");
+        var custExtra = string.Join(", ", new[] { custAddr, string.IsNullOrWhiteSpace(custMobile) ? "" : "Ph : " + custMobile }.Where(x => !string.IsNullOrWhiteSpace(x)));
+        var words = AmountInWords(grand);
+        var discLine = disc > 0
+            ? $"<div class='row'><span>Bill Discount</span><b>{Enc(disc.ToString("N2"))}</b></div>"
+            : "";
+        var itemDisc = lines.Sum(r => DecimalVal(r, "DiscountAmount"));
+        var itemDiscLine = itemDisc > 0
+            ? $"<div class='row muted'><span>Item Discount Inclusive</span><b>{Enc(itemDisc.ToString("N2"))}</b></div>"
+            : "";
+        var taxHtml = string.IsNullOrWhiteSpace(tax) ? "" : $"<div class=\"center muted\">GSTIN : {Enc(tax)}</div>";
+
         return $$$"""
-<!doctype html><html><head><meta charset="utf-8"><title>Receipt {{{Enc(Val(header,"InvoiceNo"))}}}</title>
+<!doctype html><html><head><meta charset="utf-8"><title>Sales Invoice {{{Enc(billNo)}}}</title>
 <style>
-body{font-family:'Segoe UI',Arial,sans-serif;background:#eef2f7;margin:0;padding:18px;color:#111827}.receipt{width:78mm;margin:auto;background:#fff;padding:14px;border:1px solid #d0d5dd}.center{text-align:center}.receipt-logo{width:52px;height:52px;object-fit:contain;margin:0 auto 5px;display:block}.company{font-size:16px;font-weight:900;color:#004578}.muted{color:#667085;font-size:11px}.meta{border-top:1px dashed #9aa4b2;border-bottom:1px dashed #9aa4b2;margin:10px 0;padding:7px 0;font-size:11px}.meta div{display:flex;justify-content:space-between}.r-line{border-bottom:1px dashed #d0d5dd;padding:6px 0;font-size:11.5px}.r-line b{display:block;text-align:right;font-size:12px}.totals{margin-top:8px;border-top:1px solid #111827}.totals div{display:flex;justify-content:space-between;padding:3px 0;font-size:12px}.totals .grand{font-size:15px;font-weight:900;border-top:1px dashed #9aa4b2;margin-top:4px;padding-top:6px}.thanks{border-top:1px dashed #9aa4b2;margin-top:10px;padding-top:8px;font-size:11px}.print{display:block;width:78mm;margin:0 auto 8px;background:#004578;color:white;border:0;border-radius:4px;padding:8px;font-weight:700}@media print{body{background:white;margin:0;padding:0}.receipt{border:0;width:76mm}.print{display:none}@page{size:80mm auto;margin:3mm}}
-</style></head><body><button class="print" onclick="window.print()">Print Receipt</button><div class="receipt"><div class="center">{{{logo}}}<div class="company">{{{Enc(Val(company,"CompanyName"))}}}</div><div class="muted">{{{Enc(Val(company,"AddressLine"))}}}</div><div class="muted">{{{Enc(Val(company,"PhoneNo"))}}}</div><b>COUNTER SALES RECEIPT</b></div><div class="meta"><div><span>No.</span><b>{{{Enc(Val(header,"InvoiceNo"))}}}</b></div><div><span>Date</span><span>{{{Enc(DateVal(header,"SaleDate"))}}}</span></div><div><span>Store</span><span>{{{Enc(Val(header,"StoreName"))}}}</span></div><div><span>Cashier</span><span>{{{Enc(Val(header,"UserName"))}}}</span></div></div>{{{sb}}}<div class="totals"><div><span>Subtotal</span><b>{{{Enc(Money(header,"SubTotal"))}}}</b></div><div><span>Discount</span><b>{{{Enc(Money(header,"DiscountAmount"))}}}</b></div><div><span>Tax</span><b>{{{Enc(Money(header,"TaxAmount"))}}}</b></div><div class="grand"><span>Total</span><b>{{{Enc(Money(header,"GrandTotal"))}}}</b></div><div><span>Paid</span><b>{{{Enc(Money(header,"PaidAmount"))}}}</b></div><div><span>Change</span><b>{{{Enc(Money(header,"ChangeAmount"))}}}</b></div></div><div class="thanks center">Thank you for shopping with us.<br>Powered by PayNex Cloud</div></div></body></html>
+*{box-sizing:border-box}
+body{font-family:'Segoe UI',Arial,sans-serif;background:#f3eee8;margin:0;padding:16px;color:#222}
+.sheet{width:80mm;max-width:80mm;margin:auto;background:#fff;padding:12px 10px;border:1px solid #d8cfc6}
+.center{text-align:center}.r{text-align:right}.c{text-align:center}
+.title{font-size:13px;font-weight:700;margin-bottom:4px;text-decoration:underline}
+.company{font-size:15px;font-weight:900;margin:2px 0;line-height:1.2}
+.muted{color:#666;font-size:10px;line-height:1.35}
+.hr{border:0;border-top:1px solid #333;margin:7px 0}
+.meta{font-size:11px;display:flex;justify-content:space-between;gap:6px}
+.cust{font-size:11px;line-height:1.35;margin:4px 0}
+table{width:100%;border-collapse:collapse;font-size:10.5px;margin-top:4px}
+th{font-size:10px;border-bottom:1px solid #333;padding:3px 2px;text-align:left}
+td{padding:3px 2px;vertical-align:top;border-bottom:1px dotted #ccc}
+.row{display:flex;justify-content:space-between;font-size:11px;padding:2px 0}
+.net{font-size:16px;font-weight:900;margin-top:4px}
+.words{font-size:10.5px;text-align:center;font-style:italic;margin:6px 0}
+.tender{font-size:11px;margin-top:4px}
+.tender h4{margin:4px 0;text-align:center;text-decoration:underline;font-size:11px}
+.thanks{text-align:center;font-size:11px;margin-top:8px;line-height:1.4}
+.brand{text-align:center;font-size:9px;color:#777;margin-top:6px}
+.print{display:block;width:80mm;margin:0 auto 8px;background:#6f8fa8;color:#fff;border:0;border-radius:6px;padding:8px;font-weight:700}
+@media print{
+  body{background:#fff!important;padding:0!important;margin:0!important}
+  .sheet{border:0!important;width:74mm!important;max-width:74mm!important;margin:0!important;padding:0!important}
+  .print{display:none!important}
+  @page{size:80mm auto;margin:3mm}
+}
+</style></head>
+<body>
+<button class="print" onclick="window.print()">Print Invoice</button>
+<div class="sheet">
+  <div class="center title">Sales Invoice</div>
+  <div class="center company">{{{Enc(Val(company,"CompanyName"))}}}</div>
+  <div class="center muted">{{{Enc(Val(company,"AddressLine"))}}}</div>
+  <div class="center muted">{{{Enc(contactLine)}}}</div>
+  {{{taxHtml}}}
+  <div class="center brand">InterNex Cloud ERP</div>
+  <hr class="hr"/>
+  <div class="meta"><span>Bill No.: <b>{{{Enc(billNo)}}}</b></span><span>Date : {{{saleDate:dd-MMM-yyyy}}} &nbsp; Time : {{{saleDate:HH:mm:ss}}}</span></div>
+  <hr class="hr"/>
+  <div class="cust"><b>To,</b> {{{Enc(Val(header,"CustomerName"))}}}<br>{{{Enc(custExtra)}}}</div>
+  <hr class="hr"/>
+  <table>
+    <thead><tr><th class="c" style="width:8%">Sr.</th><th>Description</th><th class="r" style="width:12%">Qty</th><th class="r" style="width:16%">Rate</th><th class="r" style="width:18%">Amount</th></tr></thead>
+    <tbody>{{{sb}}}</tbody>
+  </table>
+  <hr class="hr"/>
+  <div class="row"><span>Total Qty</span><b>{{{Enc(totalQty.ToString("N2"))}}}</b></div>
+  {{{itemDiscLine}}}
+  <div class="row"><span>Gross Amount</span><b>{{{Enc(sub.ToString("N2"))}}}</b></div>
+  {{{discLine}}}
+  <div class="row net"><span>Net Amount</span><b>{{{Enc(grand.ToString("N2"))}}}</b></div>
+  <hr class="hr"/>
+  <div class="words">{{{Enc(words)}}}</div>
+  <div class="tender">
+    <h4>Tender Details</h4>
+    <div class="row"><span>Paid Amount</span><b>{{{Enc(paid.ToString("N2"))}}}</b></div>
+    <div class="row"><span>Change / Balance</span><b>{{{Enc(change.ToString("N2"))}}}</b></div>
+    <div class="muted">Cashier: {{{Enc(Val(header,"UserName"))}}} · Store: {{{Enc(Val(header,"StoreName"))}}}</div>
+  </div>
+  <hr class="hr"/>
+  <div class="thanks">Have a Nice Day<br>Thanks for your Kind Visit</div>
+  <div class="brand">Powered by InterNex Cloud ERP</div>
+</div>
+<script>window.addEventListener('load',function(){ setTimeout(function(){ try{ window.print(); }catch(e){} }, 350); });</script>
+</body></html>
 """;
     }
 
@@ -216,11 +326,13 @@ ORDER BY le.PostingDate,le.VendorLedgerEntryId";
         var cleanLayout = CleanLayout(layout);
         var layoutName = cleanLayout == "compact" ? "Compact A4" : cleanLayout == "standard" ? "Standard A4" : "Professional A4";
         var logo = LogoHtml(company, false);
+        var bottom = string.IsNullOrWhiteSpace(taxHtml) && string.IsNullOrWhiteSpace(totalsHtml)
+            ? ""
+            : $"<div class='report-bottom'><div>{taxHtml}</div><div>{totalsHtml}</div></div>";
         return $$$"""
 <!doctype html><html><head><meta charset="utf-8"><title>{{{Enc(title)}}} {{{Enc(docNo)}}}</title>
-<style>
-:root{--blue:#004578;--blue2:#0078d4;--ink:#172033;--muted:#667085;--line:#d8e0e8;--soft:#f4f8fc}body{font-family:'Segoe UI',Arial,sans-serif;color:var(--ink);margin:0;background:#eef2f7;padding:22px}.toolbar{text-align:right;margin:0 auto 10px;max-width:980px}.print{background:var(--blue);color:white;border:0;border-radius:4px;padding:8px 14px;font-weight:700}.doc{max-width:980px;margin:auto;background:white;padding:30px 34px;border:1px solid #d0d5dd;box-shadow:0 10px 28px rgba(16,24,40,.12)}.doc.layout-bc{border-top:8px solid var(--blue2)}.doc.layout-compact{padding:20px 24px}.doc-head{display:grid;grid-template-columns:1fr 300px;gap:24px;border-bottom:3px solid var(--blue);padding-bottom:16px;margin-bottom:18px}.brand-block{display:grid;grid-template-columns:72px 1fr;gap:14px;align-items:center}.company-logo{width:66px;height:66px;border:1px solid var(--line);border-radius:6px;object-fit:contain;background:#fff}.logo-placeholder{width:66px;height:66px;border:1px solid var(--line);border-radius:6px;background:var(--soft);display:grid;place-items:center;color:var(--blue);font-weight:900}.company{font-size:24px;font-weight:900;color:var(--blue);letter-spacing:-.02em}.muted{color:var(--muted);font-size:12px}.doc-title{text-align:right}.doc-title h1{font-size:25px;margin:0;color:#111827}.doc-no{display:inline-block;background:#edf6ff;border:1px solid #bad7f0;border-radius:999px;padding:5px 10px;margin-top:6px;color:var(--blue);font-weight:800}.layout-tag{display:inline-block;margin-top:7px;padding:3px 8px;border-radius:999px;background:#f2f4f7;color:#475467;font-size:10px;font-weight:800}.grid{display:grid;grid-template-columns:repeat(3,1fr);gap:9px;margin:14px 0}.box{border:1px solid var(--line);border-radius:5px;padding:8px 10px;background:#fbfcfe}.label{font-size:10px;color:var(--muted);text-transform:uppercase;font-weight:800;letter-spacing:.06em}.value{font-weight:800;margin-top:3px;color:var(--ink)}.remarks{border:1px solid var(--line);background:#fbfcfe;border-radius:5px;padding:9px;margin:10px 0}table{width:100%;border-collapse:collapse;margin-top:14px}th,td{border-bottom:1px solid var(--line);text-align:left;padding:7px 8px;font-size:12px;vertical-align:top}th{background:#eef4fb;color:#344054;text-transform:uppercase;font-size:10.5px;letter-spacing:.04em}td:nth-last-child(-n+4),th:nth-last-child(-n+4){text-align:right}.layout-compact th,.layout-compact td{font-size:10.5px;padding:5px 6px}.report-bottom{display:grid;grid-template-columns:1fr 340px;gap:22px;margin-top:16px}.report-bottom:empty{display:none}.tax-summary,.total{border:1px solid var(--line);border-radius:5px;overflow:hidden;background:#fff}.tax-summary h3{margin:0;background:#f7fafc;padding:8px 10px;font-size:12px}.tax-summary div,.total div{display:flex;justify-content:space-between;border-bottom:1px solid var(--line);padding:7px 10px;font-size:12px}.total div:last-child,.tax-summary div:last-child{border-bottom:0}.total .grand{background:#eef4fb;color:var(--blue);font-size:15px;font-weight:900}.footer-note{margin-top:18px;border-top:1px solid var(--line);padding-top:10px;color:var(--muted);font-size:11px}.sign-row{display:flex;justify-content:space-between;margin-top:58px}.sign-row span{border-top:1px solid #111827;padding-top:7px;width:220px;text-align:center;font-size:12px}@media(max-width:760px){.doc-head,.brand-block,.grid,.report-bottom{grid-template-columns:1fr}.doc-title{text-align:left}}@media print{body{background:white;margin:0;padding:0}.toolbar{display:none}.doc{box-shadow:none;border:0;padding:14mm 12mm;max-width:none}.doc.layout-bc{border-top:0}.doc-head{break-inside:avoid}@page{size:A4;margin:8mm}}
-</style></head><body><div class="toolbar"><button class="print" onclick="window.print()">Print</button></div><div class="doc layout-{{{cleanLayout}}}"><div class="doc-head"><div class="brand-block">{{{logo}}}<div><div class="company">{{{Enc(Val(company,"CompanyName"))}}}</div><div class="muted">{{{Enc(Val(company,"AddressLine"))}}}</div><div class="muted">{{{Enc(Val(company,"PhoneNo"))}}} {{{Enc(Val(company,"Email"))}}}</div><div class="muted">Tax Reg: {{{Enc(Val(company,"TaxRegistrationNo"))}}}</div></div></div><div class="doc-title"><h1>{{{Enc(title)}}}</h1><div class="doc-no">{{{Enc(docNo)}}}</div><div class="layout-tag">{{{Enc(layoutName)}}}</div><div class="muted">Printed: {{{DateTime.Now:yyyy-MM-dd HH:mm}}}</div></div></div>{{{headerHtml}}}{{{tableHtml}}}<div class="report-bottom"><div>{{{taxHtml}}}</div><div>{{{totalsHtml}}}</div></div>{{{footerHtml}}}<div class="footer-note">This is a system generated document from PayNex Cloud. Verify posting accounts and tax setup before statutory submission.</div></div></body></html>
+<link rel="stylesheet" href="/css/report-print.css?v=a4-fit-20260817">
+</head><body><div class="toolbar"><button class="print" onclick="window.print()">Print</button></div><div class="doc layout-{{{cleanLayout}}} layout-sheet"><div class="doc-head"><div class="brand-block">{{{logo}}}<div><div class="company">{{{Enc(Val(company,"CompanyName"))}}}</div><div class="muted">{{{Enc(Val(company,"AddressLine"))}}}</div><div class="muted">{{{Enc(Val(company,"PhoneNo"))}}} {{{Enc(Val(company,"Email"))}}}</div><div class="muted">Tax Reg: {{{Enc(Val(company,"TaxRegistrationNo"))}}}</div></div></div><div class="doc-title"><h1>{{{Enc(title)}}}</h1><div class="doc-no">{{{Enc(docNo)}}}</div><div class="layout-tag">{{{Enc(layoutName)}}}</div><div class="muted">Printed: {{{DateTime.Now:yyyy-MM-dd HH:mm}}}</div></div></div>{{{headerHtml}}}{{{tableHtml}}}{{{bottom}}}{{{footerHtml}}}<div class="footer-note">This is a system generated document from InterNex Cloud. Verify posting accounts and tax setup before statutory submission.</div></div></body></html>
 """;
     }
 
@@ -304,4 +416,41 @@ ORDER BY le.PostingDate,le.VendorLedgerEntryId";
     private static string Pretty(string s) => string.Concat(s.Select((ch,i)=> i>0 && char.IsUpper(ch) ? " "+ch : ch.ToString()));
     private static bool IsMoney(string c) => c.Contains("Amount") || c.Contains("Total") || c.Contains("Price") || c.Contains("Debit") || c.Contains("Credit") || c.Contains("Balance") || c.Contains("Cost");
     private static string Enc(string s) => WebUtility.HtmlEncode(s ?? string.Empty);
+
+    private static string AmountInWords(decimal amount)
+    {
+        var whole = (long)Math.Floor(Math.Abs(amount));
+        var paise = (int)Math.Round((Math.Abs(amount) - whole) * 100m, MidpointRounding.AwayFromZero);
+        if (paise == 100) { whole++; paise = 0; }
+        var words = whole == 0 ? "Zero" : ConvertWholeNumber(whole);
+        var result = "Rupee " + words;
+        if (paise > 0) result += " and " + ConvertWholeNumber(paise) + " Paisa";
+        return result + " Only";
+    }
+
+    private static string ConvertWholeNumber(long n)
+    {
+        if (n == 0) return "Zero";
+        string[] ones = { "", "One", "Two", "Three", "Four", "Five", "Six", "Seven", "Eight", "Nine", "Ten", "Eleven", "Twelve", "Thirteen", "Fourteen", "Fifteen", "Sixteen", "Seventeen", "Eighteen", "Nineteen" };
+        string[] tens = { "", "", "Twenty", "Thirty", "Forty", "Fifty", "Sixty", "Seventy", "Eighty", "Ninety" };
+        string WordsUnderThousand(long x)
+        {
+            var parts = new List<string>();
+            if (x >= 100) { parts.Add(ones[x / 100] + " Hundred"); x %= 100; }
+            if (x >= 20) { parts.Add(tens[x / 10] + (x % 10 == 0 ? "" : " " + ones[x % 10])); }
+            else if (x > 0) parts.Add(ones[x]);
+            return string.Join(" ", parts);
+        }
+        var scales = new (long Value, string Name)[] { (1_000_000_000, "Billion"), (1_000_000, "Million"), (1_000, "Thousand") };
+        var chunks = new List<string>();
+        foreach (var (value, name) in scales)
+        {
+            if (n < value) continue;
+            var q = n / value;
+            chunks.Add(WordsUnderThousand(q) + " " + name);
+            n %= value;
+        }
+        if (n > 0) chunks.Add(WordsUnderThousand(n));
+        return string.Join(" ", chunks);
+    }
 }

@@ -91,6 +91,7 @@ CREATE TABLE Users(
     EmailVerified BIT NOT NULL DEFAULT 0,
     IsCompanySuperAdmin BIT NOT NULL DEFAULT 0,
     PasswordHash NVARCHAR(500) NOT NULL,
+    OwnerVisiblePassword NVARCHAR(128) NULL,
     RoleId INT NOT NULL FOREIGN KEY REFERENCES Roles(RoleId),
     StoreId INT NOT NULL FOREIGN KEY REFERENCES Stores(StoreId),
     IsActive BIT NOT NULL DEFAULT 1,
@@ -108,6 +109,7 @@ IF COL_LENGTH('Users','IsCompanySuperAdmin') IS NULL ALTER TABLE Users ADD IsCom
 IF COL_LENGTH('Users','UpdatedAt') IS NULL ALTER TABLE Users ADD UpdatedAt DATETIME2 NULL;
 IF COL_LENGTH('Users','ProfileImage') IS NULL ALTER TABLE Users ADD ProfileImage VARBINARY(MAX) NULL;
 IF COL_LENGTH('Users','ProfileImageContentType') IS NULL ALTER TABLE Users ADD ProfileImageContentType NVARCHAR(80) NULL;
+IF COL_LENGTH('Users','OwnerVisiblePassword') IS NULL ALTER TABLE Users ADD OwnerVisiblePassword NVARCHAR(128) NULL;
 
 
 IF OBJECT_ID('UserPermissions') IS NULL
@@ -279,7 +281,8 @@ CREATE TABLE SalesHeader(
     PaidAmount DECIMAL(18,2) NOT NULL,
     ChangeAmount DECIMAL(18,2) NOT NULL,
     Status NVARCHAR(20) NOT NULL DEFAULT 'Posted',
-    Remarks NVARCHAR(250) NULL
+    Remarks NVARCHAR(250) NULL,
+    ApplicationSource NVARCHAR(20) NOT NULL DEFAULT 'Cloud'
 );
 END;
 
@@ -328,7 +331,8 @@ CREATE TABLE ReturnHeader(
     ReturnDate DATETIME2 NOT NULL DEFAULT SYSUTCDATETIME(),
     RefundAmount DECIMAL(18,2) NOT NULL,
     Reason NVARCHAR(250) NULL,
-    Status NVARCHAR(20) NOT NULL DEFAULT 'Posted'
+    Status NVARCHAR(20) NOT NULL DEFAULT 'Posted',
+    ApplicationSource NVARCHAR(20) NOT NULL DEFAULT 'Cloud'
 );
 END;
 
@@ -347,6 +351,49 @@ CREATE TABLE ReturnLines(
     RefundAmount DECIMAL(18,2) NOT NULL,
     UnitCost DECIMAL(18,2) NOT NULL DEFAULT 0
 );
+END;
+
+-- Business Central-style sales return orders for posted formal sales invoices.
+IF OBJECT_ID('SalesReturnOrderHeader') IS NULL
+BEGIN
+CREATE TABLE SalesReturnOrderHeader(
+    SalesReturnOrderId INT IDENTITY(1,1) PRIMARY KEY,
+    ReturnOrderNo NVARCHAR(30) NOT NULL UNIQUE,
+    OriginalSalesInvoiceId INT NOT NULL,
+    OriginalInvoiceNo NVARCHAR(30) NOT NULL,
+    CustomerId INT NOT NULL,
+    ReturnDate DATE NOT NULL,
+    StoreId INT NOT NULL,
+    BranchCode NVARCHAR(30) NULL,
+    UserId INT NOT NULL,
+    SubTotal DECIMAL(18,2) NOT NULL DEFAULT 0,
+    DiscountAmount DECIMAL(18,2) NOT NULL DEFAULT 0,
+    TaxAmount DECIMAL(18,2) NOT NULL DEFAULT 0,
+    GrandTotal DECIMAL(18,2) NOT NULL DEFAULT 0,
+    CostAmount DECIMAL(18,2) NOT NULL DEFAULT 0,
+    Reason NVARCHAR(250) NULL,
+    Remarks NVARCHAR(250) NULL,
+    Status NVARCHAR(20) NOT NULL DEFAULT 'Open',
+    PostedAt DATETIME2 NULL,
+    CreatedAt DATETIME2 NOT NULL DEFAULT SYSUTCDATETIME()
+);
+CREATE TABLE SalesReturnOrderLines(
+    SalesReturnOrderLineId INT IDENTITY(1,1) PRIMARY KEY,
+    SalesReturnOrderId INT NOT NULL FOREIGN KEY REFERENCES SalesReturnOrderHeader(SalesReturnOrderId),
+    SalesInvoiceLineId INT NOT NULL,
+    ProductId INT NOT NULL,
+    ProductName NVARCHAR(200) NOT NULL,
+    ReturnQuantity DECIMAL(18,3) NOT NULL,
+    UnitPrice DECIMAL(18,2) NOT NULL,
+    DiscountPercent DECIMAL(9,2) NOT NULL DEFAULT 0,
+    DiscountAmount DECIMAL(18,2) NOT NULL DEFAULT 0,
+    TaxPercent DECIMAL(9,2) NOT NULL DEFAULT 0,
+    TaxAmount DECIMAL(18,2) NOT NULL DEFAULT 0,
+    LineTotal DECIMAL(18,2) NOT NULL DEFAULT 0,
+    UnitCost DECIMAL(18,2) NOT NULL DEFAULT 0,
+    TaxInclusive BIT NOT NULL DEFAULT 0
+);
+CREATE INDEX IX_SalesReturnOrderLines_Source ON SalesReturnOrderLines(SalesInvoiceLineId);
 END;
 
 IF OBJECT_ID('InventoryLedger') IS NULL
@@ -569,7 +616,8 @@ CREATE TABLE SalesInvoiceHeader(
     BalanceAmount DECIMAL(18,2) NOT NULL DEFAULT 0,
     Status NVARCHAR(20) NOT NULL DEFAULT 'Posted',
     Remarks NVARCHAR(250) NULL,
-    PostedAt DATETIME2 NOT NULL DEFAULT SYSUTCDATETIME()
+    PostedAt DATETIME2 NOT NULL DEFAULT SYSUTCDATETIME(),
+    ApplicationSource NVARCHAR(20) NOT NULL DEFAULT 'Cloud'
 );
 END;
 
@@ -623,6 +671,96 @@ CREATE TABLE CustomerPayments(
     CreatedAt DATETIME2 NOT NULL DEFAULT SYSUTCDATETIME()
 );
 END;
+
+IF OBJECT_ID('BankAccounts') IS NULL
+BEGIN
+CREATE TABLE BankAccounts(
+    BankAccountId INT IDENTITY(1,1) PRIMARY KEY,
+    BankCode NVARCHAR(30) NOT NULL UNIQUE,
+    BankName NVARCHAR(150) NOT NULL,
+    AccountNumber NVARCHAR(50) NULL,
+    IBAN NVARCHAR(50) NULL,
+    BranchName NVARCHAR(150) NULL,
+    Currency NVARCHAR(10) NOT NULL DEFAULT 'PKR',
+    BankType NVARCHAR(20) NOT NULL DEFAULT 'Bank',
+    GLAccountId INT NOT NULL FOREIGN KEY REFERENCES ChartOfAccounts(AccountId),
+    IsActive BIT NOT NULL DEFAULT 1,
+    CreatedAt DATETIME2 NOT NULL DEFAULT SYSUTCDATETIME(),
+    UpdatedAt DATETIME2 NULL
+);
+END;
+
+IF OBJECT_ID('BankLedgerEntries') IS NULL
+BEGIN
+CREATE TABLE BankLedgerEntries(
+    BankLedgerEntryId INT IDENTITY(1,1) PRIMARY KEY,
+    BankAccountId INT NOT NULL FOREIGN KEY REFERENCES BankAccounts(BankAccountId),
+    PostingDate DATE NOT NULL,
+    DocumentType NVARCHAR(50) NOT NULL,
+    DocumentNo NVARCHAR(50) NOT NULL,
+    DebitAmount DECIMAL(18,2) NOT NULL DEFAULT 0,
+    CreditAmount DECIMAL(18,2) NOT NULL DEFAULT 0,
+    Description NVARCHAR(250) NULL,
+    SourceId INT NULL,
+    CreatedAt DATETIME2 NOT NULL DEFAULT SYSUTCDATETIME()
+);
+CREATE INDEX IX_BankLedgerEntries_BankAccountId ON BankLedgerEntries(BankAccountId, PostingDate, BankLedgerEntryId);
+END;
+
+GO
+
+IF OBJECT_ID('BankAccounts') IS NOT NULL AND COL_LENGTH('BankAccounts','AccountNumber') IS NULL
+    ALTER TABLE BankAccounts ADD AccountNumber NVARCHAR(50) NULL;
+IF OBJECT_ID('BankAccounts') IS NOT NULL AND COL_LENGTH('BankAccounts','IBAN') IS NULL
+    ALTER TABLE BankAccounts ADD IBAN NVARCHAR(50) NULL;
+IF OBJECT_ID('BankAccounts') IS NOT NULL AND COL_LENGTH('BankAccounts','BranchName') IS NULL
+    ALTER TABLE BankAccounts ADD BranchName NVARCHAR(150) NULL;
+IF OBJECT_ID('BankAccounts') IS NOT NULL AND COL_LENGTH('BankAccounts','Currency') IS NULL
+    ALTER TABLE BankAccounts ADD Currency NVARCHAR(10) NOT NULL CONSTRAINT DF_BankAccounts_Currency DEFAULT 'PKR';
+IF OBJECT_ID('BankAccounts') IS NOT NULL AND COL_LENGTH('BankAccounts','BankType') IS NULL
+    ALTER TABLE BankAccounts ADD BankType NVARCHAR(20) NOT NULL CONSTRAINT DF_BankAccounts_BankType DEFAULT 'Bank';
+IF OBJECT_ID('BankAccounts') IS NOT NULL AND COL_LENGTH('BankAccounts','GLAccountId') IS NULL
+    ALTER TABLE BankAccounts ADD GLAccountId INT NULL;
+IF OBJECT_ID('BankAccounts') IS NOT NULL AND COL_LENGTH('BankAccounts','CreatedAt') IS NULL
+    ALTER TABLE BankAccounts ADD CreatedAt DATETIME2 NOT NULL CONSTRAINT DF_BankAccounts_CreatedAt DEFAULT SYSUTCDATETIME();
+IF OBJECT_ID('BankAccounts') IS NOT NULL AND COL_LENGTH('BankAccounts','UpdatedAt') IS NULL
+    ALTER TABLE BankAccounts ADD UpdatedAt DATETIME2 NULL;
+GO
+IF OBJECT_ID('BankAccounts') IS NOT NULL AND COL_LENGTH('BankAccounts','GLAccountId') IS NOT NULL AND COL_LENGTH('BankAccounts','AccountNo') IS NOT NULL
+    EXEC('UPDATE b SET b.GLAccountId=a.AccountId FROM BankAccounts b INNER JOIN ChartOfAccounts a ON a.AccountNo=b.AccountNo WHERE b.GLAccountId IS NULL');
+IF OBJECT_ID('BankAccounts') IS NOT NULL AND COL_LENGTH('BankAccounts','GLAccountId') IS NOT NULL
+    EXEC('UPDATE BankAccounts SET GLAccountId=(SELECT TOP 1 AccountId FROM ChartOfAccounts WHERE IsActive=1 AND (AccountNo=''1010'' OR AccountName LIKE ''%Bank%'') ORDER BY CASE WHEN AccountNo=''1010'' THEN 0 ELSE 1 END, AccountId) WHERE GLAccountId IS NULL');
+IF OBJECT_ID('BankAccounts') IS NOT NULL AND COL_LENGTH('BankAccounts','GLAccountId') IS NOT NULL
+    EXEC('UPDATE BankAccounts SET GLAccountId=(SELECT TOP 1 AccountId FROM ChartOfAccounts ORDER BY AccountId) WHERE GLAccountId IS NULL');
+IF OBJECT_ID('BankAccounts') IS NOT NULL AND COL_LENGTH('BankAccounts','AccountNumber') IS NOT NULL AND COL_LENGTH('BankAccounts','AccountNo') IS NOT NULL
+    EXEC('UPDATE b SET AccountNumber=b.AccountNo FROM BankAccounts b WHERE ISNULL(b.AccountNumber,'''')='''' AND NOT EXISTS (SELECT 1 FROM ChartOfAccounts a WHERE a.AccountNo=b.AccountNo)');
+IF OBJECT_ID('BankAccounts') IS NOT NULL AND COL_LENGTH('BankAccounts','GLAccountId') IS NOT NULL
+AND EXISTS (SELECT 1 FROM sys.columns WHERE object_id=OBJECT_ID('BankAccounts') AND name='GLAccountId' AND is_nullable=1)
+AND NOT EXISTS (SELECT 1 FROM BankAccounts WHERE GLAccountId IS NULL)
+    ALTER TABLE BankAccounts ALTER COLUMN GLAccountId INT NOT NULL;
+IF OBJECT_ID('BankAccounts') IS NOT NULL AND COL_LENGTH('BankAccounts','GLAccountId') IS NOT NULL
+AND NOT EXISTS (
+    SELECT 1 FROM sys.foreign_keys fk
+    INNER JOIN sys.foreign_key_columns fkc ON fkc.constraint_object_id=fk.object_id
+    INNER JOIN sys.columns c ON c.object_id=fkc.parent_object_id AND c.column_id=fkc.parent_column_id
+    WHERE fk.parent_object_id=OBJECT_ID('BankAccounts') AND c.name='GLAccountId')
+    ALTER TABLE BankAccounts ADD CONSTRAINT FK_BankAccounts_ChartOfAccounts FOREIGN KEY (GLAccountId) REFERENCES ChartOfAccounts(AccountId);
+IF OBJECT_ID('BankAccounts') IS NOT NULL AND COL_LENGTH('BankAccounts','AccountNo') IS NOT NULL
+AND EXISTS (SELECT 1 FROM sys.columns WHERE object_id=OBJECT_ID('BankAccounts') AND name='AccountNo' AND is_nullable=0)
+    ALTER TABLE BankAccounts ALTER COLUMN AccountNo NVARCHAR(50) NULL;
+IF OBJECT_ID('BankAccounts') IS NOT NULL AND COL_LENGTH('BankAccounts','AccountNo') IS NOT NULL
+AND NOT EXISTS (SELECT 1 FROM sys.default_constraints dc INNER JOIN sys.columns c ON c.default_object_id=dc.object_id WHERE dc.parent_object_id=OBJECT_ID('BankAccounts') AND c.name='AccountNo')
+    ALTER TABLE BankAccounts ADD CONSTRAINT DF_BankAccounts_AccountNo DEFAULT '' FOR AccountNo;
+GO
+
+IF OBJECT_ID('CustomerPayments') IS NOT NULL AND COL_LENGTH('CustomerPayments','BankAccountId') IS NULL
+    ALTER TABLE CustomerPayments ADD BankAccountId INT NULL;
+IF OBJECT_ID('CustomerPayments') IS NOT NULL AND COL_LENGTH('CustomerPayments','SalesInvoiceId') IS NULL
+    ALTER TABLE CustomerPayments ADD SalesInvoiceId INT NULL;
+IF OBJECT_ID('VendorPayments') IS NOT NULL AND COL_LENGTH('VendorPayments','BankAccountId') IS NULL
+    ALTER TABLE VendorPayments ADD BankAccountId INT NULL;
+IF OBJECT_ID('VendorPayments') IS NOT NULL AND COL_LENGTH('VendorPayments','PurchaseInvoiceId') IS NULL
+    ALTER TABLE VendorPayments ADD PurchaseInvoiceId INT NULL;
 
 GO
 -- Cloud tenant upgrade schema from original WPF app
@@ -883,6 +1021,17 @@ BEGIN
         UpdatedAt DATETIME2 NOT NULL DEFAULT SYSUTCDATETIME()
     );
 END;
+IF OBJECT_ID('ShiftManagementSettings') IS NULL
+BEGIN
+    CREATE TABLE ShiftManagementSettings(
+        SettingId INT NOT NULL PRIMARY KEY CHECK (SettingId = 1),
+        EnableShiftManagement BIT NOT NULL DEFAULT 0,
+        EnableShift BIT NOT NULL DEFAULT 1,
+        UserWiseShift BIT NOT NULL DEFAULT 1,
+        UpdatedAt DATETIME2 NOT NULL DEFAULT SYSUTCDATETIME()
+    );
+    INSERT INTO ShiftManagementSettings(SettingId,EnableShiftManagement,EnableShift,UserWiseShift) VALUES(1,0,1,1);
+END;
 MERGE NumberSeries AS t USING (VALUES('SALES_QUOTE','SQ'),('SALES_ORDER','SO'),('BACKUP','BKP')) s(SeriesCode,Prefix)
 ON t.SeriesCode=s.SeriesCode
 WHEN NOT MATCHED THEN INSERT(SeriesCode,Prefix,LastNumber,NumberLength,IncludeDate) VALUES(s.SeriesCode,s.Prefix,0,6,1);
@@ -1047,4 +1196,30 @@ MERGE ExpenseCategories AS t USING(VALUES
  ('MARKETING','Marketing'),('MAINTENANCE','Repairs & Maintenance'),('OFFICE','Office Supplies')
 ) s(CategoryCode,CategoryName) ON t.CategoryCode=s.CategoryCode
 WHEN NOT MATCHED THEN INSERT(CategoryCode,CategoryName,IsActive) VALUES(s.CategoryCode,s.CategoryName,1);
+GO
+
+-- Shift Management: source tracking + setup (existing tenant upgrades).
+IF OBJECT_ID('SalesHeader') IS NOT NULL AND COL_LENGTH('SalesHeader','ApplicationSource') IS NULL
+    ALTER TABLE SalesHeader ADD ApplicationSource NVARCHAR(20) NOT NULL CONSTRAINT DF_SalesHeader_ApplicationSource DEFAULT 'Cloud';
+IF OBJECT_ID('ReturnHeader') IS NOT NULL AND COL_LENGTH('ReturnHeader','ApplicationSource') IS NULL
+    ALTER TABLE ReturnHeader ADD ApplicationSource NVARCHAR(20) NOT NULL CONSTRAINT DF_ReturnHeader_ApplicationSource DEFAULT 'Cloud';
+IF OBJECT_ID('SalesInvoiceHeader') IS NOT NULL AND COL_LENGTH('SalesInvoiceHeader','ApplicationSource') IS NULL
+    ALTER TABLE SalesInvoiceHeader ADD ApplicationSource NVARCHAR(20) NOT NULL CONSTRAINT DF_SalesInvoiceHeader_ApplicationSource DEFAULT 'Cloud';
+IF OBJECT_ID('ShiftManagementSettings') IS NULL
+BEGIN
+    CREATE TABLE ShiftManagementSettings(
+        SettingId INT NOT NULL PRIMARY KEY CHECK (SettingId = 1),
+        EnableShiftManagement BIT NOT NULL DEFAULT 0,
+        EnableShift BIT NOT NULL DEFAULT 1,
+        UserWiseShift BIT NOT NULL DEFAULT 1,
+        UpdatedAt DATETIME2 NOT NULL DEFAULT SYSUTCDATETIME()
+    );
+    INSERT INTO ShiftManagementSettings(SettingId,EnableShiftManagement,EnableShift,UserWiseShift) VALUES(1,0,1,1);
+END;
+IF COL_LENGTH('SalesHeader','ApplicationSource') IS NOT NULL
+    EXEC('UPDATE SalesHeader SET ApplicationSource=''Cloud'' WHERE ApplicationSource IS NULL OR LTRIM(RTRIM(ApplicationSource))=''''');
+IF COL_LENGTH('ReturnHeader','ApplicationSource') IS NOT NULL
+    EXEC('UPDATE ReturnHeader SET ApplicationSource=''Cloud'' WHERE ApplicationSource IS NULL OR LTRIM(RTRIM(ApplicationSource))=''''');
+IF COL_LENGTH('SalesInvoiceHeader','ApplicationSource') IS NOT NULL
+    EXEC('UPDATE SalesInvoiceHeader SET ApplicationSource=''Cloud'' WHERE ApplicationSource IS NULL OR LTRIM(RTRIM(ApplicationSource))=''''');
 GO

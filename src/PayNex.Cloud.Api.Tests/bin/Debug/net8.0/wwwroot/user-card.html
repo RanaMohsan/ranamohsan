@@ -1,0 +1,99 @@
+<!doctype html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>User Card</title>
+  <link rel="stylesheet" href="/css/app.css?v=avatar-fix-20260812d">
+</head>
+<body class="erp-card-page">
+  <main class="shell">
+    <div class="top">
+      <div>
+        <h1>User Card</h1>
+        <p id="who" class="muted">Create users and assign permissions.</p>
+      </div>
+      <div class="nav"><a href="/users.html">Users List</a><a href="/workspace.html">Workspace</a></div>
+    </div>
+
+    <section class="panel card-section">
+      <div class="setup-section-title"><h2>User Information</h2><span id="cardMode" class="lookup-chip">New User</span></div>
+      <section class="user-photo-editor" aria-label="User profile photo">
+        <div class="user-photo-preview">
+          <img id="profilePreviewImage" alt="User profile photo" hidden>
+          <span id="profilePreviewFallback">U</span>
+        </div>
+        <div class="user-photo-copy">
+          <h3>Profile Photo</h3>
+          <p>Upload the user DP shown in the top-right Business Central-style user menu.</p>
+          <div class="user-photo-actions">
+            <input id="profileImageInput" type="file" accept="image/png,image/jpeg,image/webp,image/gif" hidden>
+            <button id="uploadProfileImageBtn" class="secondary compact-button" type="button">Upload Photo</button>
+            <button id="removeProfileImageBtn" class="danger compact-button" type="button">Remove Photo</button>
+          </div>
+          <small id="profileImageHelp" class="muted">PNG, JPG, WEBP or GIF. Maximum file size: 2 MB.</small>
+        </div>
+      </section>
+      <input id="userId" type="hidden" value="0">
+      <div class="form-grid four">
+        <label>Full Name <span class="required">*</span><input id="displayName" placeholder="Full name"></label>
+        <label>User Name <span class="required">*</span><input id="userName" placeholder="Login user name, e.g. admin"></label>
+        <label>Email Address <span class="required">*</span><input id="email" type="email" placeholder="user@example.com"></label>
+        <label>Phone Number<input id="phoneNumber" placeholder="03xx / +92"></label>
+      </div>
+
+      <div class="amber-note">Users sign in to InterNex with <b>User Name + Password</b>. Email is used for OTP on first login. InterNex emails the login address and initial password from <b>Email &amp; OTP Security Setup</b>.</div>
+
+      <div class="form-grid four">
+        <label>Password
+          <span class="password-input-row">
+            <input id="password" type="password" autocomplete="new-password" spellcheck="false" placeholder="Required for new user; blank keeps old password">
+            <button id="togglePasswordBtn" class="secondary compact-button" type="button">Show</button>
+          </span>
+          <small id="passwordHelp" class="muted">Enter a password to create or change it. Saved passwords cannot be retrieved.</small>
+        </label>
+        <label>Role<select id="roleId" data-lookup-title="Role Lookup"></select></label>
+        <label>Main Branch<select id="storeId" data-lookup-title="Branch Lookup"></select></label>
+        <label>Status<select id="isActive" data-lookup-title="User Status"><option value="true">Active</option><option value="false">Inactive</option></select></label>
+      </div>
+      <div id="userPasswordReceipt" class="password-receipt" hidden>
+        <div>
+          <b>One-time password receipt</b>
+          <p class="muted small-text">This is the password just saved. Copy it now; it disappears on refresh or when you leave this card.</p>
+        </div>
+        <span class="password-input-row">
+          <input id="userPasswordReceiptValue" type="password" readonly autocomplete="off" spellcheck="false">
+          <button id="toggleUserPasswordReceiptBtn" class="secondary compact-button" type="button">Show</button>
+          <button id="copyUserPasswordReceiptBtn" class="secondary compact-button" type="button">Copy</button>
+          <button id="forgetUserPasswordReceiptBtn" class="danger compact-button" type="button">Forget now</button>
+        </span>
+      </div>
+      <label class="check-field"><input id="isCompanySuperAdmin" type="checkbox"> Company Super Admin</label>
+      <label class="check-field"><input id="allowDesktopAccess" type="checkbox" checked> Allow Desktop Application</label>
+      <div id="branchAssignmentPanel" class="branch-assignment" hidden>
+        <h3>Branch Assignment</h3>
+        <p class="muted">Visible only when multiple branches are enabled for this company.</p>
+        <div id="branchChecks" class="permission-grid compact"></div>
+      </div>
+    </section>
+
+    <section class="panel card-section">
+      <div class="setup-section-title"><h2>Permissions</h2><span class="lookup-chip">Allow / Deny</span></div>
+      <div class="amber-note">Every toggle controls a real ERP operation. Disabled permissions are blocked server-side and hidden where possible on the UI.</div>
+      <div id="permissionsGrid" class="permission-groups"></div>
+    </section>
+
+    <section class="panel card-actions-panel">
+      <div class="actions">
+        <button class="success" onclick="saveUser()">Save User</button>
+        <button id="resetPasswordBtn" class="secondary" onclick="resetPassword()">Reset Password From Field</button>
+        <button class="secondary" onclick="location.href='/users.html'">Back to List</button>
+      </div>
+      <p id="userStatus"></p>
+    </section>
+  </main>
+  <script src="/js/api.js?v=avatar-fix-20260812d"></script>
+  <script src="/js/user-card.js?v=username-login-20260914"></script>
+  <script src="/js/app-shell.js?v=desktop-detail-20260829"></script>
+</body>
+</html>

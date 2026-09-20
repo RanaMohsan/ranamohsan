@@ -1,0 +1,58 @@
+<?xml version="1.0" encoding="utf-8"?>
+<Report xmlns="http://schemas.microsoft.com/sqlserver/reporting/2008/01/reportdefinition" xmlns:rd="http://schemas.microsoft.com/SQLServer/reporting/reportdesigner">
+  <Body>
+    <ReportItems>
+      <Textbox Name="ReportTitle">
+        <CanGrow>true</CanGrow>
+        <KeepTogether>true</KeepTogether>
+        <Paragraphs><Paragraph><TextRuns><TextRun><Value>Customer Payment Receipt</Value><Style><FontFamily>Segoe UI</FontFamily><FontSize>16pt</FontSize><FontWeight>Bold</FontWeight></Style></TextRun></TextRuns><Style /></Paragraph></Paragraphs>
+        <Top>0.10in</Top><Left>0.10in</Left><Height>0.35in</Height><Width>7.10in</Width><Style />
+      </Textbox>
+      <Textbox Name="Note">
+        <CanGrow>true</CanGrow>
+        <Paragraphs><Paragraph><TextRuns><TextRun><Value>This RDLC source is included for Report Designer compatibility. The application print preview renders the same ERP-style document layout from selected records.</Value><Style><FontFamily>Segoe UI</FontFamily><FontSize>9pt</FontSize></Style></TextRun></TextRuns><Style /></Paragraph></Paragraphs>
+        <Top>0.55in</Top><Left>0.10in</Left><Height>0.35in</Height><Width>7.10in</Width><Style />
+      </Textbox>
+    </ReportItems>
+    <Height>1.10in</Height>
+    <Style />
+  </Body>
+  <Width>7.30in</Width>
+  <Page>
+    <PageHeight>11.69in</PageHeight>
+    <PageWidth>8.27in</PageWidth>
+    <LeftMargin>0.50in</LeftMargin>
+    <RightMargin>0.50in</RightMargin>
+    <TopMargin>0.50in</TopMargin>
+    <BottomMargin>0.50in</BottomMargin>
+    <Style />
+  </Page>
+  <AutoRefresh>0</AutoRefresh>
+  <DataSources>
+    <DataSource Name="PayNexDataSource">
+      <ConnectionProperties><DataProvider>System.Data.DataSet</DataProvider><ConnectString>/* Local DataSet */</ConnectString></ConnectionProperties>
+      <rd:DataSourceID>11111111-1111-1111-1111-111111111111</rd:DataSourceID>
+    </DataSource>
+  </DataSources>
+  <DataSets>
+    <DataSet Name="Header">
+      <Fields>
+        <Field Name="CompanyName"><DataField>CompanyName</DataField><rd:TypeName>System.String</rd:TypeName></Field>
+        <Field Name="DocumentNo"><DataField>DocumentNo</DataField><rd:TypeName>System.String</rd:TypeName></Field>
+      </Fields>
+      <Query><DataSourceName>PayNexDataSource</DataSourceName><CommandText>/* Local Header */</CommandText></Query>
+    </DataSet>
+    <DataSet Name="Lines">
+      <Fields>
+        <Field Name="No"><DataField>No</DataField><rd:TypeName>System.String</rd:TypeName></Field>
+        <Field Name="Description"><DataField>Description</DataField><rd:TypeName>System.String</rd:TypeName></Field>
+        <Field Name="Quantity"><DataField>Quantity</DataField><rd:TypeName>System.Decimal</rd:TypeName></Field>
+        <Field Name="UnitPrice"><DataField>UnitPrice</DataField><rd:TypeName>System.Decimal</rd:TypeName></Field>
+        <Field Name="Amount"><DataField>Amount</DataField><rd:TypeName>System.Decimal</rd:TypeName></Field>
+      </Fields>
+      <Query><DataSourceName>PayNexDataSource</DataSourceName><CommandText>/* Local Lines */</CommandText></Query>
+    </DataSet>
+  </DataSets>
+  <rd:ReportUnitType>Inch</rd:ReportUnitType>
+  <rd:ReportID>22222222-2222-2222-2222-222222222222</rd:ReportID>
+</Report>

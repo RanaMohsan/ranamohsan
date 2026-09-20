@@ -1,0 +1,183 @@
+<!doctype html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <link rel="stylesheet" href="/css/app.css?v=avatar-fix-20260812d">
+  <title>InterNex Subscription Card</title>
+</head>
+<body>
+  <main class="shell bc-card-page owner-company-card-page" data-page-role="owner-subscription-card">
+    <section class="bc-page-heading bc-document-heading">
+      <div>
+        <div class="bc-breadcrumb"><a href="/platform-subscriptions.html">Client Subscriptions</a> / Subscription Card</div>
+        <div class="bc-title-line">
+          <h1 id="documentTitle">New Subscription</h1>
+          <span id="documentStatus" class="bc-status-pill draft">New</span>
+        </div>
+        <p id="who" class="muted">Loading InterNex owner profile...</p>
+      </div>
+      <div class="bc-document-number">
+        <span>Subscription No</span>
+        <strong id="documentNo">NEW</strong>
+      </div>
+    </section>
+
+    <section class="bc-command-bar" aria-label="Subscription card actions">
+      <button id="backBtn" class="secondary" type="button"><span>←</span> List</button>
+      <button id="newBtn" class="secondary" type="button"><span>＋</span> New</button>
+      <button id="postBtn" class="bc-command-primary" type="button"><span>✓</span> Post</button>
+      <button id="renewBtn" class="secondary" type="button" hidden><span>↻</span> Renew</button>
+      <button id="cancelBtn" class="danger" type="button" hidden><span>×</span> Cancel</button>
+      <button id="refreshBtn" class="secondary" type="button"><span>↻</span> Refresh</button>
+    </section>
+
+    <div class="bc-card-layout owner-company-card-layout">
+      <div class="bc-card-main">
+        <section class="bc-fasttab open">
+          <div class="bc-fasttab-title"><span>Subscription Entry</span><span>⌃</span></div>
+          <div class="bc-fasttab-body bc-form-grid">
+            <label class="span-2">Client Company
+              <select id="fCompany" data-no-lookup="1" required>
+                <option value="">Select company...</option>
+              </select>
+            </label>
+            <label>Plan
+              <select id="fPlan" data-no-lookup="1" required>
+                <option value="">Select plan...</option>
+              </select>
+            </label>
+            <label>Start Date
+              <input id="fStartDate" type="date">
+            </label>
+            <label>Amount
+              <input id="fAmount" type="number" min="0.01" step="0.01" required>
+            </label>
+            <label>Currency
+              <input id="fCurrency" value="PKR">
+            </label>
+            <label>Payment Status
+              <select id="fPaymentStatus" data-no-lookup="1">
+                <option>Paid</option>
+                <option>Pending</option>
+                <option>Partial</option>
+              </select>
+            </label>
+            <label>Payment Method
+              <select id="fPaymentMethod" data-no-lookup="1">
+                <option>Cash</option>
+                <option>Bank</option>
+                <option>Other</option>
+              </select>
+            </label>
+            <label>Reference No
+              <input id="fReferenceNo" placeholder="Optional">
+            </label>
+            <label class="span-2">Notes
+              <input id="fNotes" placeholder="Optional notes">
+            </label>
+            <label>Expiry Date
+              <input id="fExpiryDate" type="date" readonly>
+            </label>
+            <label>Days Remaining
+              <input id="fDaysRemaining" readonly>
+            </label>
+          </div>
+        </section>
+
+        <section id="renewSection" class="bc-fasttab open" hidden>
+          <div class="bc-fasttab-title"><span>Renew Subscription</span><span>⌃</span></div>
+          <div class="bc-fasttab-body bc-form-grid">
+            <label>Duration (Months)
+              <select id="fRenewMonths" data-no-lookup="1">
+                <option value="1">1 Month</option>
+                <option value="3">3 Months</option>
+                <option value="6">6 Months</option>
+                <option value="12" selected>12 Months</option>
+              </select>
+            </label>
+            <label>Renewal Amount
+              <input id="fRenewAmount" type="number" min="0.01" step="0.01">
+            </label>
+            <label>Payment Status
+              <select id="fRenewPaymentStatus" data-no-lookup="1">
+                <option>Paid</option>
+                <option>Pending</option>
+                <option>Partial</option>
+              </select>
+            </label>
+            <label>Payment Method
+              <select id="fRenewPaymentMethod" data-no-lookup="1">
+                <option>Cash</option>
+                <option>Bank</option>
+                <option>Other</option>
+              </select>
+            </label>
+            <label class="span-2">Reference No
+              <input id="fRenewReferenceNo">
+            </label>
+            <div class="span-2">
+              <button id="confirmRenewBtn" class="bc-command-primary" type="button">Post Renewal</button>
+            </div>
+          </div>
+        </section>
+
+        <section id="cancelSection" class="bc-fasttab open" hidden>
+          <div class="bc-fasttab-title"><span>Cancel Subscription</span><span>⌃</span></div>
+          <div class="bc-fasttab-body bc-form-grid">
+            <label>Cancellation Date
+              <input id="fCancelDate" type="date">
+            </label>
+            <label class="span-2">Reason
+              <input id="fCancelReason" required placeholder="Required">
+            </label>
+            <div class="span-2">
+              <button id="confirmCancelBtn" class="danger" type="button">Confirm Cancellation</button>
+            </div>
+          </div>
+        </section>
+
+        <section id="historySection" class="bc-fasttab open owner-related-section">
+          <div class="bc-fasttab-title"><span>History</span><span id="historyCountLabel">0 records</span></div>
+          <div class="bc-fasttab-body bc-table-wrap owner-related-table-wrap">
+            <table class="bc-data-table owner-related-table">
+              <thead><tr><th>Date</th><th>Action</th><th>Previous Expiry</th><th>New Expiry</th><th class="number">Amount</th><th>By</th><th>Notes</th></tr></thead>
+              <tbody id="historyRows"><tr><td colspan="7" class="bc-empty-row">No history yet.</td></tr></tbody>
+            </table>
+          </div>
+        </section>
+
+        <section id="paymentSection" class="bc-fasttab open owner-related-section">
+          <div class="bc-fasttab-title"><span>Payments</span><span id="paymentCountLabel">0 records</span></div>
+          <div class="bc-fasttab-body bc-table-wrap owner-related-table-wrap">
+            <table class="bc-data-table owner-related-table">
+              <thead><tr><th>Date</th><th>Method</th><th>Reference</th><th class="number">Amount</th><th>Status</th><th>By</th></tr></thead>
+              <tbody id="paymentRows"><tr><td colspan="6" class="bc-empty-row">No payments yet.</td></tr></tbody>
+            </table>
+          </div>
+        </section>
+      </div>
+
+      <aside class="bc-factbox-column">
+        <section class="bc-factbox">
+          <h2>Subscription Summary</h2>
+          <dl>
+            <dt>Client</dt><dd id="factClient">—</dd>
+            <dt>Plan</dt><dd id="factPlan">—</dd>
+            <dt>Status</dt><dd id="factStatus">New</dd>
+            <dt>Payment</dt><dd id="factPayment">—</dd>
+            <dt>Expiry</dt><dd id="factExpiry">—</dd>
+            <dt>Days Left</dt><dd id="factDays">—</dd>
+          </dl>
+        </section>
+      </aside>
+    </div>
+
+    <p id="status" class="bc-status-line" aria-live="polite"></p>
+  </main>
+
+  <script src="/js/api.js?v=avatar-fix-20260812d"></script>
+  <script src="/js/platform-subscription-card.js?v=sub-dates-20260917"></script>
+  <script src="/js/app-shell.js?v=owner-sub-20260915"></script>
+</body>
+</html>

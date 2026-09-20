@@ -2,6 +2,8 @@ using Microsoft.Data.SqlClient;
 using Microsoft.Extensions.Options;
 using PayNex.Cloud.Api.Data;
 using PayNex.Cloud.Api.Models;
+using PayNex.Cloud.Api.Security;
+using PayNex.Cloud.Api.Validation;
 using System.Security.Cryptography;
 using System.Text;
 using System.Text.Json;
@@ -151,6 +153,44 @@ public static class ApiAuth
         if (auth.StartsWith("Bearer ", StringComparison.OrdinalIgnoreCase)) auth = auth[7..];
         return tokens.ValidateSuperAdmin(auth);
     }
+
+    public static string ResolveApplicationSource(HttpContext http, UserSession user)
+    {
+        var header = http.Request.Headers["X-InterNex-Source"].ToString().Trim();
+        if (string.IsNullOrWhiteSpace(header))
+            header = http.Request.Headers["X-PayNex-Source"].ToString().Trim();
+        if (header.Equals("Mobile", StringComparison.OrdinalIgnoreCase)) return "Mobile";
+        if (header.Equals("Desktop", StringComparison.OrdinalIgnoreCase)) return "Desktop";
+        if (header.Equals("Cloud", StringComparison.OrdinalIgnoreCase) ||
+            header.Equals("PayNext", StringComparison.OrdinalIgnoreCase) ||
+            header.Equals("PaynX", StringComparison.OrdinalIgnoreCase))
+            return "Cloud";
+
+        var sessionId = user.SessionId ?? "";
+        if (sessionId.StartsWith("MOB-", StringComparison.OrdinalIgnoreCase)) return "Mobile";
+        if (sessionId.StartsWith("DESK-", StringComparison.OrdinalIgnoreCase)) return "Desktop";
+
+        try
+        {
+            var map = RolePermissionService.ParseBoolPermissionMap(user.PermissionsJson);
+            if (map.TryGetValue("mobile.access", out var mobileOk) && mobileOk) return "Mobile";
+        }
+        catch { /* ignore malformed permission json */ }
+
+        var ua = http.Request.Headers.UserAgent.ToString();
+        if (ua.Contains("okhttp", StringComparison.OrdinalIgnoreCase) ||
+            ua.Contains("Dalvik", StringComparison.OrdinalIgnoreCase) ||
+            ua.Contains("PayNexERP", StringComparison.OrdinalIgnoreCase) ||
+            ua.Contains("InterNexERP", StringComparison.OrdinalIgnoreCase))
+            return "Mobile";
+        if (ua.Contains("InterNex.Desktop", StringComparison.OrdinalIgnoreCase) ||
+            ua.Contains("InterNex Desktop", StringComparison.OrdinalIgnoreCase) ||
+            ua.Contains("PayNex.Desktop", StringComparison.OrdinalIgnoreCase) ||
+            ua.Contains("PayNex Desktop", StringComparison.OrdinalIgnoreCase))
+            return "Desktop";
+
+        return "Cloud";
+    }
 }
 
 public sealed class SqlScriptRunner
@@ -208,17 +248,51 @@ public sealed class TenantProvisioningService
 
     public async Task EnsureMasterDatabaseAsync()
     {
-        await using (var master = await _db.OpenMasterServerAsync())
+        await EnsureDatabaseExistsAsync(Options.MasterDatabaseName);
+        await using var con = await _db.OpenMasterAsync();
+        await _runner.ExecuteScriptFileAsync(con, SchemaPath("MasterSchema.sql"));
+    }
+
+    /// <summary>
+    /// Creates the database only when it does not exist. Never DROP / recreate / overwrite data files.
+    /// Returns true when the database already existed.
+    /// </summary>
+    private async Task<bool> EnsureDatabaseExistsAsync(string databaseName)
+    {
+        if (!ConnectionFactory.IsSafeDatabaseName(databaseName) &&
+            !string.Equals(databaseName, Options.MasterDatabaseName, StringComparison.OrdinalIgnoreCase))
+            throw new InvalidOperationException("Invalid database name.");
+        await using var master = await _db.OpenMasterServerAsync();
+        await using (var check = master.CreateCommand())
         {
-            await using var cmd = master.CreateCommand();
-            cmd.CommandText = $"IF DB_ID(@DbName) IS NULL EXEC('CREATE DATABASE [{Options.MasterDatabaseName.Replace("]", "]]")}]');";
-            cmd.Parameters.AddWithValue("@DbName", Options.MasterDatabaseName);
-            await cmd.ExecuteNonQueryAsync();
+            check.CommandText = "SELECT CASE WHEN DB_ID(@DbName) IS NULL THEN 0 ELSE 1 END";
+            check.Parameters.AddWithValue("@DbName", databaseName);
+            if (Convert.ToInt32(await check.ExecuteScalarAsync()) == 1) return true;
         }
-        await using (var con = await _db.OpenMasterAsync())
-        {
-            await _runner.ExecuteScriptFileAsync(con, SchemaPath("MasterSchema.sql"));
-        }
+        await using var create = master.CreateCommand();
+        create.CommandText = $"IF DB_ID(@DbName) IS NULL EXEC('CREATE DATABASE [{databaseName.Replace("]", "]]")}]');";
+        create.Parameters.AddWithValue("@DbName", databaseName);
+        await create.ExecuteNonQueryAsync();
+        return false;
+    }
+
+    private async Task<bool> DatabaseExistsAsync(string databaseName)
+    {
+        if (!ConnectionFactory.IsSafeDatabaseName(databaseName)) return false;
+        await using var master = await _db.OpenMasterServerAsync();
+        await using var check = master.CreateCommand();
+        check.CommandText = "SELECT CASE WHEN DB_ID(@DbName) IS NULL THEN 0 ELSE 1 END";
+        check.Parameters.AddWithValue("@DbName", databaseName);
+        return Convert.ToInt32(await check.ExecuteScalarAsync()) == 1;
+    }
+
+    private static async Task<bool> TenantAlreadyProvisionedAsync(SqlConnection con)
+    {
+        await using var cmd = con.CreateCommand();
+        cmd.CommandText = @"
+IF OBJECT_ID('Users') IS NULL SELECT 0
+ELSE SELECT CASE WHEN EXISTS(SELECT 1 FROM Users) THEN 1 ELSE 0 END";
+        return Convert.ToInt32(await cmd.ExecuteScalarAsync() ?? 0) == 1;
     }
 
     public async Task<List<TenantInfo>> ListTenantsAsync()
@@ -251,13 +325,15 @@ FROM Tenants ORDER BY CreatedAt DESC";
             ? await GenerateNextCompanyCodeAsync()
             : ConnectionFactory.NormalizeCode(req.CompanyCode);
         var slug = companyCode.ToLowerInvariant();
-        var databaseName = $"PayNex_{companyCode}_DB";
+        var databaseName = $"InterNex_{companyCode}_DB";
         if (!ConnectionFactory.IsSafeDatabaseName(databaseName)) throw new InvalidOperationException("Invalid database name.");
-        var adminUser = string.IsNullOrWhiteSpace(req.AdminUserName) ? "admin" : req.AdminUserName.Trim();
-        var adminPassword = string.IsNullOrWhiteSpace(req.AdminPassword) ? "Admin@123" : req.AdminPassword;
-        var adminEmail = NormalizeEmail(req.AdminEmail) ?? NormalizeEmail(req.OwnerEmail) ?? $"{adminUser.ToLowerInvariant()}@{companyCode.ToLowerInvariant()}.paynex.local";
-        if (string.Equals(adminEmail, NormalizeEmail(Options.PlatformOwnerEmail), StringComparison.OrdinalIgnoreCase))
-            adminEmail = $"{adminUser.ToLowerInvariant()}@{companyCode.ToLowerInvariant()}.paynex.local";
+        var adminEmail = NormalizeEmail(req.AdminEmail) ?? NormalizeEmail(req.OwnerEmail);
+        if (string.IsNullOrWhiteSpace(adminEmail) || !RequestValidationService.IsGmailAddress(adminEmail))
+            throw new InvalidOperationException("First administrator must use a real Gmail address (@gmail.com). OTP is sent to that inbox.");
+        var adminUser = adminEmail;
+        var adminPassword = string.IsNullOrWhiteSpace(req.AdminPassword) || req.AdminPassword.Trim() == "Admin@123"
+            ? CredentialUniquenessService.MakeCompanyPassword(adminUser, companyCode)
+            : req.AdminPassword;
         var plan = string.IsNullOrWhiteSpace(req.SubscriptionPlan) ? "Standard" : req.SubscriptionPlan!.Trim();
         var startDate = req.CompanyStartDate?.Date ?? DateTime.Today;
         var expiry = req.LicenseExpiryDate?.Date ?? DateTime.Today.AddDays(Options.DefaultSubscriptionDays);
@@ -265,18 +341,13 @@ FROM Tenants ORDER BY CreatedAt DESC";
         var allowMultipleBranches = req.AllowMultipleBranches || req.MaxBranches > 1;
         var maxBranches = allowMultipleBranches ? Math.Max(2, req.MaxBranches) : 1;
 
-        await using (var master = await _db.OpenMasterServerAsync())
-        {
-            await using var create = master.CreateCommand();
-            create.CommandText = $"IF DB_ID(@DbName) IS NULL EXEC('CREATE DATABASE [{databaseName.Replace("]", "]]")}]');";
-            create.Parameters.AddWithValue("@DbName", databaseName);
-            await create.ExecuteNonQueryAsync();
-        }
+        var tenantDbAlreadyExisted = await EnsureDatabaseExistsAsync(databaseName);
 
         await using (var tenantCon = await _db.OpenTenantAsync(databaseName))
         {
             await _runner.ExecuteScriptFileAsync(tenantCon, SchemaPath("TenantSchema.sql"));
-            await SeedTenantAsync(tenantCon, req.CompanyName.Trim(), adminUser, adminPassword, adminEmail);
+            if (!tenantDbAlreadyExisted || !await TenantAlreadyProvisionedAsync(tenantCon))
+                await SeedTenantAsync(tenantCon, req.CompanyName.Trim(), adminUser, adminPassword, adminEmail, companyCode);
         }
 
         Guid tenantId;
@@ -365,8 +436,27 @@ END";
         var ownerUserName = string.IsNullOrWhiteSpace(Options.PlatformOwnerUserName) ? ownerEmail : Options.PlatformOwnerUserName.Trim().ToLowerInvariant();
 
         await using (var master = await _db.OpenMasterAsync())
-        await using (var cleanDir = master.CreateCommand())
         {
+            var keepCompanyUser = false;
+            await using (var mobileHit = master.CreateCommand())
+            {
+                mobileHit.CommandText = @"
+SELECT CASE WHEN OBJECT_ID('CompanyMobileAppUsers') IS NOT NULL
+    AND EXISTS(
+        SELECT 1 FROM CompanyMobileAppUsers
+        WHERE LOWER(LTRIM(RTRIM(ISNULL(Email,''))))=@Email
+           OR LOWER(LTRIM(RTRIM(ISNULL(UserName,''))))=@Email
+           OR LOWER(LTRIM(RTRIM(ISNULL(UserName,''))))=@UserName
+    ) THEN 1 ELSE 0 END";
+                mobileHit.Parameters.AddWithValue("@Email", ownerEmail);
+                mobileHit.Parameters.AddWithValue("@UserName", ownerUserName);
+                keepCompanyUser = Convert.ToInt32(await mobileHit.ExecuteScalarAsync() ?? 0) == 1;
+            }
+
+            if (keepCompanyUser)
+                return;
+
+            await using var cleanDir = master.CreateCommand();
             cleanDir.CommandText = @"
 IF OBJECT_ID('CentralUserDirectory') IS NOT NULL
 BEGIN
@@ -401,7 +491,7 @@ BEGIN
     SET IsActive=0,
         Email='',
         UserName=CONCAT('REMOVED_PAYNEX_OWNER_', UserId),
-        DisplayName='Removed PayNex Owner Access',
+        DisplayName='Removed InterNex Owner Access',
         UpdatedAt=SYSUTCDATETIME()
     WHERE LOWER(ISNULL(Email,''))=@Email OR LOWER(ISNULL(UserName,''))=@Email OR LOWER(ISNULL(UserName,''))=@UserName;
 END";
@@ -442,6 +532,141 @@ END";
         return tenant ?? throw new InvalidOperationException("Company code not found.");
     }
 
+    public async Task<object> DeleteClientAsync(string companyCode, string requestedBy)
+    {
+        await EnsureMasterDatabaseAsync();
+        var tenant = await GetTenantAsync(companyCode);
+        var code = tenant.CompanyCode;
+        if (string.Equals(code, Options.SuperAdminCompanyId, StringComparison.OrdinalIgnoreCase))
+            throw new InvalidOperationException("The platform owner company cannot be deleted.");
+
+        var databaseNames = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+        void AddDb(string? name)
+        {
+            if (!string.IsNullOrWhiteSpace(name)) databaseNames.Add(name.Trim());
+        }
+        AddDb(tenant.DatabaseName);
+        AddDb(tenant.ProductionDatabaseName);
+        AddDb(tenant.SandboxDatabaseName);
+        AddDb($"InterNex_{code}_DB");
+        AddDb($"InterNex_{code}_SBX_DB");
+        AddDb($"PayNex_{code}_DB");
+        AddDb($"PayNex_{code}_SBX_DB");
+
+        await using (var master = await _db.OpenMasterAsync())
+        await using (var revoke = master.CreateCommand())
+        {
+            revoke.CommandText = @"
+IF OBJECT_ID('AuthRefreshTokens') IS NOT NULL
+    UPDATE AuthRefreshTokens SET RevokedAt=COALESCE(RevokedAt,SYSUTCDATETIME()) WHERE CompanyCode=@CompanyCode;
+IF OBJECT_ID('TrustedLoginDevices') IS NOT NULL
+    UPDATE TrustedLoginDevices SET RevokedAt=COALESCE(RevokedAt,SYSUTCDATETIME()) WHERE CompanyCode=@CompanyCode;
+IF OBJECT_ID('LoginMfaChallenges') IS NOT NULL
+    UPDATE LoginMfaChallenges SET UsedAt=COALESCE(UsedAt,SYSUTCDATETIME()) WHERE CompanyCode=@CompanyCode AND UsedAt IS NULL;";
+            revoke.Parameters.AddWithValue("@CompanyCode", code);
+            await revoke.ExecuteNonQueryAsync();
+        }
+
+        var dropped = new List<string>();
+        foreach (var databaseName in databaseNames)
+        {
+            if (await DropTenantDatabaseAsync(databaseName))
+                dropped.Add(databaseName);
+        }
+
+        await using (var master = await _db.OpenMasterAsync())
+        await using (var cmd = master.CreateCommand())
+        {
+            cmd.CommandText = @"
+IF OBJECT_ID('SubscriptionPayments') IS NOT NULL AND OBJECT_ID('ClientSubscriptions') IS NOT NULL
+    DELETE p FROM SubscriptionPayments p INNER JOIN ClientSubscriptions s ON s.SubscriptionId=p.SubscriptionId WHERE s.CompanyCode=@CompanyCode;
+IF OBJECT_ID('SubscriptionHistory') IS NOT NULL
+    DELETE FROM SubscriptionHistory WHERE CompanyCode=@CompanyCode;
+IF OBJECT_ID('ClientSubscriptions') IS NOT NULL
+    DELETE FROM ClientSubscriptions WHERE CompanyCode=@CompanyCode;
+IF OBJECT_ID('CompanyDesktopUserAccess') IS NOT NULL
+    DELETE FROM CompanyDesktopUserAccess WHERE CompanyCode=@CompanyCode;
+IF OBJECT_ID('CompanyDesktopApps') IS NOT NULL
+    DELETE FROM CompanyDesktopApps WHERE CompanyCode=@CompanyCode;
+IF OBJECT_ID('CompanyMobileAppUsers') IS NOT NULL
+    DELETE FROM CompanyMobileAppUsers WHERE CompanyCode=@CompanyCode;
+IF OBJECT_ID('CompanyMobileApps') IS NOT NULL
+    DELETE FROM CompanyMobileApps WHERE CompanyCode=@CompanyCode;
+IF OBJECT_ID('CentralUserDirectory') IS NOT NULL
+    DELETE FROM CentralUserDirectory WHERE CompanyCode=@CompanyCode;
+IF OBJECT_ID('AuthRefreshTokens') IS NOT NULL
+    DELETE FROM AuthRefreshTokens WHERE CompanyCode=@CompanyCode;
+IF OBJECT_ID('TrustedLoginDevices') IS NOT NULL
+    DELETE FROM TrustedLoginDevices WHERE CompanyCode=@CompanyCode;
+IF OBJECT_ID('LoginMfaChallenges') IS NOT NULL
+    DELETE FROM LoginMfaChallenges WHERE CompanyCode=@CompanyCode;
+IF OBJECT_ID('AuthSessionAudit') IS NOT NULL
+    DELETE FROM AuthSessionAudit WHERE CompanyCode=@CompanyCode;
+IF OBJECT_ID('TenantAuditLog') IS NOT NULL
+    DELETE FROM TenantAuditLog WHERE CompanyCode=@CompanyCode;
+IF OBJECT_ID('PlatformDeleteClientChallenges') IS NOT NULL
+    DELETE FROM PlatformDeleteClientChallenges WHERE CompanyCode=@CompanyCode;
+IF OBJECT_ID('Tenants') IS NOT NULL
+    DELETE FROM Tenants WHERE CompanyCode=@CompanyCode;";
+            cmd.Parameters.AddWithValue("@CompanyCode", code);
+            await cmd.ExecuteNonQueryAsync();
+        }
+
+        await using (var audit = await _db.OpenMasterAsync())
+        await using (var auditCmd = audit.CreateCommand())
+        {
+            auditCmd.CommandText = @"
+IF OBJECT_ID('SecurityAuditLog') IS NOT NULL
+INSERT INTO SecurityAuditLog(UserName,ActionName,Path,IpAddress,Result,Details)
+VALUES(@UserName,'DELETE_CLIENT','/api/platform/companies/delete','','Success',@Details)";
+            auditCmd.Parameters.AddWithValue("@UserName", requestedBy ?? string.Empty);
+            auditCmd.Parameters.AddWithValue("@Details", $"Company={code}; Dropped={string.Join(',', dropped)}");
+            await auditCmd.ExecuteNonQueryAsync();
+        }
+
+        return new
+        {
+            companyCode = code,
+            droppedDatabases = dropped,
+            message = dropped.Count == 0
+                ? $"Client {code} was removed from the platform. No tenant databases were present."
+                : $"Client {code} was deleted. Dropped database(s): {string.Join(", ", dropped)}."
+        };
+    }
+
+    private async Task<bool> DropTenantDatabaseAsync(string databaseName)
+    {
+        if (!ConnectionFactory.IsSafeDatabaseName(databaseName)) return false;
+        if (string.Equals(databaseName, Options.MasterDatabaseName, StringComparison.OrdinalIgnoreCase)) return false;
+        if (databaseName.Equals("master", StringComparison.OrdinalIgnoreCase) ||
+            databaseName.Equals("tempdb", StringComparison.OrdinalIgnoreCase) ||
+            databaseName.Equals("model", StringComparison.OrdinalIgnoreCase) ||
+            databaseName.Equals("msdb", StringComparison.OrdinalIgnoreCase))
+            return false;
+
+        var safe = databaseName.Replace("]", "]]", StringComparison.Ordinal);
+        await using var server = await _db.OpenMasterServerAsync();
+        await using (var check = server.CreateCommand())
+        {
+            check.CommandText = "SELECT CASE WHEN DB_ID(@DbName) IS NULL THEN 0 ELSE 1 END";
+            check.Parameters.AddWithValue("@DbName", databaseName);
+            if (Convert.ToInt32(await check.ExecuteScalarAsync()) == 0) return false;
+        }
+
+        try
+        {
+            await using var drop = server.CreateCommand();
+            drop.CommandTimeout = 120;
+            drop.CommandText = $"ALTER DATABASE [{safe}] SET SINGLE_USER WITH ROLLBACK IMMEDIATE; DROP DATABASE [{safe}];";
+            await drop.ExecuteNonQueryAsync();
+            return true;
+        }
+        catch (Exception ex)
+        {
+            throw new InvalidOperationException($"Could not drop database {databaseName}. {ex.Message}");
+        }
+    }
+
     private static TenantInfo MapTenant(SqlDataReader r) => new(
         r.GetGuid(r.GetOrdinal("TenantId")),
         SqlRead.String(r,"CompanyCode"),
@@ -474,6 +699,8 @@ END";
         await EnsureMasterDatabaseAsync();
         var code = ConnectionFactory.NormalizeCode(companyCode);
         if (string.IsNullOrWhiteSpace(request.CompanyName)) throw new InvalidOperationException("Company name is required.");
+        if (!string.IsNullOrWhiteSpace(request.OwnerEmail) && !RequestValidationService.IsGmailAddress(request.OwnerEmail))
+            throw new InvalidOperationException("Owner email must be a real Gmail address (@gmail.com).");
         await using var con = await _db.OpenMasterAsync();
         await using var cmd = con.CreateCommand();
         cmd.CommandText = @"
@@ -523,23 +750,30 @@ VALUES(@CompanyCode,'UPDATE_TENANT_CARD','Company card updated from Super Admin 
     {
         await EnsureMasterDatabaseAsync();
         var tenant = await _db.GetTenantByCodeAsync(companyCode) ?? throw new InvalidOperationException("Company code not found.");
-        var sandboxDb = string.IsNullOrWhiteSpace(tenant.SandboxDatabaseName)
-            ? $"PayNex_{tenant.CompanyCode}_SBX_DB"
-            : tenant.SandboxDatabaseName;
+        var sandboxDb = tenant.SandboxDatabaseName;
+        if (string.IsNullOrWhiteSpace(sandboxDb))
+        {
+            var internexSandbox = $"InterNex_{tenant.CompanyCode}_SBX_DB";
+            var legacySandbox = $"PayNex_{tenant.CompanyCode}_SBX_DB";
+            sandboxDb = await DatabaseExistsAsync(internexSandbox)
+                ? internexSandbox
+                : await DatabaseExistsAsync(legacySandbox)
+                    ? legacySandbox
+                    : internexSandbox;
+        }
         if (!ConnectionFactory.IsSafeDatabaseName(sandboxDb)) throw new InvalidOperationException("Invalid sandbox database name.");
 
-        await using (var master = await _db.OpenMasterServerAsync())
-        {
-            await using var create = master.CreateCommand();
-            create.CommandText = $"IF DB_ID(@DbName) IS NULL EXEC('CREATE DATABASE [{sandboxDb.Replace("]", "]]")}]');";
-            create.Parameters.AddWithValue("@DbName", sandboxDb);
-            await create.ExecuteNonQueryAsync();
-        }
+        var sandboxAlreadyExisted = await EnsureDatabaseExistsAsync(sandboxDb);
 
         await using (var sandboxCon = await _db.OpenTenantAsync(sandboxDb))
         {
             await _runner.ExecuteScriptFileAsync(sandboxCon, SchemaPath("TenantSchema.sql"));
-            await SeedTenantAsync(sandboxCon, tenant.CompanyName + " Sandbox", "admin", "Admin@123", tenant.OwnerEmail);
+            if (!sandboxAlreadyExisted || !await TenantAlreadyProvisionedAsync(sandboxCon))
+            {
+                var sandboxAdminEmail = NormalizeEmail(tenant.OwnerEmail);
+                var sandboxLogin = RequestValidationService.IsGmailAddress(sandboxAdminEmail) ? sandboxAdminEmail! : "admin";
+                await SeedTenantAsync(sandboxCon, tenant.CompanyName + " Sandbox", sandboxLogin, CredentialUniquenessService.MakeCompanyPassword(sandboxLogin, tenant.CompanyCode), sandboxAdminEmail, tenant.CompanyCode);
+            }
         }
 
         await using (var con = await _db.OpenMasterAsync())
@@ -610,16 +844,14 @@ WHERE CompanyCode LIKE 'PNX%';";
         throw new InvalidOperationException("Unable to generate company ID. Please try again.");
     }
 
-    private async Task SeedTenantAsync(SqlConnection con, string companyName, string adminUser, string adminPassword, string? adminEmail)
+    private async Task SeedTenantAsync(SqlConnection con, string companyName, string adminUser, string adminPassword, string? adminEmail, string companyCode)
     {
         var safeAdminEmail = NormalizeEmail(adminEmail);
-        if (string.Equals(safeAdminEmail, NormalizeEmail(Options.PlatformOwnerEmail), StringComparison.OrdinalIgnoreCase))
-            safeAdminEmail = null;
+        var loginUser = RequestValidationService.IsGmailAddress(safeAdminEmail) ? safeAdminEmail : null;
         var hash = _passwords.Hash(adminPassword);
         await ExecAsync(con, "IF NOT EXISTS(SELECT 1 FROM Roles WHERE RoleName='Admin') INSERT INTO Roles(RoleName) VALUES('Admin'); IF NOT EXISTS(SELECT 1 FROM Roles WHERE RoleName='Company Super Admin') INSERT INTO Roles(RoleName) VALUES('Company Super Admin'); IF NOT EXISTS(SELECT 1 FROM Roles WHERE RoleName='Manager') INSERT INTO Roles(RoleName) VALUES('Manager'); IF NOT EXISTS(SELECT 1 FROM Roles WHERE RoleName='Cashier') INSERT INTO Roles(RoleName) VALUES('Cashier');");
         await ExecAsync(con, "IF NOT EXISTS(SELECT 1 FROM Stores) INSERT INTO Stores(StoreCode,StoreName,BranchCode,BranchName,AddressLine,IsMainBranch,IsActive) VALUES('MAIN','Main Store','MAIN','Main Store','Main Branch',1,1);");
         await ExecAsync(con, "IF NOT EXISTS(SELECT 1 FROM Terminals) INSERT INTO Terminals(StoreId,TerminalCode,TerminalName,IsActive) VALUES(1,'COUNTER-01','Counter 01',1);");
-        await ExecAsync(con, "IF NOT EXISTS(SELECT 1 FROM Customers) INSERT INTO Customers(CustomerCode,CustomerName,Mobile,CreditLimit,LoyaltyPoints,OpeningBalance,CurrentBalance,IsActive) VALUES('WALKIN','Walk-in Customer','',0,0,0,0,1);");
         await ExecAsync(con, "IF NOT EXISTS(SELECT 1 FROM Categories) INSERT INTO Categories(CategoryName) VALUES('Dairy'),('Bakery'),('Beverage'),('Grocery'),('Snacks');");
         await ExecAsync(con, "IF NOT EXISTS(SELECT 1 FROM Brands) INSERT INTO Brands(BrandName) VALUES('Local'),('Nestle'),('Pepsi'),('Dawn'),('National');");
         await ExecAsync(con, "IF NOT EXISTS(SELECT 1 FROM TaxGroups) INSERT INTO TaxGroups(TaxGroupName,TaxPercent,IsInclusive) VALUES('GST 18%',18,0),('Zero Rated',0,0);");
@@ -635,25 +867,35 @@ IF NOT EXISTS(SELECT 1 FROM PostingSetup WHERE SetupId=1)
 INSERT INTO PostingSetup(SetupId,CashAccount,BankAccount,ReceivableAccount,InventoryAccount,InputTaxAccount,PayableAccount,OutputTaxAccount,OpeningBalanceAccount,SalesAccount,SalesReturnAccount,CogsAccount,StockAdjustmentAccount,CashierDiscountLimit,BlockNegativeStock,CostingMethod)
 VALUES(1,'1000','1010','1100','1200','1300','2000','2100','3000','4000','4010','5000','5100',5,1,'Average');");
         await ExecAsync(con, @"
-MERGE NumberSeries AS t USING (VALUES('POS','POS'),('PURCHASE_INVOICE','PI'),('SALES_INVOICE','SI'),('RETURN','RET'),('CUSTOMER_PAYMENT','CPAY'),('VENDOR_PAYMENT','VPAY'),('TRANSFER','TRF'),('ADJUSTMENT','ADJ'),('HOLD','HOLD'),('SALES_QUOTE','SQ'),('SALES_ORDER','SO'),('BACKUP','BKP')) s(SeriesCode,Prefix)
+MERGE NumberSeries AS t USING (VALUES('POS','POS'),('PURCHASE_INVOICE','PI'),('SALES_INVOICE','SI'),('SALES_RETURN_ORDER','SRO'),('RETURN','RET'),('CUSTOMER_PAYMENT','CPAY'),('VENDOR_PAYMENT','VPAY'),('TRANSFER','TRF'),('ADJUSTMENT','ADJ'),('HOLD','HOLD'),('SALES_QUOTE','SQ'),('SALES_ORDER','SO'),('BACKUP','BKP')) s(SeriesCode,Prefix)
 ON t.SeriesCode=s.SeriesCode WHEN NOT MATCHED THEN INSERT(SeriesCode,Prefix,LastNumber,NumberLength,IncludeDate) VALUES(s.SeriesCode,s.Prefix,0,6,1);");
         await using (var comp = con.CreateCommand())
         {
-            comp.CommandText = @"IF NOT EXISTS(SELECT 1 FROM CompanyInformation) INSERT INTO CompanyInformation(CompanyName,AddressLine,PhoneNo,Email,Website,TaxRegistrationNo,LogoPath) VALUES(@Company,'Main Branch','','','','','') ELSE UPDATE CompanyInformation SET CompanyName=@Company,UpdatedAt=SYSUTCDATETIME();";
+            comp.CommandText = @"
+IF NOT EXISTS(SELECT 1 FROM CompanyInformation)
+    INSERT INTO CompanyInformation(CompanyName,AddressLine,PhoneNo,Email,Website,TaxRegistrationNo,LogoPath)
+    VALUES(@Company,'Main Branch','','','','','');
+ELSE IF EXISTS(SELECT 1 FROM CompanyInformation WHERE ISNULL(CompanyName,'') IN ('','PayNex_POS_B1','PayNex'))
+    UPDATE CompanyInformation SET CompanyName=@Company, UpdatedAt=SYSUTCDATETIME()
+    WHERE ISNULL(CompanyName,'') IN ('','PayNex_POS_B1','PayNex');";
             comp.Parameters.AddWithValue("@Company", companyName);
             await comp.ExecuteNonQueryAsync();
         }
-        await using (var userCmd = con.CreateCommand())
+        // ALTER must be its own batch. SQL Server compiles INSERT/UPDATE before ALTER would add the column.
+        await ExecAsync(con, "IF COL_LENGTH('Users','OwnerVisiblePassword') IS NULL ALTER TABLE Users ADD OwnerVisiblePassword NVARCHAR(128) NULL;");
+        await ExecAsync(con, "IF COL_LENGTH('Users','UpdatedAt') IS NULL ALTER TABLE Users ADD UpdatedAt DATETIME2 NULL;");
+        if (!string.IsNullOrWhiteSpace(loginUser))
         {
+            await using var userCmd = con.CreateCommand();
             userCmd.CommandText = @"
-IF COL_LENGTH('Users','OwnerVisiblePassword') IS NULL ALTER TABLE Users ADD OwnerVisiblePassword NVARCHAR(128) NULL;
-IF NOT EXISTS(SELECT 1 FROM Users WHERE UserName=@UserName)
+IF NOT EXISTS(SELECT 1 FROM Users WHERE LOWER(LTRIM(RTRIM(ISNULL(Email,''))))=@Email OR LOWER(LTRIM(RTRIM(UserName)))=@UserName)
     INSERT INTO Users(UserName,DisplayName,Email,EmailVerified,PasswordHash,OwnerVisiblePassword,RoleId,StoreId,IsCompanySuperAdmin,IsActive)
     VALUES(@UserName,'System Admin',@Email,0,@Hash,@Pwd,(SELECT TOP 1 RoleId FROM Roles WHERE RoleName='Admin'),1,1,1)
 ELSE
-    UPDATE Users SET Email=CASE WHEN ISNULL(Email,'')='' THEN @Email ELSE Email END, IsCompanySuperAdmin=1, OwnerVisiblePassword=CASE WHEN ISNULL(OwnerVisiblePassword,'')='' THEN @Pwd ELSE OwnerVisiblePassword END, UpdatedAt=SYSUTCDATETIME() WHERE UserName=@UserName;";
-            userCmd.Parameters.AddWithValue("@UserName", adminUser);
-            userCmd.Parameters.AddWithValue("@Email", safeAdminEmail ?? $"{adminUser.ToLowerInvariant()}@paynex.local");
+    UPDATE Users SET Email=@Email, UserName=@UserName, IsCompanySuperAdmin=1, OwnerVisiblePassword=CASE WHEN ISNULL(OwnerVisiblePassword,'')='' THEN @Pwd ELSE OwnerVisiblePassword END, UpdatedAt=SYSUTCDATETIME()
+    WHERE LOWER(LTRIM(RTRIM(ISNULL(Email,''))))=@Email OR LOWER(LTRIM(RTRIM(UserName)))=@UserName;";
+            userCmd.Parameters.AddWithValue("@UserName", loginUser);
+            userCmd.Parameters.AddWithValue("@Email", loginUser);
             userCmd.Parameters.AddWithValue("@Hash", hash);
             userCmd.Parameters.AddWithValue("@Pwd", adminPassword);
             await userCmd.ExecuteNonQueryAsync();
@@ -661,37 +903,24 @@ ELSE
         
         await ExecAsync(con, @"
 IF NOT EXISTS(SELECT 1 FROM Stores WHERE StoreCode='WH') INSERT INTO Stores(StoreCode,StoreName,BranchCode,BranchName,AddressLine,IsMainBranch,IsActive) VALUES('WH','Warehouse','WH','Warehouse','Warehouse Store',0,1);
-IF NOT EXISTS(SELECT 1 FROM Terminals WHERE TerminalCode='COUNTER-02') INSERT INTO Terminals(StoreId,TerminalCode,TerminalName,IsActive) VALUES(1,'COUNTER-02','Counter 02',1);
-IF NOT EXISTS(SELECT 1 FROM Users WHERE UserName='manager') INSERT INTO Users(UserName,DisplayName,PasswordHash,OwnerVisiblePassword,RoleId,StoreId,IsActive) VALUES('manager','Store Manager',@HASH,N'Admin@123',(SELECT TOP 1 RoleId FROM Roles WHERE RoleName='Manager'),1,1);
-IF NOT EXISTS(SELECT 1 FROM Users WHERE UserName='cashier') INSERT INTO Users(UserName,DisplayName,PasswordHash,OwnerVisiblePassword,RoleId,StoreId,IsActive) VALUES('cashier','Counter Cashier',@HASH,N'Admin@123',(SELECT TOP 1 RoleId FROM Roles WHERE RoleName='Cashier'),1,1);
-UPDATE Users SET OwnerVisiblePassword=N'Admin@123' WHERE UserName IN ('manager','cashier') AND ISNULL(OwnerVisiblePassword,'')='';
-IF NOT EXISTS(SELECT 1 FROM Customers WHERE CustomerCode='C001') INSERT INTO Customers(CustomerCode,CustomerName,Mobile,Email,AddressLine,CreditLimit,LoyaltyPoints,OpeningBalance,CurrentBalance,IsActive) VALUES('C001','Ahmed Traders','03001234567','ahmed@example.com','Lahore',50000,0,0,0,1);
-IF NOT EXISTS(SELECT 1 FROM Customers WHERE CustomerCode='C002') INSERT INTO Customers(CustomerCode,CustomerName,Mobile,Email,AddressLine,CreditLimit,LoyaltyPoints,OpeningBalance,CurrentBalance,IsActive) VALUES('C002','Ali General Store','03007654321','ali@example.com','Karachi',75000,0,0,0,1);
-IF NOT EXISTS(SELECT 1 FROM Vendors WHERE VendorCode='V001') INSERT INTO Vendors(VendorCode,VendorName,ContactPerson,Mobile,Email,AddressLine,PaymentTerms,OpeningBalance,CurrentBalance,IsActive) VALUES('V001','Metro Supplier','Mr. Metro','03001112222','metro@example.com','Lahore','15 Days',0,0,1);
-IF NOT EXISTS(SELECT 1 FROM Vendors WHERE VendorCode='V002') INSERT INTO Vendors(VendorCode,VendorName,ContactPerson,Mobile,Email,AddressLine,PaymentTerms,OpeningBalance,CurrentBalance,IsActive) VALUES('V002','Grocery Wholesale','Mr. Grocery','03005556666','grocery@example.com','Karachi','30 Days',0,0,1);
-".Replace("@HASH", "N'" + hash.Replace("'", "''") + "'"));
-
-await ExecAsync(con, @"
-IF NOT EXISTS(SELECT 1 FROM Products)
-BEGIN
-INSERT INTO Products(ProductCode,Barcode,ProductName,CategoryId,BrandId,UnitOfMeasure,PurchasePrice,SalePrice,RetailPrice,TaxGroupId,DiscountAllowed,MinStockLevel,ReorderLevel,StockOnHand,IsActive)
-VALUES ('P-1001','111001','Milk 1 Liter',1,2,'PCS',210,250,250,1,1,10,20,100,1),('P-1002','111002','Bread Large',2,4,'PCS',120,160,160,2,1,10,20,80,1),('P-1003','111003','Soft Drink 1.5L',3,3,'PCS',150,200,200,1,1,10,20,120,1),('P-1004','111004','Rice 5KG',4,5,'BAG',1450,1650,1650,2,0,5,10,50,1);
-INSERT INTO StockByStore(StoreId,ProductId,Quantity,AverageCost) SELECT 1,ProductId,StockOnHand,PurchasePrice FROM Products;
-END");
+IF NOT EXISTS(SELECT 1 FROM Terminals WHERE TerminalCode='COUNTER-02') INSERT INTO Terminals(StoreId,TerminalCode,TerminalName,IsActive) VALUES(1,'COUNTER-02','Counter 02',1);");
+        // Customers, vendors, and items are not seeded — company users add their own master data.
     }
 
 
     private async Task SyncSeededAdminCentralDirectoryAsync(Guid tenantId, string companyCode, string databaseName, string adminUser, string adminEmail, string adminPassword, string companyName)
     {
-        var email = NormalizeEmail(adminEmail) ?? $"{adminUser.ToLowerInvariant()}@{companyCode.ToLowerInvariant()}.paynex.local";
-        if (string.Equals(email, NormalizeEmail(Options.PlatformOwnerEmail), StringComparison.OrdinalIgnoreCase))
-            email = $"{adminUser.ToLowerInvariant()}@{companyCode.ToLowerInvariant()}.paynex.local";
+        var email = NormalizeEmail(adminEmail);
+        if (string.IsNullOrWhiteSpace(email)) return;
         var hash = _passwords.Hash(adminPassword);
         int userId = 0;
         await using (var tenantCon = await _db.OpenTenantAsync(databaseName))
         await using (var getUser = tenantCon.CreateCommand())
         {
-            getUser.CommandText = "SELECT TOP 1 UserId FROM Users WHERE UserName=@UserName ORDER BY UserId";
+            getUser.CommandText = @"SELECT TOP 1 UserId FROM Users
+WHERE LOWER(LTRIM(RTRIM(ISNULL(Email,''))))=@Email OR LOWER(LTRIM(RTRIM(UserName)))=@UserName
+ORDER BY UserId";
+            getUser.Parameters.AddWithValue("@Email", email);
             getUser.Parameters.AddWithValue("@UserName", adminUser);
             userId = Convert.ToInt32(await getUser.ExecuteScalarAsync() ?? 0);
         }
